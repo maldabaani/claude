@@ -13,8 +13,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PostList />} />
         <Route path="/posts/:id" element={<PostDetail />} />
-        <Route path="/posts/:id/edit" element={<EditPost />} />
         <Route path="/create" element={<CreatePost />} />
+        <Route path="/posts/:id/edit" element={<EditPost />} />
       </Routes>
     </BrowserRouter>
   );

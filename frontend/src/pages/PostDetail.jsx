@@ -19,11 +19,11 @@ export default function PostDetail() {
     setDeleting(true);
     try {
       await deletePost(id);
-      navigate('/');
+      navigate('/', { state: { toast: 'Post deleted successfully.' } });
     } catch (e) {
       setError(e.message);
-      setDeleting(false);
       setShowConfirm(false);
+      setDeleting(false);
     }
   }
 
@@ -35,7 +35,7 @@ export default function PostDetail() {
       {showConfirm && (
         <div className={styles.overlay}>
           <div className={styles.dialog}>
-            <p className={styles.dialogText}>Delete <strong>{post.title}</strong>? This cannot be undone.</p>
+            <p className={styles.dialogText}>Are you sure you want to delete <strong>"{post.title}"</strong>? This cannot be undone.</p>
             <div className={styles.dialogActions}>
               <button className={styles.cancelBtn} onClick={() => setShowConfirm(false)} disabled={deleting}>Cancel</button>
               <button className={styles.confirmDeleteBtn} onClick={handleDelete} disabled={deleting}>
@@ -45,11 +45,14 @@ export default function PostDetail() {
           </div>
         </div>
       )}
+      {post.cover_image && (
+        <img src={post.cover_image} alt="Cover" className={styles.coverImage} />
+      )}
       <div className={styles.topBar}>
         <Link to="/" className={styles.back}>← Back to posts</Link>
         <div className={styles.actions}>
-          <Link to={`/posts/${id}/edit`} className={styles.editBtn}>Edit</Link>
           <button className={styles.deleteBtn} onClick={() => setShowConfirm(true)}>Delete</button>
+          <button className={styles.editBtn} onClick={() => navigate(`/posts/${id}/edit`)}>Edit</button>
         </div>
       </div>
       <article className={styles.article}>

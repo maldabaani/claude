@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getPost, updatePost } from '../api/posts';
+import { getPost, updatePost, uploadImage } from '../api/posts';
 import styles from './CreatePost.module.css';
 
 const CATEGORIES = ['General', 'Tech', 'Design', 'Business', 'Lifestyle'];
@@ -12,17 +12,23 @@ export default function EditPost() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     getPost(id)
-      .then(post => setForm({
-        title: post.title,
-        content: post.content,
-        author: post.author,
-        category: post.category,
-        status: post.status,
-      }))
-      .catch(e => setServerError(e.message));
+      .then(post => {
+        setForm({
+          title: post.title,
+          content: post.content,
+          author: post.author,
+          category: post.category,
+          status: post.status,
+          cover_image: post.cover_image || null,
+        });
+        if (post.cover_image) setImagePreview(post.cover_image);
+      })
+      .catch(() => setServerError('Failed to load post.'));
   }, [id]);
 
   function validate() {
@@ -37,6 +43,21 @@ export default function EditPost() {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
     if (errors[name]) setErrors(e => ({ ...e, [name]: '' }));
+  }
+
+  async function handleImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const { path } = await uploadImage(file);
+      setForm(f => ({ ...f, cover_image: path }));
+    } catch (err) {
+      setServerError(err.message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -56,7 +77,13 @@ export default function EditPost() {
     }
   }
 
-  if (!form && !serverError) return <div className={styles.container}><p style={{ color: '#a6adc8' }}>Loading...</p></div>;
+  if (serverError && !form) return (
+    <div className={styles.container}>
+      <p className={styles.serverError}>{serverError}</p>
+    </div>
+  );
+
+  if (!form) return <div className={styles.container}><p>Loading...</p></div>;
 
   return (
     <div className={styles.container}>
@@ -64,57 +91,62 @@ export default function EditPost() {
 
       {serverError && <p className={styles.serverError}>{serverError}</p>}
 
-      {form && (
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        <div className={styles.field}>
+          <label>Title *</label>
+          <input name="title" value={form.title} onChange={handleChange} placeholder="Post title" />
+          {errors.title && <span className={styles.err}>{errors.title}</span>}
+        </div>
+
+        <div className={styles.row}>
           <div className={styles.field}>
-            <label>Title *</label>
-            <input name="title" value={form.title} onChange={handleChange} placeholder="Post title" />
-            {errors.title && <span className={styles.err}>{errors.title}</span>}
+            <label>Author *</label>
+            <input name="author" value={form.author} onChange={handleChange} placeholder="Author name" />
+            {errors.author && <span className={styles.err}>{errors.author}</span>}
           </div>
-
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label>Author *</label>
-              <input name="author" value={form.author} onChange={handleChange} placeholder="Author name" />
-              {errors.author && <span className={styles.err}>{errors.author}</span>}
-            </div>
-            <div className={styles.field}>
-              <label>Category</label>
-              <select name="category" value={form.category} onChange={handleChange}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Status</label>
-              <select name="status" value={form.status} onChange={handleChange}>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-              </select>
-            </div>
-          </div>
-
           <div className={styles.field}>
-            <label>Content *</label>
-            <textarea
-              name="content"
-              value={form.content}
-              onChange={handleChange}
-              placeholder="Write your post content..."
-              rows={12}
-            />
-            {errors.content && <span className={styles.err}>{errors.content}</span>}
+            <label>Category</label>
+            <select name="category" value={form.category} onChange={handleChange}>
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
           </div>
+          <div className={styles.field}>
+            <label>Status</label>
+            <select name="status" value={form.status} onChange={handleChange}>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </div>
+        </div>
 
-          <div className={styles.actions}>
-            <button type="button" className={styles.cancelBtn} onClick={() => navigate(`/posts/${id}`)}>
-              Cancel
-            </button>
-            <button type="submit" className={styles.submitBtn} disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      )}
+        <div className={styles.imageField}>
+          <label>Cover Image</label>
+          <input type="file" accept="image/*" onChange={handleImageChange} />
+          {uploading && <span className={styles.uploadingLabel}>Uploading…</span>}
+          {imagePreview && <img src={imagePreview} alt="Cover preview" className={styles.imagePreview} />}
+        </div>
+
+        <div className={styles.field}>
+          <label>Content *</label>
+          <textarea
+            name="content"
+            value={form.content}
+            onChange={handleChange}
+            placeholder="Write your post content..."
+            rows={12}
+          />
+          {errors.content && <span className={styles.err}>{errors.content}</span>}
+        </div>
+
+        <div className={styles.actions}>
+          <button type="button" className={styles.cancelBtn} onClick={() => navigate(`/posts/${id}`)}>
+            Cancel
+          </button>
+          <button type="submit" className={styles.submitBtn} disabled={submitting || uploading}>
+            {submitting ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

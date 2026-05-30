@@ -5,18 +5,25 @@ const { getDb } = require('../database');
 router.get('/', async (req, res) => {
   try {
     const db = await getDb();
-    const { status, category } = req.query;
-    let query = 'SELECT * FROM posts';
+    const { status, category, limit, offset } = req.query;
+    const pageLimit = Math.max(1, parseInt(limit) || 10);
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
+
+    const filterClauses = [];
     const params = [];
-    const filters = [];
 
-    if (status) { filters.push('status = ?'); params.push(status); }
-    if (category) { filters.push('category = ?'); params.push(category); }
-    if (filters.length) query += ' WHERE ' + filters.join(' AND ');
-    query += ' ORDER BY created_at DESC';
+    if (status) { filterClauses.push('status = ?'); params.push(status); }
+    if (category) { filterClauses.push('category = ?'); params.push(category); }
 
-    const posts = await db.all(query, params);
-    res.json({ data: posts, total: posts.length });
+    const where = filterClauses.length ? ' WHERE ' + filterClauses.join(' AND ') : '';
+
+    const { total } = await db.get(`SELECT COUNT(*) AS total FROM posts${where}`, params);
+    const posts = await db.all(
+      `SELECT * FROM posts${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, pageLimit, pageOffset]
+    );
+
+    res.json({ data: posts, total });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -35,7 +42,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, content, author, category = 'General', status = 'draft' } = req.body;
+    const { title, content, author, category = 'General', status = 'draft', cover_image = null } = req.body;
 
     if (!title || !content || !author) {
       return res.status(400).json({ error: 'title, content, and author are required' });
@@ -46,8 +53,8 @@ router.post('/', async (req, res) => {
 
     const db = await getDb();
     const result = await db.run(
-      'INSERT INTO posts (title, content, author, category, status) VALUES (?, ?, ?, ?, ?)',
-      [title, content, author, category, status]
+      'INSERT INTO posts (title, content, author, category, status, cover_image) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, content, author, category, status, cover_image]
     );
     const post = await db.get('SELECT * FROM posts WHERE id = ?', result.lastID);
     res.status(201).json(post);
@@ -56,13 +63,20 @@ router.post('/', async (req, res) => {
   }
 });
 
+
 router.put('/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const existing = await db.get('SELECT id FROM posts WHERE id = ?', req.params.id);
+    const existing = await db.get('SELECT * FROM posts WHERE id = ?', req.params.id);
     if (!existing) return res.status(404).json({ error: 'Post not found' });
 
-    const { title, content, author, category = 'General', status } = req.body;
+    const {
+      title, content, author,
+      category = existing.category,
+      status = existing.status,
+      cover_image = existing.cover_image,
+    } = req.body;
+
     if (!title || !content || !author) {
       return res.status(400).json({ error: 'title, content, and author are required' });
     }
@@ -71,8 +85,8 @@ router.put('/:id', async (req, res) => {
     }
 
     await db.run(
-      'UPDATE posts SET title = ?, content = ?, author = ?, category = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [title, content, author, category, status, req.params.id]
+      'UPDATE posts SET title = ?, content = ?, author = ?, category = ?, status = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [title, content, author, category, status, cover_image, req.params.id]
     );
     const post = await db.get('SELECT * FROM posts WHERE id = ?', req.params.id);
     res.json(post);
@@ -84,10 +98,10 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const existing = await db.get('SELECT id FROM posts WHERE id = ?', req.params.id);
+    const existing = await db.get('SELECT * FROM posts WHERE id = ?', req.params.id);
     if (!existing) return res.status(404).json({ error: 'Post not found' });
     await db.run('DELETE FROM posts WHERE id = ?', req.params.id);
-    res.status(204).end();
+    res.status(204).send();
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

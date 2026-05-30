@@ -79,12 +79,14 @@
 
 .editBtn {
   background: #cba6f7;
+  border: none;
   color: #1e1e2e;
   text-decoration: none;
   padding: 0.45rem 1.1rem;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
+  cursor: pointer;
   transition: opacity 0.2s;
 }
 
@@ -176,3 +178,12 @@
 
 .error { color: #f38ba8; }
 .loading { color: #a6adc8; }
+
+.coverImage {
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: block;
+}

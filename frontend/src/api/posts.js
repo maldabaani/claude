@@ -13,6 +13,7 @@ export async function getPost(id) {
   return res.json();
 }
 
+
 export async function updatePost(id, data) {
   const res = await fetch(`${BASE}/${id}`, {
     method: 'PUT',
@@ -22,6 +23,17 @@ export async function updatePost(id, data) {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to update post');
+  }
+  return res.json();
+}
+
+export async function uploadImage(file) {
+  const data = new FormData();
+  data.append('image', file);
+  const res = await fetch('/api/upload', { method: 'POST', body: data });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to upload image');
   }
   return res.json();
 }

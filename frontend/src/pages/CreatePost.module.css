@@ -118,3 +118,27 @@
 
 .submitBtn:hover { opacity: 0.85; }
 .submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.imageField { display: flex; flex-direction: column; gap: 0.4rem; }
+.imageField label { color: #a6adc8; font-size: 0.85rem; font-weight: 500; }
+.imageField input[type="file"] {
+  background: #181825;
+  border: 1px dashed #45475a;
+  color: #cdd6f4;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.imageField input[type="file"]:hover { border-color: #cba6f7; }
+
+.imagePreview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #313244;
+  margin-top: 0.4rem;
+}
+
+.uploadingLabel { color: #a6adc8; font-size: 0.8rem; font-style: italic; }

@@ -22,8 +22,9 @@ async function getDb() {
         updated_at DATETIME
       )
     `);
-    // migrate existing databases that predate this column
+    // migrate existing databases that predate these columns
     try { await db.exec('ALTER TABLE posts ADD COLUMN updated_at DATETIME'); } catch (_) {}
+    try { await db.exec('ALTER TABLE posts ADD COLUMN cover_image TEXT'); } catch (_) {}
   }
   return db;
 }

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPost } from '../api/posts';
+import { createPost, uploadImage } from '../api/posts';
 import styles from './CreatePost.module.css';
 
 const CATEGORIES = ['General', 'Tech', 'Design', 'Business', 'Lifestyle'];
 
-const INITIAL = { title: '', content: '', author: '', category: 'General', status: 'draft' };
+const INITIAL = { title: '', content: '', author: '', category: 'General', status: 'draft', cover_image: null };
 
 export default function CreatePost() {
   const navigate = useNavigate();
@@ -13,6 +13,8 @@ export default function CreatePost() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   function validate() {
     const e = {};
@@ -28,6 +30,21 @@ export default function CreatePost() {
     if (errors[name]) setErrors(e => ({ ...e, [name]: '' }));
   }
 
+  async function handleImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const { path } = await uploadImage(file);
+      setForm(f => ({ ...f, cover_image: path }));
+    } catch (err) {
+      setServerError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const errs = validate();
@@ -37,12 +54,9 @@ export default function CreatePost() {
     setServerError('');
     try {
       const post = await createPost(form);
-      alert("Post Created Successfully!!");
       navigate(`/posts/${post.id}`);
     } catch (err) {
       setServerError(err.message);
-      alert("Failed to create Post",err.message);
-
     } finally {
       setSubmitting(false);
     }
@@ -82,6 +96,13 @@ export default function CreatePost() {
           </div>
         </div>
 
+        <div className={styles.imageField}>
+          <label>Cover Image</label>
+          <input type="file" accept="image/*" onChange={handleImageChange} />
+          {uploading && <span className={styles.uploadingLabel}>Uploading…</span>}
+          {imagePreview && <img src={imagePreview} alt="Cover preview" className={styles.imagePreview} />}
+        </div>
+
         <div className={styles.field}>
           <label>Content *</label>
           <textarea
@@ -98,7 +119,7 @@ export default function CreatePost() {
           <button type="button" className={styles.cancelBtn} onClick={() => navigate('/')}>
             Cancel
           </button>
-          <button type="submit" className={styles.submitBtn} disabled={submitting}>
+          <button type="submit" className={styles.submitBtn} disabled={submitting || uploading}>
             {submitting ? 'Creating...' : 'Create Post'}
           </button>
         </div>
