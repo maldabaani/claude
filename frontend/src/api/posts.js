@@ -1,23 +1,31 @@
+import { getToken } from './auth';
+
 const BASE = '/api/posts';
+
+function authHeaders(extra = {}) {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
+}
 
 export async function getPosts(filters = {}) {
   const params = new URLSearchParams(filters).toString();
-  const res = await fetch(`${BASE}${params ? '?' + params : ''}`);
+  const res = await fetch(`${BASE}${params ? '?' + params : ''}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to fetch posts');
   return res.json();
 }
 
 export async function getPost(id) {
-  const res = await fetch(`${BASE}/${id}`);
+  const res = await fetch(`${BASE}/${id}`, { headers: authHeaders() });
   if (!res.ok) throw new Error('Post not found');
   return res.json();
 }
 
-
 export async function updatePost(id, data) {
   const res = await fetch(`${BASE}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -30,7 +38,11 @@ export async function updatePost(id, data) {
 export async function uploadImage(file) {
   const data = new FormData();
   data.append('image', file);
-  const res = await fetch('/api/upload', { method: 'POST', body: data });
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: data,
+  });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to upload image');
@@ -39,7 +51,10 @@ export async function uploadImage(file) {
 }
 
 export async function deletePost(id) {
-  const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to delete post');
@@ -49,7 +64,7 @@ export async function deletePost(id) {
 export async function createPost(data) {
   const res = await fetch(BASE, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   });
   if (!res.ok) {

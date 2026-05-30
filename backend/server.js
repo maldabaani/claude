@@ -9,8 +9,11 @@ app.use(cors({ origin: /^http:\/\/localhost:\d+$/ }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/posts', require('./routes/posts'));
-app.use('/api/upload', require('./routes/upload'));
+const requireAuth = require('./middleware/auth');
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/posts', requireAuth, require('./routes/posts'));
+app.use('/api/upload', requireAuth, require('./routes/upload'));
 
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 
