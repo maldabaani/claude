@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: clinic-saas-backend
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+  info:
+    title: Clinic SaaS API
+    version: v1
+    description: Medical Clinic Management Platform REST API
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  platform-db:
+    url: ${PLATFORM_DB_URL}
+    username: ${PLATFORM_DB_USER}
+    password: ${PLATFORM_DB_PASSWORD}
+  tenant-db:
+    host: ${POSTGRES_HOST:localhost}
+    port: ${POSTGRES_PORT:5432}
+    admin-user: ${POSTGRES_ADMIN_USER}
+    admin-password: ${POSTGRES_ADMIN_PASSWORD}
