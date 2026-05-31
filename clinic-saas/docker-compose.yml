@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinic_postgres
+    environment:
+      POSTGRES_DB: ${PLATFORM_DB_NAME:-clinic_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-clinic_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clinic_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinic_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinic_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: clinic_backend
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      PLATFORM_DB_URL: jdbc:postgresql://postgres:5432/${PLATFORM_DB_NAME:-clinic_platform}
+      PLATFORM_DB_USER: ${POSTGRES_USER:-clinic_admin}
+      PLATFORM_DB_PASSWORD: ${POSTGRES_PASSWORD:-clinic_secret}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_ADMIN_USER: ${POSTGRES_USER:-clinic_admin}
+      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-clinic_secret}
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_a_256bit_secret_key_for_production_use}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - clinic_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: clinic_frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - clinic_net
+
+volumes:
+  postgres_data:
+    name: clinic_postgres_data
+
+networks:
+  clinic_net:
+    name: clinic_network
+    driver: bridge
