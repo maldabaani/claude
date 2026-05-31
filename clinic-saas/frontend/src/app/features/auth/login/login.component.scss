@@ -1,0 +1,17 @@
+.login-form {
+  .form-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+  }
+  .field {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    label { font-weight: 600; font-size: 0.875rem; }
+    .optional { font-weight: 400; color: var(--text-color-secondary); font-size: 0.8rem; }
+    .error { color: var(--red-500); font-size: 0.8rem; }
+  }
+}

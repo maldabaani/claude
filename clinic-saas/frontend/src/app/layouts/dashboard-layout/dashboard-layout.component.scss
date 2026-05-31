@@ -1,0 +1,81 @@
+.layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.layout-sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: var(--surface-card);
+  border-right: 1px solid var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.25rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    i { font-size: 1.5rem; }
+  }
+
+  .nav-list {
+    list-style: none;
+    flex: 1;
+    padding: 0;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    text-decoration: none;
+    color: var(--text-color-secondary);
+    border-radius: 0;
+    transition: background 0.2s, color 0.2s;
+    font-size: 0.95rem;
+
+    &:hover { background: var(--surface-hover); color: var(--text-color); }
+    &.active { background: var(--primary-50); color: var(--primary-color); font-weight: 600; }
+    i { width: 20px; text-align: center; }
+  }
+
+  .sidebar-footer {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--surface-border);
+    .user-email { font-size: 0.8rem; font-weight: 600; color: var(--text-color); word-break: break-all; }
+    .user-role { font-size: 0.75rem; color: var(--text-color-secondary); margin-bottom: 0.75rem; }
+  }
+}
+
+.layout-main {
+  margin-left: 240px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-topbar {
+  height: 56px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  .topbar-title { font-weight: 600; font-size: 1rem; }
+}
+
+.layout-content {
+  padding: 1.5rem;
+  flex: 1;
+  background: var(--surface-ground);
+}

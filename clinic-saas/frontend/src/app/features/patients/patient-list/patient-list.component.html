@@ -1,0 +1,58 @@
+<div class="page-container">
+  <div class="flex justify-content-between align-items-center mb-4">
+    <h2 class="card-title mb-0">Patients</h2>
+    <a pButton routerLink="create" label="New Patient" icon="pi pi-plus"
+       class="p-button-sm"></a>
+  </div>
+
+  <p-card>
+    <div class="mb-3">
+      <span class="p-input-icon-left">
+        <i class="pi pi-search"></i>
+        <input pInputText [(ngModel)]="query" placeholder="Search by name or MRN..."
+               (keyup.enter)="onSearch()" style="width:320px" />
+      </span>
+      <button pButton label="Search" icon="pi pi-search" class="p-button-sm ml-2"
+              (click)="onSearch()"></button>
+    </div>
+
+    <p-table
+      [value]="patients()"
+      [lazy]="true"
+      [totalRecords]="total()"
+      [loading]="loading()"
+      [paginator]="true"
+      [rows]="20"
+      (onLazyLoad)="onPage($any($event))"
+      styleClass="p-datatable-sm p-datatable-striped">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>MRN</th>
+          <th>Name</th>
+          <th>DOB</th>
+          <th>Gender</th>
+          <th>Phone</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-p>
+        <tr>
+          <td><code>{{ p.mrn }}</code></td>
+          <td>{{ p.firstName }} {{ p.lastName }}</td>
+          <td>{{ p.dateOfBirth | date:'mediumDate' }}</td>
+          <td>{{ p.gender }}</td>
+          <td>{{ p.phone ?? '—' }}</td>
+          <td>
+            <button pButton icon="pi pi-eye" class="p-button-text p-button-sm" title="View"></button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="6" class="text-center p-4">No patients found.</td></tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>

@@ -1,0 +1,40 @@
+<div class="page-container">
+  <h2 class="card-title">Appointment Scheduler</h2>
+
+  <p-card>
+    <full-calendar [options]="calendarOptions" />
+  </p-card>
+
+  <!-- Appointment detail dialog -->
+  <p-dialog header="Appointment Details"
+            [visible]="dialogVisible()"
+            (onHide)="closeDialog()"
+            [modal]="true"
+            [style]="{width: '420px'}">
+    @if (selectedEvent(); as appt) {
+      <div class="flex flex-column gap-3 p-2">
+        <div class="flex justify-content-between">
+          <span>Status</span>
+          <p-tag [value]="appt.status" />
+        </div>
+        <div class="flex justify-content-between">
+          <span>Type</span>
+          <strong>{{ appt.appointmentType ?? '—' }}</strong>
+        </div>
+        <div class="flex justify-content-between">
+          <span>Duration</span>
+          <strong>{{ appt.durationMinutes }} min</strong>
+        </div>
+        @if (appt.notes) {
+          <div>
+            <span>Notes</span>
+            <p class="mt-1">{{ appt.notes }}</p>
+          </div>
+        }
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button label="Close" icon="pi pi-times" class="p-button-text" (onClick)="closeDialog()" />
+    </ng-template>
+  </p-dialog>
+</div>

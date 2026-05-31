@@ -1,0 +1,35 @@
+<div class="layout-wrapper">
+  <!-- Sidebar -->
+  <nav class="layout-sidebar">
+    <div class="sidebar-logo">
+      <i class="pi pi-heart-fill"></i>
+      <span>Clinic SaaS</span>
+    </div>
+    <ul class="nav-list">
+      @for (item of navItems; track item.label) {
+        <li>
+          <a [routerLink]="item.routerLink" routerLinkActive="active" class="nav-item">
+            <i [class]="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+    <div class="sidebar-footer">
+      <p class="user-email">{{ auth.getCurrentUser()?.email }}</p>
+      <p class="user-role">{{ auth.getCurrentUser()?.role }}</p>
+      <button pButton icon="pi pi-sign-out" label="Logout" class="p-button-text p-button-sm w-full"
+              (click)="logout()"></button>
+    </div>
+  </nav>
+
+  <!-- Main area -->
+  <div class="layout-main">
+    <header class="layout-topbar">
+      <span class="topbar-title">Medical Clinic Management</span>
+    </header>
+    <main class="layout-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
