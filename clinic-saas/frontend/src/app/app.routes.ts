@@ -41,6 +41,11 @@ export const routes: Routes = [
         path: 'platform',
         loadChildren: () =>
           import('./features/platform/platform.routes').then(m => m.PLATFORM_ROUTES)
+      },
+      {
+        path: 'visits',
+        loadChildren: () =>
+          import('./features/visits/visits.routes').then(m => m.VISIT_ROUTES)
       }
     ]
   },

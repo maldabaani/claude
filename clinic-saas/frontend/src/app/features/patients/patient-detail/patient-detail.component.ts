@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TabViewModule } from 'primeng/tabview';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -8,6 +9,12 @@ import { TagModule } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TimelineModule } from 'primeng/timeline';
+import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -15,6 +22,7 @@ import {
   VisitService, VisitResponse, LabOrderResponse,
   PrescriptionResponse, InvoiceResponse, RadiologyOrderResponse
 } from '../../../core/services/visit.service';
+import { ClinicalService } from '../../../core/services/clinical.service';
 
 interface PatientDetail {
   id: string; medicalRecordNumber: string; firstName: string; lastName: string;
@@ -27,8 +35,11 @@ interface PatientDetail {
 @Component({
   selector: 'app-patient-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, TabViewModule, CardModule, ButtonModule,
-            TagModule, TableModule, SkeletonModule, TimelineModule],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
+            TabViewModule, CardModule, ButtonModule, TagModule, TableModule,
+            SkeletonModule, TimelineModule, DialogModule, DropdownModule,
+            InputTextModule, InputTextareaModule, ToastModule],
+  providers: [MessageService],
   templateUrl: './patient-detail.component.html'
 })
 export class PatientDetailComponent implements OnInit {
@@ -39,12 +50,33 @@ export class PatientDetailComponent implements OnInit {
   invoices = signal<InvoiceResponse[]>([]);
   radiology = signal<RadiologyOrderResponse[]>([]);
   loading = signal(true);
+  showStartVisit = signal(false);
+  startingVisit = signal(false);
+
+  visitTypes = [
+    { label: 'Walk-In', value: 'WALK_IN' },
+    { label: 'Scheduled', value: 'SCHEDULED' },
+    { label: 'Emergency', value: 'EMERGENCY' },
+    { label: 'Follow-Up', value: 'FOLLOW_UP' },
+    { label: 'Teleconsult', value: 'TELECONSULT' }
+  ];
+
+  startVisitForm: FormGroup;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private http: HttpClient,
-    private visitSvc: VisitService
-  ) {}
+    private visitSvc: VisitService,
+    private svc: ClinicalService,
+    private msg: MessageService,
+    private fb: FormBuilder
+  ) {
+    this.startVisitForm = this.fb.group({
+      visitType: ['WALK_IN', Validators.required],
+      chiefComplaint: ['']
+    });
+  }
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -77,6 +109,24 @@ export class PatientDetailComponent implements OnInit {
   age(dob: string): number {
     const d = new Date(dob);
     return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+  }
+
+  startVisit() {
+    if (this.startVisitForm.invalid) return;
+    const patientId = this.patient()?.id;
+    if (!patientId) return;
+    this.startingVisit.set(true);
+    this.svc.createVisit({ patientId, ...this.startVisitForm.value }).subscribe({
+      next: (visit) => {
+        this.startingVisit.set(false);
+        this.showStartVisit.set(false);
+        this.router.navigate(['/dashboard/visits', visit.id]);
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to start visit' });
+        this.startingVisit.set(false);
+      }
+    });
   }
 
   statusSev(status: string): 'success' | 'info' | 'warning' | 'danger' | undefined {

@@ -1,3 +1,5 @@
+<p-toast />
+
 <div class="page-container">
 
   <!-- Header -->
@@ -5,15 +7,19 @@
     <a pButton routerLink="/dashboard/patients" icon="pi pi-arrow-left" class="p-button-text p-button-sm"></a>
     @if (loading()) {
       <p-skeleton width="200px" height="28px" />
-    } @else if (patient(); as p) {
-      <div>
-        <h2 class="card-title mb-0">{{ fullName }}</h2>
-        <span style="color:var(--text-color-secondary);font-size:.85rem">
-          MRN: {{ p.medicalRecordNumber }} &nbsp;·&nbsp;
-          {{ p.gender }} &nbsp;·&nbsp; {{ age(p.dateOfBirth) }} yrs &nbsp;·&nbsp;
-          Blood: {{ p.bloodType ?? '—' }}
-        </span>
-      </div>
+    } @else {
+      @if (patient(); as p) {
+        <div class="flex-1">
+          <h2 class="card-title mb-0">{{ fullName }}</h2>
+          <span style="color:var(--text-color-secondary);font-size:.85rem">
+            MRN: {{ p.medicalRecordNumber }} &nbsp;·&nbsp;
+            {{ p.gender }} &nbsp;·&nbsp; {{ age(p.dateOfBirth) }} yrs &nbsp;·&nbsp;
+            Blood: {{ p.bloodType ?? '—' }}
+          </span>
+        </div>
+        <button pButton label="Start Visit" icon="pi pi-plus-circle" class="p-button-sm"
+                (click)="showStartVisit.set(true)"></button>
+      }
     }
   </div>
 
@@ -57,7 +63,7 @@
       <p-table [value]="visits()" styleClass="p-datatable-sm" responsiveLayout="scroll">
         <ng-template pTemplate="header">
           <tr>
-            <th>Date</th><th>Type</th><th>Chief Complaint</th><th>Status</th><th>Notes</th>
+            <th>Date</th><th>Type</th><th>Chief Complaint</th><th>Status</th><th></th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-v>
@@ -66,8 +72,9 @@
             <td>{{ v.visitType }}</td>
             <td>{{ v.chiefComplaint || '—' }}</td>
             <td><p-tag [value]="v.status" [severity]="statusSev(v.status)" /></td>
-            <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              {{ v.clinicalNotes || '—' }}
+            <td>
+              <a pButton icon="pi pi-eye" [routerLink]="['/dashboard/visits', v.id]"
+                 class="p-button-text p-button-sm" title="Open Visit"></a>
             </td>
           </tr>
         </ng-template>
@@ -194,4 +201,27 @@
   </p-tabView>
 
   } <!-- end loading else -->
+
+  <!-- Start Visit Dialog -->
+  <p-dialog header="Start New Visit" [(visible)]="showStartVisit" [modal]="true" [style]="{width:'420px'}"
+            [draggable]="false">
+    <form [formGroup]="startVisitForm" class="flex flex-column gap-3">
+      <div>
+        <label class="block text-sm mb-1">Visit Type *</label>
+        <p-dropdown formControlName="visitType" [options]="visitTypes"
+                    optionLabel="label" optionValue="value" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Chief Complaint</label>
+        <textarea pInputTextarea formControlName="chiefComplaint" rows="3" class="w-full"
+                  placeholder="Primary reason for visit..."></textarea>
+      </div>
+    </form>
+    <ng-template pTemplate="footer">
+      <button pButton label="Cancel" class="p-button-text" (click)="showStartVisit.set(false)"></button>
+      <button pButton label="Start Visit" icon="pi pi-arrow-right" [loading]="startingVisit()"
+              [disabled]="startVisitForm.invalid" (click)="startVisit()"></button>
+    </ng-template>
+  </p-dialog>
+
 </div>
