@@ -74,6 +74,39 @@ export interface AddRadiologyReportRequest {
   status?: string;
 }
 
+export interface AddLabResultRequest {
+  resultValue?: number | null;
+  resultText?: string | null;
+  unit?: string | null;
+  abnormal: boolean;
+  critical: boolean;
+  notes?: string | null;
+}
+
+export interface InvoiceItemRequest {
+  serviceType: string;
+  description: string;
+  referenceId?: string;
+  quantity: number;
+  unitPrice: number;
+  discountAmount?: number;
+}
+
+export interface CreateInvoiceRequest {
+  patientId: string;
+  visitId?: string;
+  dueDate?: string;
+  notes?: string;
+  items: InvoiceItemRequest[];
+}
+
+export interface AddPaymentRequest {
+  amount: number;
+  paymentMethod: string;
+  transactionReference?: string;
+  notes?: string;
+}
+
 export interface LabTestItem {
   id: string;
   code: string;
@@ -200,5 +233,23 @@ export class ClinicalService {
   }
   getMedicalHistory(patientId: string): Observable<any[]> {
     return this.http.get<any[]>(`/api/v1/medical-history?patientId=${patientId}`);
+  }
+
+  // Lab results
+  addLabResult(itemId: string, req: AddLabResultRequest): Observable<void> {
+    return this.http.put<void>(`/api/v1/lab-orders/items/${itemId}/result`, req);
+  }
+
+  // Radiology report
+  addRadiologyReport(orderId: string, req: AddRadiologyReportRequest): Observable<any> {
+    return this.http.post<any>(`/api/v1/radiology-orders/${orderId}/report`, req);
+  }
+
+  // Invoices
+  createInvoice(req: CreateInvoiceRequest): Observable<any> {
+    return this.http.post<any>('/api/v1/invoices', req);
+  }
+  addPayment(invoiceId: string, req: AddPaymentRequest): Observable<any> {
+    return this.http.post<any>(`/api/v1/invoices/${invoiceId}/payments`, req);
   }
 }

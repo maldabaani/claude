@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { TabViewModule } from 'primeng/tabview';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -13,6 +13,7 @@ import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { HttpClient } from '@angular/common/http';
@@ -38,7 +39,7 @@ interface PatientDetail {
   imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
             TabViewModule, CardModule, ButtonModule, TagModule, TableModule,
             SkeletonModule, TimelineModule, DialogModule, DropdownModule,
-            InputTextModule, InputTextareaModule, ToastModule],
+            InputTextModule, InputTextareaModule, InputNumberModule, ToastModule],
   providers: [MessageService],
   templateUrl: './patient-detail.component.html'
 })
@@ -56,9 +57,14 @@ export class PatientDetailComponent implements OnInit {
   showStartVisit = signal(false);
   showAllergy    = signal(false);
   showMedHistory = signal(false);
+  showInvoice    = signal(false);
+  showPayment    = signal(false);
   startingVisit  = signal(false);
   savingAllergy  = signal(false);
   savingMedHist  = signal(false);
+  savingInvoice  = signal(false);
+  savingPayment  = signal(false);
+  selectedInvoice = signal<any>(null);
 
   visitTypes = [
     { label: 'Walk-In',    value: 'WALK_IN' },
@@ -104,6 +110,29 @@ export class PatientDetailComponent implements OnInit {
   startVisitForm: FormGroup;
   allergyForm:    FormGroup;
   medHistForm:    FormGroup;
+  invoiceForm:    FormGroup;
+  paymentForm:    FormGroup;
+
+  serviceTypes = [
+    { label: 'Consultation',  value: 'CONSULTATION' },
+    { label: 'Lab Test',      value: 'LAB_TEST' },
+    { label: 'Radiology',     value: 'RADIOLOGY' },
+    { label: 'Medication',    value: 'MEDICATION' },
+    { label: 'Procedure',     value: 'PROCEDURE' },
+    { label: 'Nursing',       value: 'NURSING' },
+    { label: 'Room Charge',   value: 'ROOM_CHARGE' },
+    { label: 'Other',         value: 'OTHER' }
+  ];
+
+  paymentMethods = [
+    { label: 'Cash',           value: 'CASH' },
+    { label: 'Debit Card',     value: 'DEBIT_CARD' },
+    { label: 'Credit Card',    value: 'CREDIT_CARD' },
+    { label: 'Insurance',      value: 'INSURANCE' },
+    { label: 'Bank Transfer',  value: 'BANK_TRANSFER' },
+    { label: 'Mobile Payment', value: 'MOBILE_PAYMENT' },
+    { label: 'Cheque',         value: 'CHEQUE' }
+  ];
 
   constructor(
     private route:    ActivatedRoute,
@@ -135,6 +164,41 @@ export class PatientDetailComponent implements OnInit {
       onsetDate:     [''],
       notes:         ['']
     });
+
+    this.invoiceForm = this.fb.group({
+      dueDate: [''],
+      notes:   [''],
+      items:   this.fb.array([this.newInvoiceItem()])
+    });
+
+    this.paymentForm = this.fb.group({
+      amount:               [null, [Validators.required, Validators.min(0.01)]],
+      paymentMethod:        ['CASH', Validators.required],
+      transactionReference: [''],
+      notes:                ['']
+    });
+  }
+
+  get invoiceItems(): FormArray { return this.invoiceForm.get('items') as FormArray; }
+
+  newInvoiceItem(): FormGroup {
+    return this.fb.group({
+      serviceType:    ['CONSULTATION', Validators.required],
+      description:    ['', Validators.required],
+      quantity:       [1,    [Validators.required, Validators.min(1)]],
+      unitPrice:      [null, [Validators.required, Validators.min(0)]],
+      discountAmount: [0]
+    });
+  }
+
+  addInvoiceItem()         { this.invoiceItems.push(this.newInvoiceItem()); }
+  removeInvoiceItem(i: number) { if (this.invoiceItems.length > 1) this.invoiceItems.removeAt(i); }
+
+  invoiceTotal(): number {
+    return this.invoiceItems.controls.reduce((sum, ctrl) => {
+      const v = ctrl.value;
+      return sum + ((v.quantity ?? 0) * (v.unitPrice ?? 0)) - (v.discountAmount ?? 0);
+    }, 0);
   }
 
   ngOnInit() {
@@ -234,6 +298,51 @@ export class PatientDetailComponent implements OnInit {
       error: () => {
         this.msg.add({ severity: 'error', summary: 'Failed to save history' });
         this.savingMedHist.set(false);
+      }
+    });
+  }
+
+  saveInvoice() {
+    if (this.invoiceForm.invalid) return;
+    const patientId = this.patient()?.id;
+    if (!patientId) return;
+    this.savingInvoice.set(true);
+    this.svc.createInvoice({ patientId, ...this.invoiceForm.value }).subscribe({
+      next: (inv) => {
+        this.invoices.update(list => [...list, inv]);
+        this.invoiceForm.reset({ dueDate: '', notes: '' });
+        this.invoiceItems.clear();
+        this.invoiceItems.push(this.newInvoiceItem());
+        this.msg.add({ severity: 'success', summary: 'Invoice created' });
+        this.showInvoice.set(false);
+        this.savingInvoice.set(false);
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to create invoice' });
+        this.savingInvoice.set(false);
+      }
+    });
+  }
+
+  openPayment(invoice: any) {
+    this.selectedInvoice.set(invoice);
+    this.paymentForm.reset({ paymentMethod: 'CASH' });
+    this.showPayment.set(true);
+  }
+
+  savePayment() {
+    if (this.paymentForm.invalid) return;
+    this.savingPayment.set(true);
+    this.svc.addPayment(this.selectedInvoice()!.id, this.paymentForm.value).subscribe({
+      next: (inv) => {
+        this.invoices.update(list => list.map(i => i.id === inv.id ? inv : i));
+        this.msg.add({ severity: 'success', summary: 'Payment recorded' });
+        this.showPayment.set(false);
+        this.savingPayment.set(false);
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to record payment' });
+        this.savingPayment.set(false);
       }
     });
   }

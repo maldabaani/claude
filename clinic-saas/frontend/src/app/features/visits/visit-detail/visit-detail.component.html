@@ -139,7 +139,7 @@
           <p-table [value]="labOrders()" styleClass="p-datatable-sm">
             <ng-template pTemplate="header">
               <tr>
-                <th>Order #</th><th>Tests</th><th>Priority</th><th>Status</th><th>Date</th>
+                <th>Order #</th><th>Tests</th><th>Priority</th><th>Status</th><th>Date</th><th></th>
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-lo>
@@ -149,6 +149,11 @@
                 <td><p-tag [value]="lo.priority" severity="info" /></td>
                 <td><p-tag [value]="lo.status" [severity]="statusSev(lo.status)" /></td>
                 <td>{{ lo.createdAt | date:'shortDate' }}</td>
+                <td>
+                  <button pButton icon="pi pi-pencil" label="Results"
+                          class="p-button-text p-button-sm p-button-info"
+                          (click)="openLabResults(lo)" title="Enter results"></button>
+                </td>
               </tr>
             </ng-template>
           </p-table>
@@ -203,15 +208,23 @@
         } @else {
           <p-table [value]="radiologyOrders()" styleClass="p-datatable-sm">
             <ng-template pTemplate="header">
-              <tr><th>Order #</th><th>Modality</th><th>Body Part</th><th>Priority</th><th>Status</th></tr>
+              <tr><th>Order #</th><th>Modality</th><th>Body Part</th><th>Status</th><th>Report</th><th></th></tr>
             </ng-template>
             <ng-template pTemplate="body" let-ro>
               <tr>
                 <td><code>{{ ro.orderNumber }}</code></td>
                 <td>{{ ro.modality }}</td>
                 <td>{{ ro.bodyPart ?? '—' }}</td>
-                <td><p-tag [value]="ro.priority" severity="info" /></td>
                 <td><p-tag [value]="ro.status" [severity]="statusSev(ro.status)" /></td>
+                <td class="text-sm" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  {{ ro.report?.impression ?? '—' }}
+                </td>
+                <td>
+                  <button pButton [icon]="ro.report ? 'pi pi-eye' : 'pi pi-plus'"
+                          [label]="ro.report ? 'View/Edit' : 'Add Report'"
+                          class="p-button-text p-button-sm p-button-info"
+                          (click)="openRadReport(ro)"></button>
+                </td>
               </tr>
             </ng-template>
           </p-table>
@@ -445,6 +458,109 @@
       <button pButton label="Cancel" class="p-button-text" (click)="showRadiology.set(false)"></button>
       <button pButton label="Place Order" icon="pi pi-check" [loading]="savingRadiology()"
               [disabled]="radiologyForm.invalid" (click)="saveRadiology()"></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Lab Results Entry Dialog -->
+  <p-dialog header="Enter Lab Results" [(visible)]="showResults" [modal]="true" [style]="{width:'720px'}"
+            [draggable]="false">
+    @if (selectedLabOrder(); as order) {
+      <div class="mb-2 flex align-items-center gap-2">
+        <code>{{ order.orderNumber }}</code>
+        <p-tag [value]="order.priority" severity="info" />
+        <span class="text-sm" style="color:var(--text-color-secondary)">{{ order.clinicalIndication }}</span>
+      </div>
+      <p-table [value]="orderResultItems()" styleClass="p-datatable-sm">
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width:180px">Test</th>
+            <th style="width:120px">Value</th>
+            <th style="width:100px">Text Result</th>
+            <th style="width:80px">Unit</th>
+            <th style="width:60px">Ref Range</th>
+            <th style="width:70px">Flags</th>
+            <th style="width:80px"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+          <tr [class.surface-ground]="resultEdits[item.id]?.saved">
+            <td class="font-medium text-sm">{{ item.labTestName }}</td>
+            <td>
+              <input pInputText [(ngModel)]="resultEdits[item.id].resultValue"
+                     class="w-full p-inputtext-sm" placeholder="Numeric" />
+            </td>
+            <td>
+              <input pInputText [(ngModel)]="resultEdits[item.id].resultText"
+                     class="w-full p-inputtext-sm" placeholder="or text" />
+            </td>
+            <td>
+              <input pInputText [(ngModel)]="resultEdits[item.id].unit"
+                     class="w-full p-inputtext-sm" placeholder="mg/dL" />
+            </td>
+            <td class="text-xs" style="color:var(--text-color-secondary)">
+              {{ item.normalRangeSnapshot ?? '—' }}
+            </td>
+            <td>
+              <div class="flex gap-1">
+                <p-checkbox [(ngModel)]="resultEdits[item.id].abnormal" [binary]="true"
+                            title="Abnormal" />
+                <p-checkbox [(ngModel)]="resultEdits[item.id].critical" [binary]="true"
+                            styleClass="p-checkbox-danger" title="Critical" />
+              </div>
+            </td>
+            <td>
+              <button pButton label="Save" icon="pi pi-check"
+                      class="p-button-text p-button-sm"
+                      [class.p-button-success]="resultEdits[item.id]?.saved"
+                      [loading]="resultEdits[item.id]?.saving ?? false"
+                      (click)="saveItemResult(item)"></button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+    <ng-template pTemplate="footer">
+      <button pButton label="Close" class="p-button-text" (click)="showResults.set(false)"></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Radiology Report Dialog -->
+  <p-dialog header="Radiology Report" [(visible)]="showReport" [modal]="true" [style]="{width:'560px'}"
+            [draggable]="false">
+    @if (selectedRadOrder(); as order) {
+      <div class="mb-3 flex align-items-center gap-2">
+        <code>{{ order.orderNumber }}</code>
+        <p-tag [value]="order.modality" severity="info" />
+        @if (order.bodyPart) { <span class="text-sm">{{ order.bodyPart }}</span> }
+        @if (order.laterality) { <span class="text-sm" style="color:var(--text-color-secondary)">{{ order.laterality }}</span> }
+      </div>
+    }
+    <form [formGroup]="radReportForm" class="flex flex-column gap-3">
+      <div>
+        <label class="block text-sm mb-1">Findings *</label>
+        <textarea pInputTextarea formControlName="findings" rows="4" class="w-full"
+                  placeholder="Describe the imaging findings in detail..."></textarea>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Impression *</label>
+        <textarea pInputTextarea formControlName="impression" rows="3" class="w-full"
+                  placeholder="Clinical impression / interpretation..."></textarea>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Recommendation</label>
+        <textarea pInputTextarea formControlName="recommendation" rows="2" class="w-full"
+                  placeholder="Follow-up recommendations..."></textarea>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Report Status</label>
+        <p-dropdown formControlName="status" [options]="reportStatuses"
+                    optionLabel="label" optionValue="value" styleClass="w-full" />
+      </div>
+    </form>
+    <ng-template pTemplate="footer">
+      <button pButton label="Cancel" class="p-button-text" (click)="showReport.set(false)"></button>
+      <button pButton label="Save Report" icon="pi pi-check" [loading]="savingReport()"
+              [disabled]="radReportForm.invalid" (click)="saveRadReport()"></button>
     </ng-template>
   </p-dialog>
 
