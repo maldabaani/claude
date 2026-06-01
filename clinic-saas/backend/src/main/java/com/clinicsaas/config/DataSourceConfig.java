@@ -7,11 +7,15 @@ import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.orm.jpa.vendor.Database;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 
 @Slf4j
 @Configuration
@@ -44,6 +48,14 @@ public class DataSourceConfig {
     @Bean(name = "tenantDataSource")
     public DataSource tenantDataSource(TenantDataSourceManager manager) {
         return new TenantDataSourceRouter(manager);
+    }
+
+    @Bean
+    public EntityManagerFactoryBuilder entityManagerFactoryBuilder() {
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        vendorAdapter.setDatabase(Database.POSTGRESQL);
+        vendorAdapter.setShowSql(false);
+        return new EntityManagerFactoryBuilder(vendorAdapter, new HashMap<>(), null);
     }
 
     private void runPlatformMigrations(DataSource ds) {

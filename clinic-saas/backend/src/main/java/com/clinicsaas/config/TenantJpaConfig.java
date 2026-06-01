@@ -29,8 +29,10 @@ public class TenantJpaConfig {
                 .packages("com.clinicsaas.entities.tenant")
                 .persistenceUnit("tenant")
                 .properties(Map.of(
-                        "hibernate.hbm2ddl.auto", "validate",
-                        "hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect"
+                        "hibernate.hbm2ddl.auto", "none",
+                        "hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect",
+                        // Prevent Hibernate from probing JDBC metadata at startup (no tenant DB available then)
+                        "hibernate.temp.use_jdbc_metadata_defaults", "false"
                 ))
                 .build();
     }

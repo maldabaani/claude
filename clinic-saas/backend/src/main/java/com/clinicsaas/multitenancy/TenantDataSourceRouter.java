@@ -1,14 +1,19 @@
 package com.clinicsaas.multitenancy;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 
-@RequiredArgsConstructor
 public class TenantDataSourceRouter extends AbstractRoutingDataSource {
 
     private final TenantDataSourceManager dataSourceManager;
+
+    public TenantDataSourceRouter(TenantDataSourceManager dataSourceManager) {
+        this.dataSourceManager = dataSourceManager;
+        // Required by AbstractRoutingDataSource.afterPropertiesSet() — we bypass the map at runtime
+        setTargetDataSources(new HashMap<>());
+    }
 
     @Override
     protected Object determineCurrentLookupKey() {
