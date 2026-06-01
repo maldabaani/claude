@@ -1,25 +1,63 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { HttpClient } from '@angular/common/http';
+import { debounceTime, distinctUntilChanged, Subject, switchMap, of, catchError } from 'rxjs';
 import { Appointment } from '../../../core/models/appointment.model';
 import { AppointmentService } from '../appointment.service';
 
 @Component({
   selector: 'app-appointment-scheduler',
   standalone: true,
-  imports: [CommonModule, DialogModule, ButtonModule, CardModule, TagModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule,
+            DialogModule, ButtonModule, CardModule, TagModule,
+            DropdownModule, InputTextModule, InputTextareaModule,
+            InputNumberModule, ToastModule],
+  providers: [MessageService],
   templateUrl: './appointment-scheduler.component.html',
   styleUrl: './appointment-scheduler.component.scss'
 })
 export class AppointmentSchedulerComponent implements OnInit {
 
-  appointments = signal<Appointment[]>([]);
-  selectedAppt = signal<Appointment | null>(null);
-  dialogVisible = signal(false);
-  weekStart = signal<Date>(this.getMonday(new Date()));
+  appointments    = signal<Appointment[]>([]);
+  selectedAppt    = signal<Appointment | null>(null);
+  detailVisible   = signal(false);
+  bookingVisible  = signal(false);
+  weekStart       = signal<Date>(this.getMonday(new Date()));
+  saving          = signal(false);
+
+  doctors         = signal<any[]>([]);
+  patientResults  = signal<any[]>([]);
+  patientQuery    = '';
+  private search$ = new Subject<string>();
+
+  bookingForm: FormGroup;
+
+  apptTypes = [
+    { label: 'Consultation',     value: 'CONSULTATION' },
+    { label: 'Follow-Up',        value: 'FOLLOW_UP' },
+    { label: 'Procedure',        value: 'PROCEDURE' },
+    { label: 'Lab / Review',     value: 'LAB_REVIEW' },
+    { label: 'Teleconsult',      value: 'TELECONSULT' }
+  ];
+
+  durations = [
+    { label: '15 min', value: 15 },
+    { label: '30 min', value: 30 },
+    { label: '45 min', value: 45 },
+    { label: '60 min', value: 60 },
+    { label: '90 min', value: 90 }
+  ];
 
   weekDays = computed(() => {
     const days: Date[] = [];
@@ -49,9 +87,55 @@ export class AppointmentSchedulerComponent implements OnInit {
     return map;
   });
 
-  constructor(private svc: AppointmentService) {}
+  constructor(
+    private svc: AppointmentService,
+    private http: HttpClient,
+    private msg: MessageService,
+    private fb: FormBuilder
+  ) {
+    this.bookingForm = this.fb.group({
+      patientId:       [null, Validators.required],
+      doctorId:        [null, Validators.required],
+      scheduledAt:     ['', Validators.required],
+      durationMinutes: [30,  Validators.required],
+      appointmentType: ['CONSULTATION'],
+      notes:           ['']
+    });
+  }
 
-  ngOnInit() { this.loadWeek(); }
+  ngOnInit() {
+    this.loadWeek();
+    this.loadDoctors();
+    this.search$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(q => q.length >= 2
+        ? this.http.get<any>(`/api/v1/patients/search?query=${q}&page=0&size=20`).pipe(catchError(() => of({ content: [] })))
+        : of({ content: [] })
+      )
+    ).subscribe(res => this.patientResults.set(res.content ?? []));
+  }
+
+  loadDoctors() {
+    this.http.get<any[]>('/api/v1/users').pipe(catchError(() => of([]))).subscribe(users => {
+      this.doctors.set(
+        (users as any[]).filter(u => u.role === 'DOCTOR' || u.role === 'ADMIN')
+          .map(u => ({ label: `Dr. ${u.firstName} ${u.lastName}`, value: u.id }))
+      );
+    });
+  }
+
+  onPatientSearch(q: string) {
+    this.patientQuery = q;
+    this.search$.next(q);
+  }
+
+  get patientOptions() {
+    return this.patientResults().map(p => ({
+      label: `${p.firstName} ${p.lastName} (${p.medicalRecordNumber})`,
+      value: p.id
+    }));
+  }
 
   loadWeek() {
     const start = this.weekStart();
@@ -86,10 +170,34 @@ export class AppointmentSchedulerComponent implements OnInit {
 
   openDetail(appt: Appointment) {
     this.selectedAppt.set(appt);
-    this.dialogVisible.set(true);
+    this.detailVisible.set(true);
   }
 
-  closeDialog() { this.dialogVisible.set(false); }
+  openBooking() {
+    this.bookingForm.reset({ durationMinutes: 30, appointmentType: 'CONSULTATION' });
+    this.patientResults.set([]);
+    this.patientQuery = '';
+    this.bookingVisible.set(true);
+  }
+
+  saveBooking() {
+    if (this.bookingForm.invalid) return;
+    this.saving.set(true);
+    const val = this.bookingForm.value;
+    const req = { ...val, scheduledAt: new Date(val.scheduledAt).toISOString() };
+    this.svc.create(req).subscribe({
+      next: (appt) => {
+        this.appointments.update(list => [...list, appt]);
+        this.msg.add({ severity: 'success', summary: 'Appointment booked' });
+        this.bookingVisible.set(false);
+        this.saving.set(false);
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to book appointment' });
+        this.saving.set(false);
+      }
+    });
+  }
 
   isToday(date: Date): boolean {
     return this.fmt(date) === this.fmt(new Date());

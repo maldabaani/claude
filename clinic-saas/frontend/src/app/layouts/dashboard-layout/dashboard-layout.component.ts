@@ -33,6 +33,9 @@ export class DashboardLayoutComponent {
         { label: 'Patients',     icon: 'pi pi-users',    routerLink: '/dashboard/patients' },
         { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' }
       );
+      if (user?.role === 'ADMIN') {
+        base.push({ label: 'Staff', icon: 'pi pi-id-card', routerLink: '/dashboard/staff' });
+      }
     }
     return base;
   }
