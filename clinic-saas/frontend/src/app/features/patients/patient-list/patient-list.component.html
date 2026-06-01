@@ -45,7 +45,8 @@
           <td>{{ p.gender }}</td>
           <td>{{ p.phone ?? '—' }}</td>
           <td>
-            <button pButton icon="pi pi-eye" class="p-button-text p-button-sm" title="View"></button>
+            <a pButton icon="pi pi-eye" [routerLink]="[p.id]"
+               class="p-button-text p-button-sm" title="View Chart"></a>
           </td>
         </tr>
       </ng-template>

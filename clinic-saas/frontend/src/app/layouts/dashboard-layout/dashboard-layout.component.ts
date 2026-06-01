@@ -21,11 +21,21 @@ import { CommonModule } from '@angular/common';
 export class DashboardLayoutComponent {
   sidebarVisible = signal(false);
 
-  navItems: MenuItem[] = [
-    { label: 'Dashboard',    icon: 'pi pi-home',         routerLink: '/dashboard/home' },
-    { label: 'Patients',     icon: 'pi pi-users',        routerLink: '/dashboard/patients' },
-    { label: 'Appointments', icon: 'pi pi-calendar',     routerLink: '/dashboard/appointments' }
-  ];
+  get navItems(): MenuItem[] {
+    const user = this.auth.getCurrentUser();
+    const base: MenuItem[] = [
+      { label: 'Dashboard',    icon: 'pi pi-home',     routerLink: '/dashboard/home' }
+    ];
+    if (user?.userType === 'PLATFORM') {
+      base.push({ label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' });
+    } else {
+      base.push(
+        { label: 'Patients',     icon: 'pi pi-users',    routerLink: '/dashboard/patients' },
+        { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' }
+      );
+    }
+    return base;
+  }
 
   constructor(public auth: AuthService) {}
 
