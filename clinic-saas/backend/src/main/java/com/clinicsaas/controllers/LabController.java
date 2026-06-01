@@ -3,6 +3,7 @@ package com.clinicsaas.controllers;
 import com.clinicsaas.dtos.request.AddLabResultRequest;
 import com.clinicsaas.dtos.request.CreateLabOrderRequest;
 import com.clinicsaas.dtos.response.LabOrderResponse;
+import com.clinicsaas.dtos.response.LabTestResponse;
 import com.clinicsaas.security.AppUserPrincipal;
 import com.clinicsaas.services.LabService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -42,6 +43,12 @@ public class LabController {
     @GetMapping
     public ResponseEntity<List<LabOrderResponse>> listByVisit(@RequestParam UUID visitId) {
         return ResponseEntity.ok(labService.listByVisit(visitId));
+    }
+
+    @GetMapping("/tests")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE')")
+    public ResponseEntity<List<LabTestResponse>> listTests() {
+        return ResponseEntity.ok(labService.listActiveTests());
     }
 
     @PutMapping("/items/{itemId}/result")

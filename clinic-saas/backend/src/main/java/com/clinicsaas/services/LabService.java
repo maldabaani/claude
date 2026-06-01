@@ -4,6 +4,7 @@ import com.clinicsaas.dtos.request.AddLabResultRequest;
 import com.clinicsaas.dtos.request.CreateLabOrderRequest;
 import com.clinicsaas.dtos.response.LabOrderItemResponse;
 import com.clinicsaas.dtos.response.LabOrderResponse;
+import com.clinicsaas.dtos.response.LabTestResponse;
 import com.clinicsaas.entities.enums.LabOrderPriority;
 import com.clinicsaas.entities.enums.LabOrderStatus;
 import com.clinicsaas.entities.tenant.LabOrder;
@@ -129,6 +130,14 @@ public class LabService {
                 .map(LabOrderItemResponse::from)
                 .collect(Collectors.toList());
         return LabOrderResponse.from(order, items);
+    }
+
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<LabTestResponse> listActiveTests() {
+        return labTestRepository.findAll().stream()
+                .filter(LabTest::isActive)
+                .map(LabTestResponse::from)
+                .collect(Collectors.toList());
     }
 
     private String buildNormalRangeSnapshot(LabTest labTest) {
