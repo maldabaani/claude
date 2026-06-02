@@ -14,7 +14,7 @@ import java.util.Map;
 
 @Configuration
 @EnableJpaRepositories(
-        basePackages = "com.clinicsaas.repositories.tenant",
+        basePackages = {"com.clinicsaas.repositories.tenant", "com.clinicsaas.pii"},
         entityManagerFactoryRef = "tenantEntityManagerFactory",
         transactionManagerRef = "tenantTransactionManager"
 )
@@ -26,7 +26,7 @@ public class TenantJpaConfig {
             @Qualifier("tenantDataSource") DataSource ds) {
         return builder
                 .dataSource(ds)
-                .packages("com.clinicsaas.entities.tenant")
+                .packages("com.clinicsaas.entities.tenant", "com.clinicsaas.pii")
                 .persistenceUnit("tenant")
                 .properties(Map.of(
                         "hibernate.hbm2ddl.auto", "none",
