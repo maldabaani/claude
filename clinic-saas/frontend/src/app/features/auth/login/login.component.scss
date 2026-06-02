@@ -1,24 +1,25 @@
 .login-form {
   width: 100%;
 
+  // ── Error banner ────────────────────────────────────────────
   .error-banner {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
     border-radius: 10px;
     padding: 0.75rem 1rem;
     margin-bottom: 1.25rem;
-    color: #dc2626;
+    color: #f87171;
     font-size: 0.8125rem;
     font-weight: 500;
-
     i { font-size: 0.875rem; flex-shrink: 0; }
   }
 
+  // ── Fields ──────────────────────────────────────────────────
   .field {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.125rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -27,20 +28,20 @@
       display: flex;
       align-items: center;
       gap: 0.375rem;
-      font-size: 0.8125rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      color: #374151;
-      letter-spacing: 0.005em;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
 
-      .field-icon {
-        font-size: 0.75rem;
-        color: #9ca3af;
-      }
+      .field-icon { font-size: 0.7rem; color: rgba(255,255,255,0.3); }
 
       .optional {
         font-weight: 400;
-        color: #9ca3af;
-        font-size: 0.75rem;
+        color: rgba(255,255,255,0.25);
+        font-size: 0.72rem;
+        text-transform: none;
+        letter-spacing: 0;
         margin-left: 0.125rem;
       }
     }
@@ -55,77 +56,90 @@
       display: flex;
       align-items: center;
       gap: 0.25rem;
-      color: #ef4444;
-      font-size: 0.75rem;
+      color: #f87171;
+      font-size: 0.74rem;
       font-weight: 500;
-      i { font-size: 0.7rem; }
+      i { font-size: 0.65rem; }
     }
   }
 
-  // PrimeNG input overrides
-  :host ::ng-deep,
-  & {
+  // ── PrimeNG dark input overrides ────────────────────────────
+  :host ::ng-deep .p-inputtext,
+  .p-inputtext {
+    border-radius: 10px !important;
+    border: 1.5px solid rgba(255,255,255,0.1) !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: #fff !important;
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+    padding: 0.72rem 1rem !important;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s !important;
+
+    &::placeholder { color: rgba(255,255,255,0.22) !important; }
+
+    &:hover {
+      border-color: rgba(167,139,250,0.35) !important;
+      background: rgba(255,255,255,0.08) !important;
+    }
+
+    &:focus {
+      border-color: rgba(167,139,250,0.7) !important;
+      background: rgba(124,58,237,0.1) !important;
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.18) !important;
+      outline: none !important;
+    }
+  }
+
+  :host ::ng-deep .p-password {
     .p-inputtext {
       border-radius: 10px !important;
-      border: 1.5px solid #e5e7eb !important;
+      border: 1.5px solid rgba(255,255,255,0.1) !important;
+      background: rgba(255,255,255,0.06) !important;
+      color: #fff !important;
       font-size: 0.9rem !important;
-      font-weight: 400 !important;
-      color: #111827 !important;
-      padding: 0.7rem 0.9rem !important;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-      background: #fafafa !important;
+      padding: 0.72rem 1rem !important;
 
-      &::placeholder { color: #c0c4cc !important; }
+      &::placeholder { color: rgba(255,255,255,0.22) !important; }
+
+      &:hover {
+        border-color: rgba(167,139,250,0.35) !important;
+        background: rgba(255,255,255,0.08) !important;
+      }
 
       &:focus {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
-        background: #fff !important;
-        outline: none !important;
+        border-color: rgba(167,139,250,0.7) !important;
+        background: rgba(124,58,237,0.1) !important;
+        box-shadow: 0 0 0 3px rgba(124,58,237,0.18) !important;
       }
     }
 
-    .p-password {
-      .p-inputtext {
-        border-radius: 10px !important;
-        border: 1.5px solid #e5e7eb !important;
-        font-size: 0.9rem !important;
-        padding: 0.7rem 0.9rem !important;
-        background: #fafafa !important;
-
-        &:focus {
-          border-color: #6366f1 !important;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
-          background: #fff !important;
-        }
-      }
-    }
+    .p-icon { color: rgba(255,255,255,0.3) !important; }
+    .p-icon:hover { color: rgba(255,255,255,0.6) !important; }
   }
 
-  // Sign in button
-  :host ::ng-deep .sign-btn {
-    &.p-button {
-      border-radius: 12px !important;
-      font-weight: 700 !important;
-      font-size: 0.9375rem !important;
-      padding: 0.8rem 1.5rem !important;
-      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%) !important;
-      border: none !important;
-      box-shadow: 0 4px 20px rgba(99,102,241,0.4) !important;
-      transition: all 0.2s ease !important;
-      margin-top: 0.375rem;
-      letter-spacing: 0.01em;
+  // ── Sign in button ───────────────────────────────────────────
+  :host ::ng-deep .sign-btn.p-button {
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 0.9375rem !important;
+    padding: 0.8rem 1.5rem !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%) !important;
+    border: none !important;
+    color: #fff !important;
+    box-shadow: 0 4px 24px rgba(124,58,237,0.45), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    transition: all 0.2s ease !important;
+    margin-top: 0.625rem;
+    letter-spacing: 0.01em;
 
-      &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 28px rgba(99,102,241,0.5) !important;
-        background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
-      }
-
-      &:active { transform: translateY(0); }
-
-      .p-button-icon { order: 2; margin-left: 0.5rem; margin-right: 0; }
-      .p-button-label { order: 1; }
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+      background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%) !important;
     }
+
+    &:active { transform: translateY(0); }
+
+    .p-button-icon { order: 2; margin-left: 0.5rem; margin-right: 0; font-size: 0.875rem; }
+    .p-button-label { order: 1; }
   }
 }
