@@ -122,6 +122,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- AOP — required for @AuditAccess PII aspect -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -4,6 +4,7 @@ import com.clinicsaas.dtos.request.CreatePatientRequest;
 import com.clinicsaas.dtos.response.PatientResponse;
 import com.clinicsaas.entities.tenant.Patient;
 import com.clinicsaas.exceptions.ResourceNotFoundException;
+import com.clinicsaas.pii.AuditAccess;
 import com.clinicsaas.repositories.tenant.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,11 +20,11 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
 
+    @AuditAccess(action = "PATIENT_CREATE", resourceType = "PATIENT")
     @Transactional("tenantTransactionManager")
     public PatientResponse create(CreatePatientRequest req) {
-        String mrn = generateMrn();
         Patient patient = Patient.builder()
-                .medicalRecordNumber(mrn)
+                .medicalRecordNumber(generateMrn())
                 .firstName(req.firstName())
                 .lastName(req.lastName())
                 .dateOfBirth(req.dateOfBirth())
@@ -41,6 +42,7 @@ public class PatientService {
         return PatientResponse.from(patientRepository.save(patient));
     }
 
+    @AuditAccess(action = "PATIENT_SEARCH", resourceType = "PATIENT")
     @Transactional(value = "tenantTransactionManager", readOnly = true)
     public Page<PatientResponse> search(String query, Pageable pageable) {
         if (query == null || query.isBlank()) {
@@ -49,6 +51,7 @@ public class PatientService {
         return patientRepository.search(query, pageable).map(PatientResponse::from);
     }
 
+    @AuditAccess(action = "PATIENT_VIEW", resourceType = "PATIENT")
     @Transactional(value = "tenantTransactionManager", readOnly = true)
     public PatientResponse getById(UUID id) {
         return patientRepository.findById(id)
@@ -56,6 +59,7 @@ public class PatientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
     }
 
+    @AuditAccess(action = "PATIENT_DEACTIVATE", resourceType = "PATIENT")
     @Transactional("tenantTransactionManager")
     public void deactivate(UUID id) {
         Patient patient = patientRepository.findById(id)
