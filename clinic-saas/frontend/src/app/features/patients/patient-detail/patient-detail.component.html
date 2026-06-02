@@ -277,6 +277,33 @@
       </p-table>
     </p-tabPanel>
 
+    <!-- VITALS TRENDS TAB -->
+    <p-tabPanel header="Vitals Trends">
+      @if (vitalsHistory().length === 0) {
+        <p class="text-center p-4" style="color:var(--text-color-secondary)">No vitals recorded yet.</p>
+      } @else {
+        <div class="vitals-charts-grid">
+          <div class="vitals-chart-card">
+            <h4 class="vitals-chart-title"><span class="vitals-dot bp"></span> Blood Pressure (mmHg)</h4>
+            <p-chart type="line" [data]="bpChartData()" [options]="vitalsChartOpts" height="180px" />
+          </div>
+          <div class="vitals-chart-card">
+            <h4 class="vitals-chart-title"><span class="vitals-dot hr"></span> Heart Rate (bpm)</h4>
+            <p-chart type="line" [data]="hrChartData()" [options]="vitalsChartOpts" height="180px" />
+          </div>
+          <div class="vitals-chart-card">
+            <h4 class="vitals-chart-title"><span class="vitals-dot wt"></span> Weight (kg)</h4>
+            <p-chart type="line" [data]="weightChartData()" [options]="vitalsChartOpts" height="180px" />
+          </div>
+          <div class="vitals-chart-card">
+            <h4 class="vitals-chart-title"><span class="vitals-dot bg"></span> Blood Glucose (mmol/L)</h4>
+            <p-chart type="line" [data]="glucoseChartData()" [options]="vitalsChartOpts" height="180px" />
+          </div>
+        </div>
+      }
+    </p-tabPanel>
+
+
   </p-tabView>
 
   } <!-- end loading else -->

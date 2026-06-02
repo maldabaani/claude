@@ -19,12 +19,19 @@
             @if (v.chiefComplaint) { &nbsp;·&nbsp; {{ v.chiefComplaint }} }
           </span>
         </div>
-        @if (!isCompleted()) {
-          <button pButton label="Check Out" icon="pi pi-sign-out"
-                  class="p-button-success p-button-sm"
-                  [loading]="checkingOut()"
-                  (click)="checkout()"></button>
-        }
+        <div class="flex gap-2">
+          @if (!isCompleted()) {
+            <button pButton label="Check Out" icon="pi pi-sign-out"
+                    class="p-button-success p-button-sm"
+                    [loading]="checkingOut()"
+                    (click)="checkout()"></button>
+          }
+          @if (isCompleted()) {
+            <button pButton label="Discharge Summary" icon="pi pi-print"
+                    class="p-button-outlined p-button-sm"
+                    (click)="printDischargeSummary()"></button>
+          }
+        </div>
       }
     }
   </div>

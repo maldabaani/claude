@@ -2,6 +2,8 @@ package com.clinicsaas.services;
 
 import com.clinicsaas.dtos.request.CreateVisitRequest;
 import com.clinicsaas.dtos.request.UpdateVitalSignsRequest;
+import com.clinicsaas.dtos.response.QueueItemResponse;
+import com.clinicsaas.dtos.response.VitalSignsResponse;
 import com.clinicsaas.dtos.response.VisitResponse;
 import com.clinicsaas.entities.enums.VisitStatus;
 import com.clinicsaas.entities.tenant.Patient;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -98,5 +101,23 @@ public class VisitService {
 
         vitalSignsRepository.save(vs);
         log.debug("Vitals recorded for visit {}", visitId);
+    }
+
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<QueueItemResponse> getQueue() {
+        return visitRepository
+                .findActiveQueue(List.of(VisitStatus.WAITING, VisitStatus.TRIAGE, VisitStatus.IN_PROGRESS))
+                .stream()
+                .map(QueueItemResponse::from)
+                .toList();
+    }
+
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<VitalSignsResponse> getVitalsByPatient(UUID patientId) {
+        return vitalSignsRepository
+                .findByVisit_Patient_IdOrderByCreatedAtAsc(patientId)
+                .stream()
+                .map(VitalSignsResponse::from)
+                .toList();
     }
 }

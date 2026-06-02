@@ -420,11 +420,18 @@ export class VisitDetailComponent implements OnInit {
   downloadPrescription(rx: any) {
     const v = this.visit();
     if (!v) return;
-    const patientId = v.patientId;
-    this.http.get<any>(`/api/v1/patients/${patientId}`).subscribe(p => {
+    this.http.get<any>(`/api/v1/patients/${v.patientId}`).subscribe(p => {
       this.pdf.printPrescription(rx,
         { firstName: p.firstName, lastName: p.lastName, medicalRecordNumber: p.medicalRecordNumber, dateOfBirth: p.dateOfBirth }
       );
+    });
+  }
+
+  printDischargeSummary() {
+    const v = this.visit();
+    if (!v) return;
+    this.http.get<any>(`/api/v1/patients/${v.patientId}`).subscribe(p => {
+      this.pdf.printDischargeSummary(v, p, null, this.diagnoses(), this.prescriptions());
     });
   }
 }

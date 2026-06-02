@@ -111,4 +111,8 @@ export class VisitService {
   getRadiologyByPatient(patientId: string): Observable<RadiologyOrderResponse[]> {
     return this.http.get<RadiologyOrderResponse[]>(`/api/v1/radiology-orders?patientId=${patientId}`);
   }
+
+  getVitalsByPatient(patientId: string): Observable<any[]> {
+    return this.http.get<any[]>(`/api/v1/visits/vitals?patientId=${patientId}`);
+  }
 }

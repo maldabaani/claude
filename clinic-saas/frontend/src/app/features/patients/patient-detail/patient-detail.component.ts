@@ -25,6 +25,7 @@ import {
 } from '../../../core/services/visit.service';
 import { ClinicalService } from '../../../core/services/clinical.service';
 import { PdfService } from '../../../core/services/pdf.service';
+import { ChartModule } from 'primeng/chart';
 
 interface PatientDetail {
   id: string; medicalRecordNumber: string; firstName: string; lastName: string;
@@ -40,7 +41,8 @@ interface PatientDetail {
   imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
             TabViewModule, CardModule, ButtonModule, TagModule, TableModule,
             SkeletonModule, TimelineModule, DialogModule, DropdownModule,
-            InputTextModule, InputTextareaModule, InputNumberModule, ToastModule],
+            InputTextModule, InputTextareaModule, InputNumberModule, ToastModule,
+            ChartModule],
   providers: [MessageService],
   templateUrl: './patient-detail.component.html',
   styles: [`
@@ -130,6 +132,29 @@ interface PatientDetail {
       font-size: 0.875rem;
       color: #334155;
     }
+    .vitals-charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .vitals-chart-card {
+      background: #f8faff;
+      border: 1px solid #e9ecf3;
+      border-radius: 10px;
+      padding: 0.875rem;
+    }
+    .vitals-chart-title {
+      font-size: 0.8rem; font-weight: 700; color: #374151;
+      margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.375rem;
+    }
+    .vitals-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      &.bp { background: #ef4444; }
+      &.hr { background: #f59e0b; }
+      &.wt { background: #10b981; }
+      &.bg { background: #8b5cf6; }
+    }
+    @media (max-width: 700px) { .vitals-charts-grid { grid-template-columns: 1fr; } }
   `]
 })
 export class PatientDetailComponent implements OnInit {
@@ -141,7 +166,57 @@ export class PatientDetailComponent implements OnInit {
   radiology      = signal<RadiologyOrderResponse[]>([]);
   allergiesList  = signal<any[]>([]);
   medHistory     = signal<any[]>([]);
+  vitalsHistory  = signal<any[]>([]);
   loading        = signal(true);
+
+  // ── Vitals chart config ────────────────────────────────────
+  vitalsChartOpts: any = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { font: { size: 11 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }
+    },
+    elements: { line: { tension: 0.4 }, point: { radius: 4 } }
+  };
+
+  private vitalLabels() {
+    return this.vitalsHistory().map(v =>
+      new Date(v.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    );
+  }
+
+  bpChartData() {
+    const labels = this.vitalLabels();
+    return {
+      labels,
+      datasets: [
+        { label: 'Systolic',  data: this.vitalsHistory().map(v => v.bpSystolic),  borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)',  fill: true },
+        { label: 'Diastolic', data: this.vitalsHistory().map(v => v.bpDiastolic), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true }
+      ]
+    };
+  }
+
+  hrChartData() {
+    return {
+      labels: this.vitalLabels(),
+      datasets: [{ label: 'Heart Rate', data: this.vitalsHistory().map(v => v.heartRate), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', fill: true }]
+    };
+  }
+
+  weightChartData() {
+    return {
+      labels: this.vitalLabels(),
+      datasets: [{ label: 'Weight kg', data: this.vitalsHistory().map(v => v.weightKg), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', fill: true }]
+    };
+  }
+
+  glucoseChartData() {
+    return {
+      labels: this.vitalLabels(),
+      datasets: [{ label: 'Glucose', data: this.vitalsHistory().map(v => v.bloodGlucose), borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', fill: true }]
+    };
+  }
 
   showStartVisit = signal(false);
   showAllergy    = signal(false);
@@ -301,9 +376,10 @@ export class PatientDetailComponent implements OnInit {
       inv:       this.visitSvc.getInvoicesByPatient(id).pipe(catchError(() => of({ content: [] }))),
       rad:       this.visitSvc.getRadiologyByPatient(id).pipe(catchError(() => of([]))),
       allergies: this.svc.getAllergies(id).pipe(catchError(() => of([]))),
-      history:   this.svc.getMedicalHistory(id).pipe(catchError(() => of([])))
+      history:   this.svc.getMedicalHistory(id).pipe(catchError(() => of([]))),
+      vitals:    this.visitSvc.getVitalsByPatient(id).pipe(catchError(() => of([])))
     }).subscribe({
-      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history }) => {
+      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history, vitals }) => {
         this.patient.set(patient);
         this.visits.set((visits as any).content ?? visits);
         this.labOrders.set(labs as LabOrderResponse[]);
@@ -312,6 +388,7 @@ export class PatientDetailComponent implements OnInit {
         this.radiology.set(rad as RadiologyOrderResponse[]);
         this.allergiesList.set(allergies as any[]);
         this.medHistory.set(history as any[]);
+        this.vitalsHistory.set(vitals as any[]);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

@@ -2,6 +2,8 @@ package com.clinicsaas.controllers;
 
 import com.clinicsaas.dtos.request.CreateVisitRequest;
 import com.clinicsaas.dtos.request.UpdateVitalSignsRequest;
+import com.clinicsaas.dtos.response.QueueItemResponse;
+import com.clinicsaas.dtos.response.VitalSignsResponse;
 import com.clinicsaas.dtos.response.VisitResponse;
 import com.clinicsaas.security.AppUserPrincipal;
 import com.clinicsaas.services.VisitService;
@@ -16,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -60,5 +63,15 @@ public class VisitController {
     @PutMapping("/{id}/checkout")
     public ResponseEntity<VisitResponse> checkout(@PathVariable UUID id) {
         return ResponseEntity.ok(visitService.checkout(id));
+    }
+
+    @GetMapping("/queue")
+    public ResponseEntity<List<QueueItemResponse>> queue() {
+        return ResponseEntity.ok(visitService.getQueue());
+    }
+
+    @GetMapping("/vitals")
+    public ResponseEntity<List<VitalSignsResponse>> vitalsByPatient(@RequestParam UUID patientId) {
+        return ResponseEntity.ok(visitService.getVitalsByPatient(patientId));
     }
 }

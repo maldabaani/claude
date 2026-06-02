@@ -64,12 +64,99 @@ export class PdfService {
     win.addEventListener('load', () => { win.focus(); win.print(); });
   }
 
+  printDischargeSummary(visit: any, patient: PatientSnap, vitals: any, diagnoses: any[], prescriptions: any[], doctor = '', clinicName = 'Aster Clinic') {
+    const win = window.open('', `Discharge-${visit.id?.slice(0,8)}`, 'width=860,height=960');
+    if (!win) { alert('Please allow popups to download PDF.'); return; }
+    win.document.write(this.dischargeHtml(visit, patient, vitals, diagnoses, prescriptions, doctor, clinicName));
+    win.document.close();
+    win.addEventListener('load', () => { win.focus(); win.print(); });
+  }
+
   printPrescription(rx: PrescriptionResponse, patient: PatientSnap, doctor = '', clinicName = 'Aster Clinic') {
     const win = window.open('', `Rx-${rx.prescriptionNumber}`, 'width=860,height=960');
     if (!win) { alert('Please allow popups to download PDF.'); return; }
     win.document.write(this.rxHtml(rx, patient, doctor, clinicName));
     win.document.close();
     win.addEventListener('load', () => { win.focus(); win.print(); });
+  }
+
+  // ─── Discharge Summary HTML ────────────────────────────────────────────────
+  private dischargeHtml(visit: any, p: PatientSnap, vitals: any, diagnoses: any[], prescriptions: any[], doctor: string, clinic: string): string {
+    const fmtDate = (s: string) => s ? new Date(s).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+    const dxRows = diagnoses.map(d =>
+      `<tr><td>${d.diagnosisType || '—'}</td><td><strong>${d.icdDescription || d.clinicalDescription || '—'}</strong></td><td><code style="font-size:10px">${d.icdCode || '—'}</code></td></tr>`
+    ).join('') || '<tr><td colspan="3" style="color:#6b7280;text-align:center">No diagnoses recorded</td></tr>';
+
+    const rxRows = prescriptions.flatMap((rx: any) =>
+      (rx.items || []).map((item: any) =>
+        `<tr><td><strong>${item.medicationNameSnapshot}</strong></td><td>${item.dosage}</td><td>${item.frequency?.replace(/_/g,' ')}</td><td>${item.durationDays ? item.durationDays + ' days' : '—'}</td><td style="font-size:10px">${item.instructions || '—'}</td></tr>`
+      )
+    ).join('') || '<tr><td colspan="5" style="color:#6b7280;text-align:center">No medications prescribed</td></tr>';
+
+    const vRow = vitals ? `
+      <div class="meta-box" style="margin-bottom:1rem">
+        <h3>Vitals at Discharge</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+          ${vitals.bpSystolic ? `<div class="meta-row"><span class="meta-label">BP</span><span class="meta-value">${vitals.bpSystolic}/${vitals.bpDiastolic} mmHg</span></div>` : ''}
+          ${vitals.heartRate ? `<div class="meta-row"><span class="meta-label">HR</span><span class="meta-value">${vitals.heartRate} bpm</span></div>` : ''}
+          ${vitals.temperature ? `<div class="meta-row"><span class="meta-label">Temp</span><span class="meta-value">${vitals.temperature} °C</span></div>` : ''}
+          ${vitals.oxygenSaturation ? `<div class="meta-row"><span class="meta-label">O₂ Sat</span><span class="meta-value">${vitals.oxygenSaturation}%</span></div>` : ''}
+          ${vitals.weightKg ? `<div class="meta-row"><span class="meta-label">Weight</span><span class="meta-value">${vitals.weightKg} kg</span></div>` : ''}
+          ${vitals.bmi ? `<div class="meta-row"><span class="meta-label">BMI</span><span class="meta-value">${vitals.bmi}</span></div>` : ''}
+        </div>
+      </div>` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Discharge Summary</title>
+    <style>${BASE_CSS}</style></head><body>
+    <div class="doc-header">
+      <div class="clinic-brand">
+        <div class="clinic-icon"><svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg></div>
+        <div><div class="clinic-name">${clinic}</div><div class="clinic-sub">Discharge Summary</div></div>
+      </div>
+      <div class="doc-type"><h1>DISCHARGE</h1><div class="doc-num">SUMMARY</div></div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <h3>Patient</h3>
+        <div class="meta-row"><span class="meta-label">Name</span><span class="meta-value">${p.firstName} ${p.lastName}</span></div>
+        <div class="meta-row"><span class="meta-label">MRN</span><span class="meta-value" style="font-family:monospace">${p.medicalRecordNumber}</span></div>
+        ${p.dateOfBirth ? `<div class="meta-row"><span class="meta-label">DOB</span><span class="meta-value">${new Date(p.dateOfBirth).toLocaleDateString('en-US',{dateStyle:'medium'})}</span></div>` : ''}
+      </div>
+      <div class="meta-box">
+        <h3>Visit Details</h3>
+        <div class="meta-row"><span class="meta-label">Admitted</span><span class="meta-value">${fmtDate(visit.checkedInAt)}</span></div>
+        <div class="meta-row"><span class="meta-label">Discharged</span><span class="meta-value">${fmtDate(visit.checkedOutAt)}</span></div>
+        <div class="meta-row"><span class="meta-label">Physician</span><span class="meta-value">${doctor || '—'}</span></div>
+        <div class="meta-row"><span class="meta-label">Visit Type</span><span class="meta-value">${visit.visitType?.replace(/_/g,' ')}</span></div>
+      </div>
+    </div>
+
+    ${visit.chiefComplaint ? `<div class="meta-box" style="margin-bottom:1rem"><h3>Chief Complaint</h3><p style="font-size:12px;color:#374151;margin-top:4px">${visit.chiefComplaint}</p></div>` : ''}
+
+    ${vRow}
+
+    <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:.5rem">Diagnoses</h3>
+    <table style="margin-bottom:1.25rem">
+      <thead><tr><th>Type</th><th>Diagnosis</th><th>ICD-10</th></tr></thead>
+      <tbody>${dxRows}</tbody>
+    </table>
+
+    <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:.5rem">Discharge Medications</h3>
+    <table style="margin-bottom:1.25rem">
+      <thead><tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+      <tbody>${rxRows}</tbody>
+    </table>
+
+    ${visit.clinicalNotes ? `<div class="meta-box" style="margin-bottom:1rem"><h3>Clinical Notes</h3><p style="font-size:11px;color:#374151;margin-top:4px;line-height:1.6">${visit.clinicalNotes}</p></div>` : ''}
+
+    <div class="sig-area" style="margin-top:2.5rem">
+      <div class="sig-box">${doctor || 'Attending Physician'}</div>
+      <div class="sig-box">Date: ${new Date().toLocaleDateString('en-US',{dateStyle:'long'})}</div>
+    </div>
+
+    <div class="doc-footer">${clinic} · Generated on ${new Date().toLocaleString()} · This summary was prepared at time of discharge.</div>
+    </body></html>`;
   }
 
   // ─── Invoice HTML ──────────────────────────────────────────────────────────

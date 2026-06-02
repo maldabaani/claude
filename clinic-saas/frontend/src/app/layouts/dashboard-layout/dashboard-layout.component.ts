@@ -88,12 +88,16 @@ export class DashboardLayoutComponent implements OnInit {
       base.push({ label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' });
     } else {
       base.push(
-        { label: 'Patients',     icon: 'pi pi-users',    routerLink: '/dashboard/patients' },
-        { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' },
+        { label: 'Patients',     icon: 'pi pi-users',       routerLink: '/dashboard/patients' },
+        { label: 'Appointments', icon: 'pi pi-calendar',    routerLink: '/dashboard/appointments' },
+        { label: 'Queue',        icon: 'pi pi-list',         routerLink: '/dashboard/queue' },
         // { label: 'Visits',       icon: 'pi pi-heart',    routerLink: '/dashboard/visits' }
       );
       if (user?.role === 'ADMIN') {
-        base.push({ label: 'Staff', icon: 'pi pi-id-card', routerLink: '/dashboard/staff' });
+        base.push(
+          { label: 'Reports', icon: 'pi pi-chart-bar', routerLink: '/dashboard/reports' },
+          { label: 'Staff',   icon: 'pi pi-id-card',   routerLink: '/dashboard/staff' }
+        );
       }
     }
     return base;
