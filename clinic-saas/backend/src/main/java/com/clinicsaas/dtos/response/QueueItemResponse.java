@@ -23,7 +23,7 @@ public record QueueItemResponse(
                 v.getId(),
                 v.getPatient().getFirstName(),
                 v.getPatient().getLastName(),
-                v.getPatient().getMrn(),
+                v.getPatient().getMedicalRecordNumber(),
                 v.getPatient().getId(),
                 v.getDoctorId(),
                 v.getVisitType().name(),
