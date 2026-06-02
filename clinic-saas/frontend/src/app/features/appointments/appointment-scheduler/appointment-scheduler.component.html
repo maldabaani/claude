@@ -1,76 +1,189 @@
 <p-toast />
 
-<div class="page-container">
-  <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-    <h2 class="card-title mb-0">Appointment Scheduler</h2>
-    <div class="flex align-items-center gap-2">
-      <p-button icon="pi pi-chevron-left" (onClick)="prevWeek()" [text]="true" size="small" />
-      <span class="font-semibold text-sm">{{ weekRangeLabel() }}</span>
-      <p-button icon="pi pi-chevron-right" (onClick)="nextWeek()" [text]="true" size="small" />
-      <p-button label="Today" (onClick)="goToday()" severity="secondary" size="small" />
-      <p-button label="Book Appointment" icon="pi pi-plus" size="small" (onClick)="openBooking()" />
+<div class="cal-page">
+
+  <!-- ── Toolbar ──────────────────────────────────────────────── -->
+  <div class="cal-toolbar">
+    <div class="cal-toolbar-left">
+      <button class="cal-btn cal-btn-today" (click)="goToday()">Today</button>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" (click)="navigate(-1)"><i class="pi pi-chevron-left"></i></button>
+        <button class="cal-nav-btn" (click)="navigate(1)"><i class="pi pi-chevron-right"></i></button>
+      </div>
+      <h2 class="cal-header-label">{{ headerLabel() }}</h2>
+    </div>
+    <div class="cal-toolbar-right">
+      <div class="view-toggle">
+        <button [class.active]="view()==='month'" (click)="setView('month')">Month</button>
+        <button [class.active]="view()==='week'"  (click)="setView('week')">Week</button>
+        <button [class.active]="view()==='day'"   (click)="setView('day')">Day</button>
+      </div>
+      <button class="cal-btn cal-btn-book" (click)="openBooking()">
+        <i class="pi pi-plus"></i> Book Appointment
+      </button>
     </div>
   </div>
 
-  <div class="week-grid">
-    @for (day of weekDays(); track day.toISOString()) {
-      <div class="day-column" [class.today]="isToday(day)">
+  <!-- ══════════════════════════════════════════════════════════
+       MONTH VIEW
+  ══════════════════════════════════════════════════════════ -->
+  @if (view() === 'month') {
+    <div class="cal-month">
+      <div class="month-dow-row">
+        @for (d of weekDayNames; track d) {
+          <div class="month-dow">{{ d }}</div>
+        }
+      </div>
+      <div class="month-grid">
+        @for (week of monthGrid(); track $index) {
+          @for (cell of week; track cell.date.toISOString()) {
+            <div class="month-cell"
+                 [class.out-of-month]="!cell.inMonth"
+                 [class.is-today]="cell.isToday"
+                 (click)="clickDay(cell.date)">
 
-        <div class="day-header" [class.today-header]="isToday(day)">
-          {{ dayLabel(day) }}
-        </div>
+              <div class="cell-num" [class.today-badge]="cell.isToday">
+                {{ cell.date.getDate() }}
+              </div>
 
-        <div class="day-body">
-          @for (appt of apptsByDate(day); track appt.id) {
-            <div class="appt-block" [style.border-left-color]="statusColor(appt.status)"
-                 (click)="openDetail(appt)">
-              <div class="appt-time">{{ timeLabel(appt.scheduledAt) }}</div>
-              <div class="appt-type">{{ appt.appointmentType ?? 'Appointment' }}</div>
-              <p-tag [value]="appt.status" [severity]="statusSeverity(appt.status)" styleClass="text-xs mt-1" />
+              @for (appt of cell.appointments.slice(0, 3); track appt.id) {
+                <div class="cell-chip"
+                     [style.background]="statusColorSoft(appt.status)"
+                     [style.border-left-color]="statusColor(appt.status)"
+                     (click)="openDetail(appt); $event.stopPropagation()">
+                  <span class="chip-time">{{ timeLabel(appt.scheduledAt) }}</span>
+                  <span class="chip-label">{{ appt.appointmentType ?? 'Appointment' }}</span>
+                </div>
+              }
+              @if (cell.appointments.length > 3) {
+                <div class="cell-more">+{{ cell.appointments.length - 3 }} more</div>
+              }
             </div>
           }
-          @if (apptsByDate(day).length === 0) {
-            <div class="no-appts">—</div>
-          }
-        </div>
-
+        }
       </div>
-    }
-  </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════
+       WEEK VIEW
+  ══════════════════════════════════════════════════════════ -->
+  @if (view() === 'week') {
+    <div class="cal-grid-view">
+      <!-- sticky column headers -->
+      <div class="grid-header">
+        <div class="time-gutter"></div>
+        @for (day of weekDays(); track day.toISOString()) {
+          <div class="grid-day-head" [class.is-today]="isToday(day)">
+            <span class="gdh-dow">{{ day.toLocaleDateString('en-US', { weekday: 'short' }) }}</span>
+            <span class="gdh-num" [class.today-circle]="isToday(day)">{{ day.getDate() }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- scrollable body -->
+      <div class="grid-body">
+        @for (hour of hourSlots; track hour) {
+          <div class="grid-row">
+            <div class="time-label">{{ formatHour(hour) }}</div>
+            @for (day of weekDays(); track day.toISOString()) {
+              <div class="grid-cell" (click)="openBookingAt(day, hour)">
+                @for (appt of apptsForSlot(day, hour); track appt.id) {
+                  <div class="grid-appt"
+                       [style.border-left-color]="statusColor(appt.status)"
+                       [style.background]="statusColorSoft(appt.status)"
+                       (click)="openDetail(appt); $event.stopPropagation()">
+                    <span class="ga-time">{{ timeLabel(appt.scheduledAt) }}</span>
+                    <span class="ga-type">{{ appt.appointmentType ?? 'Appointment' }}</span>
+                    <span class="ga-dur">{{ appt.durationMinutes }}m</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════
+       DAY VIEW
+  ══════════════════════════════════════════════════════════ -->
+  @if (view() === 'day') {
+    <div class="cal-grid-view">
+      <!-- header -->
+      <div class="grid-header">
+        <div class="time-gutter"></div>
+        <div class="grid-day-head day-head-single" [class.is-today]="isToday(anchor())">
+          <span class="gdh-dow">{{ anchor().toLocaleDateString('en-US', { weekday: 'long' }) }}</span>
+          <span class="gdh-num" [class.today-circle]="isToday(anchor())">{{ anchor().getDate() }}</span>
+        </div>
+      </div>
+
+      <!-- body -->
+      <div class="grid-body">
+        @for (hour of hourSlots; track hour) {
+          <div class="grid-row">
+            <div class="time-label">{{ formatHour(hour) }}</div>
+            <div class="grid-cell day-cell" (click)="openBookingAt(anchor(), hour)">
+              @for (appt of apptsForSlot(anchor(), hour); track appt.id) {
+                <div class="day-appt"
+                     [style.border-left-color]="statusColor(appt.status)"
+                     [style.background]="statusColorSoft(appt.status)"
+                     (click)="openDetail(appt); $event.stopPropagation()">
+                  <div class="da-row1">
+                    <span class="da-time">{{ timeLabel(appt.scheduledAt) }}</span>
+                    <p-tag [value]="appt.status" [severity]="statusSeverity(appt.status)" styleClass="text-xs" />
+                  </div>
+                  <div class="da-type">{{ appt.appointmentType ?? 'Appointment' }}</div>
+                  <div class="da-meta">
+                    <i class="pi pi-user-md"></i> {{ doctorName(appt.doctorId) }}
+                    &nbsp;·&nbsp; {{ appt.durationMinutes }} min
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
 </div>
 
-<!-- Appointment Detail Dialog -->
+<!-- ══════════════════════════════════════════════════════════
+     APPOINTMENT DETAIL DIALOG
+══════════════════════════════════════════════════════════ -->
 <p-dialog header="Appointment Details"
           [visible]="detailVisible()"
           (onHide)="detailVisible.set(false)"
-          [modal]="true"
-          [style]="{width:'420px'}">
+          [modal]="true" [style]="{width:'440px'}" [draggable]="false">
   @if (selectedAppt(); as appt) {
-    <div class="flex flex-column gap-3 p-2">
-      <div class="flex justify-content-between align-items-center">
-        <span class="text-color-secondary">Status</span>
+    <div class="detail-body">
+      <div class="detail-row">
+        <span class="detail-lbl">Status</span>
         <p-tag [value]="appt.status" [severity]="statusSeverity(appt.status)" />
       </div>
-      <div class="flex justify-content-between align-items-center">
-        <span class="text-color-secondary">Doctor</span>
+      <div class="detail-row">
+        <span class="detail-lbl">Doctor</span>
         <strong>{{ doctorName(appt.doctorId) }}</strong>
       </div>
-      <div class="flex justify-content-between">
-        <span class="text-color-secondary">Type</span>
+      <div class="detail-row">
+        <span class="detail-lbl">Type</span>
         <strong>{{ appt.appointmentType ?? '—' }}</strong>
       </div>
-      <div class="flex justify-content-between">
-        <span class="text-color-secondary">Time</span>
+      <div class="detail-row">
+        <span class="detail-lbl">Date &amp; Time</span>
         <strong>{{ timeLabel(appt.scheduledAt) }}</strong>
       </div>
-      <div class="flex justify-content-between">
-        <span class="text-color-secondary">Duration</span>
+      <div class="detail-row">
+        <span class="detail-lbl">Duration</span>
         <strong>{{ appt.durationMinutes }} min</strong>
       </div>
       @if (appt.notes) {
-        <div>
-          <span class="text-color-secondary">Notes</span>
-          <p class="mt-1 mb-0">{{ appt.notes }}</p>
+        <div class="detail-notes">
+          <span class="detail-lbl">Notes</span>
+          <p>{{ appt.notes }}</p>
         </div>
       }
     </div>
@@ -80,63 +193,63 @@
   </ng-template>
 </p-dialog>
 
-<!-- Book Appointment Dialog -->
-<p-dialog header="Book New Appointment" [(visible)]="bookingVisible" [modal]="true" [style]="{width:'520px'}"
-          [draggable]="false">
-  <form [formGroup]="bookingForm" class="flex flex-column gap-3">
+<!-- ══════════════════════════════════════════════════════════
+     BOOK APPOINTMENT DIALOG
+══════════════════════════════════════════════════════════ -->
+<p-dialog header="Book Appointment" [(visible)]="bookingVisible" [modal]="true"
+          [style]="{width:'520px'}" [draggable]="false">
+  <form [formGroup]="bookingForm" class="booking-form">
 
-    <div>
-      <label class="block text-sm mb-1">Patient *</label>
-      <div class="flex gap-2">
-        <input pInputText [(ngModel)]="patientQuery" [ngModelOptions]="{standalone:true}"
-               (ngModelChange)="onPatientSearch($event)"
-               placeholder="Search by name or MRN..." class="flex-1" />
-      </div>
+    <div class="bf-field">
+      <label>Patient *</label>
+      <input pInputText [(ngModel)]="patientQuery" [ngModelOptions]="{standalone:true}"
+             (ngModelChange)="onPatientSearch($event)"
+             placeholder="Search by name or MRN…" class="w-full" />
       @if (patientOptions.length > 0) {
         <p-dropdown formControlName="patientId" [options]="patientOptions"
                     optionLabel="label" optionValue="value"
-                    placeholder="Select patient..." styleClass="w-full mt-2" />
+                    placeholder="Select patient…" styleClass="w-full mt-2" />
       }
       @if (patientQuery.length >= 2 && patientOptions.length === 0) {
-        <small style="color:var(--text-color-secondary)">No patients found.</small>
+        <small class="bf-hint">No patients found.</small>
       }
     </div>
 
-    <div>
-      <label class="block text-sm mb-1">Doctor *</label>
+    <div class="bf-field">
+      <label>Doctor *</label>
       <p-dropdown formControlName="doctorId" [options]="doctors()"
                   optionLabel="label" optionValue="value"
-                  placeholder="Select doctor..." styleClass="w-full" [filter]="true" />
+                  placeholder="Select doctor…" styleClass="w-full" [filter]="true" />
     </div>
 
-    <div class="grid m-0">
-      <div class="col-12 md:col-7 pl-0">
-        <label class="block text-sm mb-1">Date & Time *</label>
+    <div class="bf-row">
+      <div class="bf-field">
+        <label>Date &amp; Time *</label>
         <input type="datetime-local" formControlName="scheduledAt" class="w-full p-inputtext" />
       </div>
-      <div class="col-12 md:col-5 pr-0">
-        <label class="block text-sm mb-1">Duration *</label>
+      <div class="bf-field">
+        <label>Duration *</label>
         <p-dropdown formControlName="durationMinutes" [options]="durations"
                     optionLabel="label" optionValue="value" styleClass="w-full" />
       </div>
     </div>
 
-    <div>
-      <label class="block text-sm mb-1">Appointment Type</label>
+    <div class="bf-field">
+      <label>Type</label>
       <p-dropdown formControlName="appointmentType" [options]="apptTypes"
                   optionLabel="label" optionValue="value" styleClass="w-full" />
     </div>
 
-    <div>
-      <label class="block text-sm mb-1">Notes</label>
+    <div class="bf-field">
+      <label>Notes</label>
       <textarea pInputTextarea formControlName="notes" rows="2" class="w-full"
-                placeholder="Reason for visit, special instructions..."></textarea>
+                placeholder="Reason for visit…"></textarea>
     </div>
 
   </form>
   <ng-template pTemplate="footer">
-    <button pButton label="Cancel" class="p-button-text" (click)="bookingVisible.set(false)"></button>
-    <button pButton label="Book Appointment" icon="pi pi-check" [loading]="saving()"
-            [disabled]="bookingForm.invalid" (click)="saveBooking()"></button>
+    <p-button label="Cancel" [text]="true" (onClick)="bookingVisible.set(false)" />
+    <p-button label="Book Appointment" icon="pi pi-check" [loading]="saving()"
+              [disabled]="bookingForm.invalid" (onClick)="saveBooking()" />
   </ng-template>
 </p-dialog>
