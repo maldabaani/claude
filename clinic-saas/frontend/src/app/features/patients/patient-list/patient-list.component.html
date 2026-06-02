@@ -30,15 +30,16 @@
     [paginator]="true"
     [rows]="20"
     (onLazyLoad)="onPage($any($event))"
-    styleClass="p-datatable-sm">
+    styleClass="p-datatable-sm"
+    responsiveLayout="scroll">
 
     <ng-template pTemplate="header">
       <tr>
         <th>MRN</th>
         <th>Patient</th>
-        <th>Date of Birth</th>
-        <th>Gender</th>
-        <th>Phone</th>
+        <th class="hide-mobile">Date of Birth</th>
+        <th class="hide-mobile">Gender</th>
+        <th class="hide-mobile">Phone</th>
         <th style="width:80px"></th>
       </tr>
     </ng-template>
@@ -54,11 +55,11 @@
             <span class="patient-name">{{ p.firstName }} {{ p.lastName }}</span>
           </div>
         </td>
-        <td class="text-slate-500">{{ p.dateOfBirth | date:'mediumDate' }}</td>
-        <td>
+        <td class="text-slate-500 hide-mobile">{{ p.dateOfBirth | date:'mediumDate' }}</td>
+        <td class="hide-mobile">
           <span class="gender-badge gender-{{ (p.gender || '').toLowerCase() }}">{{ p.gender }}</span>
         </td>
-        <td class="text-slate-500">{{ p.phone ?? '—' }}</td>
+        <td class="text-slate-500 hide-mobile">{{ p.phone ?? '—' }}</td>
         <td>
           <a pButton icon="pi pi-arrow-right" [routerLink]="[p.id]"
              class="p-button-text p-button-sm p-button-rounded" title="Open Chart"></a>

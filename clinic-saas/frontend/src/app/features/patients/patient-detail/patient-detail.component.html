@@ -103,7 +103,7 @@
           @if (order.clinicalIndication) {
             <p class="text-sm mb-3"><strong>Indication:</strong> {{ order.clinicalIndication }}</p>
           }
-          <p-table [value]="order.items" styleClass="p-datatable-sm">
+          <p-table [value]="order.items" styleClass="p-datatable-sm" responsiveLayout="scroll">
             <ng-template pTemplate="header">
               <tr><th>Test</th><th>Result</th><th>Unit</th><th>Normal Range</th><th>Flag</th></tr>
             </ng-template>
@@ -164,7 +164,7 @@
                     class="p-button-outlined p-button-sm p-button-secondary"
                     (click)="downloadPrescription(rx)"></button>
           </div>
-          <p-table [value]="rx.items" styleClass="p-datatable-sm">
+          <p-table [value]="rx.items" styleClass="p-datatable-sm" responsiveLayout="scroll">
             <ng-template pTemplate="header">
               <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Duration</th><th>Instructions</th></tr>
             </ng-template>
@@ -309,7 +309,7 @@
   } <!-- end loading else -->
 
   <!-- Create Invoice Dialog -->
-  <p-dialog header="Create Invoice" [(visible)]="showInvoice" [modal]="true" [style]="{width:'680px'}"
+  <p-dialog header="Create Invoice" [(visible)]="showInvoice" [modal]="true" [style]="{width:'min(92vw,680px)'}"
             [draggable]="false">
     <form [formGroup]="invoiceForm" class="flex flex-column gap-3">
 
@@ -375,7 +375,7 @@
   </p-dialog>
 
   <!-- Record Payment Dialog -->
-  <p-dialog header="Record Payment" [(visible)]="showPayment" [modal]="true" [style]="{width:'440px'}"
+  <p-dialog header="Record Payment" [(visible)]="showPayment" [modal]="true" [style]="{width:'min(92vw,440px)'}"
             [draggable]="false">
     @if (selectedInvoice(); as inv) {
       <div class="flex justify-content-between mb-3 text-sm">
@@ -414,7 +414,7 @@
   </p-dialog>
 
   <!-- Add Allergy Dialog -->
-  <p-dialog header="Add Allergy" [(visible)]="showAllergy" [modal]="true" [style]="{width:'440px'}"
+  <p-dialog header="Add Allergy" [(visible)]="showAllergy" [modal]="true" [style]="{width:'min(92vw,440px)'}"
             [draggable]="false">
     <form [formGroup]="allergyForm" class="flex flex-column gap-3">
       <div>
@@ -448,7 +448,7 @@
   </p-dialog>
 
   <!-- Add Medical History Dialog -->
-  <p-dialog header="Add Medical History Entry" [(visible)]="showMedHistory" [modal]="true" [style]="{width:'480px'}"
+  <p-dialog header="Add Medical History Entry" [(visible)]="showMedHistory" [modal]="true" [style]="{width:'min(92vw,480px)'}"
             [draggable]="false">
     <form [formGroup]="medHistForm" class="flex flex-column gap-3">
       <div>
@@ -486,7 +486,7 @@
   </p-dialog>
 
   <!-- Start Visit Dialog -->
-  <p-dialog header="Start New Visit" [(visible)]="showStartVisit" [modal]="true" [style]="{width:'420px'}"
+  <p-dialog header="Start New Visit" [(visible)]="showStartVisit" [modal]="true" [style]="{width:'min(92vw,420px)'}"
             [draggable]="false">
     <form [formGroup]="startVisitForm" class="flex flex-column gap-3">
       <div>

@@ -401,14 +401,37 @@ $time-w   : 72px;  // width of the time gutter
 
 // ─── Responsive tweaks ────────────────────────────────────────────────────
 @media (max-width: 768px) {
-  $time-w: 52px;
-
-  .time-label, .time-gutter { width: $time-w; font-size: 0.65rem; padding: 0.25rem 0.375rem 0; }
-
+  .time-label, .time-gutter { width: 52px; font-size: 0.65rem; padding: 0.25rem 0.375rem 0; }
   .gdh-num { font-size: 1rem; width: 28px; height: 28px; }
   .gdh-dow { font-size: 0.65rem; }
-
   .cal-toolbar { padding: 0.625rem 0.875rem; }
   .cal-header-label { font-size: 0.875rem; }
   .cal-btn-today { display: none; }
+  // Month grid: smaller cell padding
+  .month-cell { padding: 0.25rem; min-height: 70px; }
+  .cell-chip { font-size: 0.65rem; padding: 1px 4px; }
+  .month-dow { font-size: 0.65rem; padding: 0.375rem 0; }
+}
+
+@media (max-width: 540px) {
+  // Week view: show only 3 days (Mon-Wed-Thu scroll) — let it scroll horizontally
+  .cal-grid-view .grid-header,
+  .cal-grid-view .grid-body .grid-row {
+    min-width: 480px; // allow scroll on very small screens
+  }
+  .cal-grid-view { overflow-x: auto; }
+
+  // Day view: works fine single column
+  // Month: shrink further
+  .time-label, .time-gutter { width: 44px; font-size: 0.6rem; }
+  .cal-header-label { font-size: 0.8rem; }
+  .view-toggle button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+  .cal-btn-book .p-button-label { display: none; } // icon only on mobile
+  .cal-page { height: calc(100vh - 100px); }
+}
+
+@media (max-width: 480px) {
+  // Month grid: smaller numbers
+  .cell-num { font-size: 0.72rem; width: 20px; height: 20px; }
+  .cell-more { font-size: 0.65rem; }
 }

@@ -35,7 +35,11 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
 
 // ─── Page layout ──────────────────────────────────────────────────────────────
-.page-container { padding: 2rem; }
+.page-container {
+  padding: 2rem;
+  @media (max-width: 768px) { padding: 1rem; }
+  @media (max-width: 480px) { padding: 0.75rem; }
+}
 
 .page-header {
   display: flex;
@@ -43,6 +47,7 @@ html, body {
   justify-content: space-between;
   margin-bottom: 1.75rem;
   gap: 1rem;
+  flex-wrap: wrap;
 
   .page-header-left {
     h2 {
@@ -51,6 +56,7 @@ html, body {
       letter-spacing: -0.03em;
       color: #0f172a;
       margin: 0;
+      @media (max-width: 480px) { font-size: 1.25rem; }
     }
     p { color: var(--text-color-secondary); margin: 0.2rem 0 0; font-size: 0.875rem; }
   }
@@ -315,4 +321,58 @@ html, body {
   border: 1px solid #f1f5f9;
   box-shadow: var(--shadow-xs);
   margin-bottom: 1.5rem;
+}
+
+// ─── Global responsive overrides ──────────────────────────────────────────────
+
+// Dialogs: never exceed viewport width on mobile
+.p-dialog {
+  @media (max-width: 640px) {
+    width: min(92vw, 100%) !important;
+    max-width: 92vw !important;
+    margin: 0.5rem !important;
+
+    .p-dialog-content  { padding: 1rem !important; }
+    .p-dialog-header   { padding: 1rem !important; }
+    .p-dialog-footer   { padding: 0.75rem 1rem !important; flex-wrap: wrap; }
+  }
+}
+
+// Tables: horizontal scroll on small screens
+.p-datatable {
+  @media (max-width: 768px) {
+    .p-datatable-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .p-datatable-thead > tr > th,
+    .p-datatable-tbody > tr > td {
+      padding: 0.625rem 0.75rem !important;
+      font-size: 0.8125rem !important;
+      white-space: nowrap;
+    }
+  }
+  @media (max-width: 480px) {
+    .p-datatable-thead > tr > th,
+    .p-datatable-tbody > tr > td {
+      padding: 0.5rem !important;
+      font-size: 0.75rem !important;
+    }
+  }
+}
+
+// Tab panels: reduce padding on mobile
+.p-tabview {
+  @media (max-width: 480px) {
+    .p-tabview-panels { padding: 0.75rem 0 0 !important; }
+    .p-tabview-nav li .p-tabview-nav-link { padding: 0.625rem 0.75rem !important; font-size: 0.8125rem !important; }
+  }
+}
+
+// Utility: hide on mobile
+@media (max-width: 640px) { .hide-mobile { display: none !important; } }
+@media (min-width: 641px) { .hide-desktop { display: none !important; } }
+
+// PrimeFlex grid: ensure col-6 collapses to full width on very small screens
+@media (max-width: 480px) {
+  .grid > [class*="col-"] { width: 100% !important; flex: 0 0 100% !important; max-width: 100% !important; }
+  // But allow explicit sm overrides
+  .grid > .sm\:col-6 { width: 50% !important; flex: 0 0 50% !important; max-width: 50% !important; }
 }
