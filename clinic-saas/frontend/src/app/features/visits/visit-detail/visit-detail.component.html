@@ -173,9 +173,13 @@
         }
         @for (rx of prescriptions(); track rx.id) {
           <div class="border-1 surface-border border-round p-3 mb-2">
-            <div class="flex align-items-center gap-2 mb-2">
-              <code class="text-sm">{{ rx.prescriptionNumber }}</code>
-              <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
+            <div class="flex align-items-center justify-content-between gap-2 mb-2">
+              <div class="flex align-items-center gap-2">
+                <code class="text-sm">{{ rx.prescriptionNumber }}</code>
+                <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
+              </div>
+              <button pButton icon="pi pi-print" label="Print" class="p-button-text p-button-sm p-button-secondary"
+                      (click)="downloadPrescription(rx)"></button>
             </div>
             <p-table [value]="rx.items" styleClass="p-datatable-sm">
               <ng-template pTemplate="header">

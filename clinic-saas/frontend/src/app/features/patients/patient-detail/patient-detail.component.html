@@ -152,12 +152,17 @@
     <p-tabPanel header="Prescriptions ({{ prescriptions().length }})">
       @for (rx of prescriptions(); track rx.id) {
         <p-card [header]="'Rx ' + rx.prescriptionNumber" styleClass="mb-3">
-          <div class="flex gap-3 mb-3">
-            <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
-            <span class="text-sm" style="color:var(--text-color-secondary)">
-              Issued: {{ rx.createdAt | date:'mediumDate' }}
-              @if (rx.validUntil) { &nbsp;· Valid until: {{ rx.validUntil | date:'mediumDate' }} }
-            </span>
+          <div class="flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+            <div class="flex align-items-center gap-3">
+              <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
+              <span class="text-sm" style="color:var(--text-color-secondary)">
+                Issued: {{ rx.createdAt | date:'mediumDate' }}
+                @if (rx.validUntil) { &nbsp;· Valid until: {{ rx.validUntil | date:'mediumDate' }} }
+              </span>
+            </div>
+            <button pButton label="Print / PDF" icon="pi pi-print"
+                    class="p-button-outlined p-button-sm p-button-secondary"
+                    (click)="downloadPrescription(rx)"></button>
           </div>
           <p-table [value]="rx.items" styleClass="p-datatable-sm">
             <ng-template pTemplate="header">
@@ -201,11 +206,13 @@
               {{ (inv.totalAmount - inv.paidAmount) | number:'1.2-2' }}
             </td>
             <td>{{ inv.dueDate ? (inv.dueDate | date:'mediumDate') : '—' }}</td>
-            <td>
+            <td class="flex gap-1 align-items-center">
               @if (inv.status !== 'PAID') {
                 <button pButton label="Pay" icon="pi pi-dollar" class="p-button-text p-button-sm p-button-success"
                         (click)="openPayment(inv)"></button>
               }
+              <button pButton icon="pi pi-print" class="p-button-text p-button-sm p-button-secondary"
+                      pTooltip="Print Invoice" (click)="downloadInvoice(inv)"></button>
             </td>
           </tr>
         </ng-template>

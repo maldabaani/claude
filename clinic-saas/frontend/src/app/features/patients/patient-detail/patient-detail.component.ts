@@ -24,6 +24,7 @@ import {
   PrescriptionResponse, InvoiceResponse, RadiologyOrderResponse
 } from '../../../core/services/visit.service';
 import { ClinicalService } from '../../../core/services/clinical.service';
+import { PdfService } from '../../../core/services/pdf.service';
 
 interface PatientDetail {
   id: string; medicalRecordNumber: string; firstName: string; lastName: string;
@@ -229,7 +230,8 @@ export class PatientDetailComponent implements OnInit {
     private visitSvc: VisitService,
     private svc:      ClinicalService,
     private msg:      MessageService,
-    private fb:       FormBuilder
+    private fb:       FormBuilder,
+    private pdf:      PdfService
   ) {
     this.startVisitForm = this.fb.group({
       visitType:      ['WALK_IN', Validators.required],
@@ -456,5 +458,17 @@ export class PatientDetailComponent implements OnInit {
     if (item.critical) return '🔴';
     if (item.abnormal) return '⚠️';
     return '✓';
+  }
+
+  downloadInvoice(inv: InvoiceResponse) {
+    const p = this.patient();
+    if (!p) return;
+    this.pdf.printInvoice(inv, { firstName: p.firstName, lastName: p.lastName, medicalRecordNumber: p.medicalRecordNumber });
+  }
+
+  downloadPrescription(rx: PrescriptionResponse) {
+    const p = this.patient();
+    if (!p) return;
+    this.pdf.printPrescription(rx, { firstName: p.firstName, lastName: p.lastName, medicalRecordNumber: p.medicalRecordNumber, dateOfBirth: p.dateOfBirth });
   }
 }
