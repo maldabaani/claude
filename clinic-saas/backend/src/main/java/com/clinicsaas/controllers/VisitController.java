@@ -5,6 +5,7 @@ import com.clinicsaas.dtos.request.UpdateVitalSignsRequest;
 import com.clinicsaas.dtos.response.QueueItemResponse;
 import com.clinicsaas.dtos.response.VitalSignsResponse;
 import com.clinicsaas.dtos.response.VisitResponse;
+import com.clinicsaas.entities.enums.VisitStatus;
 import com.clinicsaas.security.AppUserPrincipal;
 import com.clinicsaas.services.VisitService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -58,6 +59,13 @@ public class VisitController {
             @AuthenticationPrincipal AppUserPrincipal principal) {
         visitService.recordVitals(id, req, principal.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<VisitResponse> updateStatus(
+            @PathVariable UUID id,
+            @RequestParam VisitStatus status) {
+        return ResponseEntity.ok(visitService.updateStatus(id, status));
     }
 
     @PutMapping("/{id}/checkout")

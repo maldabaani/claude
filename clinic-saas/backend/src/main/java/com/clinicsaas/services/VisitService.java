@@ -64,6 +64,17 @@ public class VisitService {
     }
 
     @Transactional("tenantTransactionManager")
+    public VisitResponse updateStatus(UUID id, VisitStatus status) {
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Visit", id));
+        visit.setStatus(status);
+        if (status == VisitStatus.COMPLETED && visit.getCheckedOutAt() == null) {
+            visit.setCheckedOutAt(LocalDateTime.now());
+        }
+        return VisitResponse.from(visitRepository.save(visit));
+    }
+
+    @Transactional("tenantTransactionManager")
     public VisitResponse checkout(UUID id) {
         Visit visit = visitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Visit", id));
