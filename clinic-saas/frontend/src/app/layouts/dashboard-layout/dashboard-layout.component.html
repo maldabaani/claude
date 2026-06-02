@@ -2,35 +2,41 @@
 
   <!-- Sidebar -->
   <nav class="layout-sidebar">
+
     <div class="sidebar-logo">
       <div class="logo-icon"><i class="pi pi-heart-fill"></i></div>
-      <span>Clinic SaaS</span>
+      <div class="logo-text">
+        <span class="logo-name">Clinic SaaS</span>
+        <span class="logo-sub">Management Platform</span>
+      </div>
     </div>
 
-    <span class="nav-section-label">Main Menu</span>
-    <ul class="nav-list">
+    <div class="nav-section">
       @for (item of navItems; track item.label) {
-        <li>
-          <a [routerLink]="item.routerLink" routerLinkActive="active" class="nav-item">
-            <i [class]="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </a>
-        </li>
+        <a [routerLink]="item.routerLink" routerLinkActive="active" class="nav-item">
+          <div class="nav-icon"><i [class]="item.icon"></i></div>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
       }
-    </ul>
+    </div>
 
     <div class="sidebar-footer">
-      <div class="user-avatar-sm">{{ userInitial }}</div>
-      <div class="user-text">
-        <div class="user-name">{{ userEmail }}</div>
-        <div class="user-role">{{ userRole }}</div>
+      <div class="user-card">
+        <div class="user-avatar">{{ userInitial }}</div>
+        <div class="user-info">
+          <div class="user-email">{{ userEmail }}</div>
+          <div class="user-role">{{ userRole }}</div>
+        </div>
       </div>
-      <button pButton icon="pi pi-sign-out" class="p-button-text logout-btn"
-              (click)="logout()" title="Logout"></button>
+      <button class="logout-btn" (click)="logout()">
+        <i class="pi pi-sign-out"></i>
+        <span>Sign Out</span>
+      </button>
     </div>
+
   </nav>
 
-  <!-- Main area -->
+  <!-- Main -->
   <div class="layout-main">
     <header class="layout-topbar">
       <div class="topbar-left">

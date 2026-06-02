@@ -41,7 +41,95 @@ interface PatientDetail {
             SkeletonModule, TimelineModule, DialogModule, DropdownModule,
             InputTextModule, InputTextareaModule, InputNumberModule, ToastModule],
   providers: [MessageService],
-  templateUrl: './patient-detail.component.html'
+  templateUrl: './patient-detail.component.html',
+  styles: [`
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+    .detail-header-info {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .detail-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .detail-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.375rem;
+      font-size: 0.8125rem;
+      color: #64748b;
+    }
+    .mrn-chip {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #6366f1;
+      background: #eef2ff;
+      padding: 0.15rem 0.5rem;
+      border-radius: 5px;
+    }
+    .blood-chip {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #ef4444;
+      background: #fef2f2;
+      padding: 0.15rem 0.5rem;
+      border-radius: 5px;
+    }
+    .meta-sep::before { content: '·'; margin-right: 0.5rem; color: #cbd5e1; }
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    .demo-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.125rem 1.25rem;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .demo-card-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      i { font-size: 0.75rem; }
+    }
+    .demo-card-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.875rem;
+      color: #334155;
+    }
+  `]
 })
 export class PatientDetailComponent implements OnInit {
   patient        = signal<PatientDetail | null>(null);

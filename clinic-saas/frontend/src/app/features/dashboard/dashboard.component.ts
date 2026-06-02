@@ -133,9 +133,8 @@ interface Stats {
 </div>
   `,
   styles: [`
-    .dash-wrap { display: flex; flex-direction: column; gap: 1.25rem; }
+    .dash-wrap { display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem; }
 
-    /* Welcome */
     .welcome-banner {
       background: linear-gradient(120deg, #1e2a45 0%, #2d3f6e 100%);
       border-radius: 14px;
@@ -145,7 +144,6 @@ interface Stats {
     .welcome-title { font-size: 1.3rem; font-weight: 700; margin: 0 0 0.2rem; }
     .welcome-date  { font-size: 0.85rem; opacity: 0.7; margin: 0; }
 
-    /* KPI row */
     .kpi-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -153,12 +151,14 @@ interface Stats {
     }
     .kpi-card {
       border-radius: 14px;
-      padding: 1.25rem 1.25rem;
+      padding: 1.25rem;
       display: flex;
       align-items: center;
       gap: 1rem;
       color: #fff;
       box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
     }
     .kpi-icon-wrap {
       width: 56px; height: 56px;
@@ -175,7 +175,6 @@ interface Stats {
     .kpi-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
     .kpi-red    { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
 
-    /* Status row */
     .status-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -189,12 +188,9 @@ interface Stats {
       align-items: center;
       gap: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1px solid #f1f5f9;
     }
-    .status-dot {
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
     .dot-blue   { background: #4f8ef7; }
     .dot-orange { background: #f97316; }
     .dot-green  { background: #22c55e; }
@@ -202,7 +198,6 @@ interface Stats {
     .status-num { font-size: 1.5rem; font-weight: 700; color: #1e2a45; line-height: 1; }
     .status-lbl { font-size: 0.78rem; color: #6b7280; margin-top: 3px; }
 
-    /* Charts */
     .charts-row {
       display: grid;
       grid-template-columns: 1.5fr 1fr;
@@ -213,6 +208,7 @@ interface Stats {
       border-radius: 14px;
       padding: 1.25rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1px solid #f1f5f9;
     }
     .chart-header {
       display: flex;
@@ -248,10 +244,10 @@ export class DashboardComponent implements OnInit {
   pieOptions: any;
 
   pieLegend = [
-    { label: 'Scheduled',  color: '#4f8ef7' },
+    { label: 'Scheduled',   color: '#4f8ef7' },
     { label: 'In Progress', color: '#f97316' },
-    { label: 'Completed',  color: '#22c55e' },
-    { label: 'Cancelled',  color: '#f43f5e' }
+    { label: 'Completed',   color: '#22c55e' },
+    { label: 'Cancelled',   color: '#f43f5e' }
   ];
 
   constructor(
@@ -298,18 +294,8 @@ export class DashboardComponent implements OnInit {
     this.barData = {
       labels: months,
       datasets: [
-        {
-          label: 'Total Patients',
-          backgroundColor: '#4f8ef7',
-          borderRadius: 6,
-          data: seed(total || 8)
-        },
-        {
-          label: 'New Patients',
-          backgroundColor: '#7c5cf6',
-          borderRadius: 6,
-          data: seed((total || 8) * 0.4)
-        }
+        { label: 'Total Patients', backgroundColor: '#4f8ef7', borderRadius: 6, data: seed(total || 8) },
+        { label: 'New Patients',   backgroundColor: '#7c5cf6', borderRadius: 6, data: seed((total || 8) * 0.4) }
       ]
     };
 
@@ -323,15 +309,10 @@ export class DashboardComponent implements OnInit {
       }
     };
 
-    const scheduled  = Math.max(appts, 1);
-    const inProgress = Math.max(active, 0);
-    const done       = Math.max(completed, 0);
-    const cancelled  = Math.max(Math.round(scheduled * 0.1), 0);
-
     this.pieData = {
       labels: ['Scheduled', 'In Progress', 'Completed', 'Cancelled'],
       datasets: [{
-        data: [scheduled, inProgress, done, cancelled],
+        data: [Math.max(appts, 1), Math.max(active, 0), Math.max(completed, 0), Math.max(Math.round(appts * 0.1), 0)],
         backgroundColor: ['#4f8ef7', '#f97316', '#22c55e', '#f43f5e'],
         hoverOffset: 6,
         borderWidth: 0

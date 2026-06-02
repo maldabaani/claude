@@ -59,6 +59,20 @@ export class DashboardLayoutComponent {
     return base;
   }
 
+  readonly today = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
+
+  get userInitial(): string {
+    return (this.auth.getCurrentUser()?.email ?? '?').charAt(0).toUpperCase();
+  }
+  get userEmail(): string { return this.auth.getCurrentUser()?.email ?? ''; }
+  get userRole(): string  { return this.auth.getCurrentUser()?.role  ?? ''; }
+  get clinicName(): string {
+    const user = this.auth.getCurrentUser();
+    return user?.userType === 'PLATFORM' ? 'Platform Admin' : 'Medical Clinic Management';
+  }
+
   constructor(public auth: AuthService) {}
 
   logout() { this.auth.logout(); }

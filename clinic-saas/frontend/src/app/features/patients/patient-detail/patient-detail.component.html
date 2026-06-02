@@ -3,19 +3,25 @@
 <div class="page-container">
 
   <!-- Header -->
-  <div class="flex align-items-center gap-3 mb-4">
-    <a pButton routerLink="/dashboard/patients" icon="pi pi-arrow-left" class="p-button-text p-button-sm"></a>
+  <div class="detail-header">
+    <a pButton routerLink="/dashboard/patients" icon="pi pi-arrow-left"
+       class="p-button-text p-button-sm back-btn"></a>
+
     @if (loading()) {
-      <p-skeleton width="200px" height="28px" />
+      <p-skeleton width="220px" height="28px" />
     } @else {
       @if (patient(); as p) {
-        <div class="flex-1">
-          <h2 class="card-title mb-0">{{ fullName }}</h2>
-          <span style="color:var(--text-color-secondary);font-size:.85rem">
-            MRN: {{ p.medicalRecordNumber }} &nbsp;·&nbsp;
-            {{ p.gender }} &nbsp;·&nbsp; {{ age(p.dateOfBirth) }} yrs &nbsp;·&nbsp;
-            Blood: {{ p.bloodType ?? '—' }}
-          </span>
+        <div class="detail-header-info">
+          <div class="detail-avatar">{{ p.firstName.charAt(0) }}</div>
+          <div>
+            <h2 class="card-title mb-0">{{ fullName }}</h2>
+            <div class="detail-meta">
+              <span class="mrn-chip">{{ p.medicalRecordNumber }}</span>
+              <span class="meta-sep">{{ p.gender }}</span>
+              <span class="meta-sep">{{ age(p.dateOfBirth) }} yrs</span>
+              @if (p.bloodType) { <span class="blood-chip">{{ p.bloodType }}</span> }
+            </div>
+          </div>
         </div>
         <button pButton label="Start Visit" icon="pi pi-plus-circle" class="p-button-sm"
                 (click)="showStartVisit.set(true)"></button>
@@ -27,30 +33,29 @@
     <p-skeleton height="400px" />
   } @else {
 
-  <!-- Demographics summary card -->
+  <!-- Demographics summary -->
   @if (patient(); as p) {
-  <div class="grid mb-4">
-    <div class="col-12 md:col-4">
-      <p-card header="Contact">
-        <div class="flex flex-column gap-1 text-sm">
-          <span><i class="pi pi-phone mr-2"></i>{{ p.phone ?? '—' }}</span>
-          <span><i class="pi pi-envelope mr-2"></i>{{ p.email ?? '—' }}</span>
-          <span><i class="pi pi-map-marker mr-2"></i>{{ p.city ?? '—' }}, {{ p.country ?? '—' }}</span>
-        </div>
-      </p-card>
+  <div class="demo-grid mb-4">
+    <div class="demo-card">
+      <div class="demo-card-label"><i class="pi pi-phone"></i> Contact</div>
+      <div class="demo-card-rows">
+        <span>{{ p.phone ?? '—' }}</span>
+        <span>{{ p.email ?? '—' }}</span>
+        <span>{{ p.city ?? '—' }}{{ p.country ? ', ' + p.country : '' }}</span>
+      </div>
     </div>
-    <div class="col-12 md:col-4">
-      <p-card header="Emergency Contact">
-        <div class="flex flex-column gap-1 text-sm">
-          <span>{{ p.emergencyContactName ?? '—' }}</span>
-          <span>{{ p.emergencyContactPhone ?? '—' }}</span>
-        </div>
-      </p-card>
+    <div class="demo-card">
+      <div class="demo-card-label"><i class="pi pi-heart"></i> Emergency Contact</div>
+      <div class="demo-card-rows">
+        <span>{{ p.emergencyContactName ?? '—' }}</span>
+        <span>{{ p.emergencyContactPhone ?? '—' }}</span>
+      </div>
     </div>
-    <div class="col-12 md:col-4">
-      <p-card header="Known Allergies">
-        <p class="text-sm m-0">{{ p.allergies || 'None documented' }}</p>
-      </p-card>
+    <div class="demo-card">
+      <div class="demo-card-label"><i class="pi pi-exclamation-triangle"></i> Known Allergies</div>
+      <div class="demo-card-rows">
+        <span [class.text-slate-400]="!p.allergies">{{ p.allergies || 'None documented' }}</span>
+      </div>
     </div>
   </div>
   }
