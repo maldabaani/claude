@@ -259,12 +259,18 @@ export class QueueBoardComponent implements OnInit {
 
   updateStatus(visitId: string, status: string) {
     this.http.patch(`/api/v1/visits/${visitId}/status`, null, { params: { status } })
-      .pipe(catchError(() => of(null)))
+      .pipe(catchError(() => {
+        this.msg.add({ severity: 'error', summary: 'Failed to update status' });
+        return of(null);
+      }))
       .subscribe(res => {
-        if (res !== null || status === 'COMPLETED') {
+        if (res === null) return;
+        if (status === 'COMPLETED') {
           this.queue.update(q => q.filter(i => i.id !== visitId));
-          this.msg.add({ severity: 'success', summary: `Visit marked ${status.toLowerCase().replace('_', ' ')}` });
+        } else {
+          this.queue.update(q => q.map(i => i.id === visitId ? { ...i, status: status as QueueItem['status'] } : i));
         }
+        this.msg.add({ severity: 'success', summary: `Visit moved to ${status.toLowerCase().replace('_', ' ')}` });
       });
   }
 
