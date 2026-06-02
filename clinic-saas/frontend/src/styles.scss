@@ -1,0 +1,318 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar-width: 260px;
+  --topbar-height: 64px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+  --transition-fast: all 0.15s cubic-bezier(0.4,0,0.2,1);
+  --transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  color: var(--text-color);
+  background: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+}
+
+// ─── Scrollbar ────────────────────────────────────────────────────────────────
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+
+// ─── Page layout ──────────────────────────────────────────────────────────────
+.page-container { padding: 2rem; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  gap: 1rem;
+
+  .page-header-left {
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #0f172a;
+      margin: 0;
+    }
+    p { color: var(--text-color-secondary); margin: 0.2rem 0 0; font-size: 0.875rem; }
+  }
+}
+
+.card-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+// ─── Cards ────────────────────────────────────────────────────────────────────
+.p-card {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border: 1px solid #f1f5f9 !important;
+  transition: var(--transition) !important;
+  overflow: hidden;
+
+  &:hover { box-shadow: var(--shadow-md) !important; }
+  .p-card-body { padding: 1.5rem !important; }
+  .p-card-content { padding: 0 !important; }
+}
+
+// ─── Buttons ──────────────────────────────────────────────────────────────────
+.p-button {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.01em;
+  transition: var(--transition-fast) !important;
+
+  &:not(.p-button-text):not(.p-button-outlined):not(.p-button-link) {
+    box-shadow: 0 1px 3px rgba(59,130,246,0.25) !important;
+  }
+  &.p-button-sm { font-size: 0.8125rem !important; padding: 0.4rem 0.875rem !important; }
+}
+
+// ─── Inputs ───────────────────────────────────────────────────────────────────
+.p-inputtext {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #fff !important;
+  transition: var(--transition-fast) !important;
+  font-size: 0.875rem !important;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+    border-color: #3b82f6 !important;
+    outline: none !important;
+  }
+  &::placeholder { color: #94a3b8 !important; }
+}
+
+.p-dropdown, .p-calendar {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid #e2e8f0 !important;
+  .p-dropdown-label { font-size: 0.875rem !important; }
+
+  &:not(.p-disabled).p-focus {
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+    border-color: #3b82f6 !important;
+  }
+}
+
+// ─── Tables ───────────────────────────────────────────────────────────────────
+.p-datatable {
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+  border: 1px solid #f1f5f9 !important;
+  box-shadow: var(--shadow-sm) !important;
+
+  .p-datatable-thead > tr > th {
+    background: #f8fafc !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-top: none !important;
+    padding: 0.875rem 1.25rem !important;
+  }
+
+  .p-datatable-tbody > tr {
+    transition: var(--transition-fast);
+    border-bottom: 1px solid #f8fafc !important;
+
+    > td {
+      padding: 0.875rem 1.25rem !important;
+      border: none !important;
+      font-size: 0.875rem;
+      color: #334155;
+    }
+
+    &:hover > td { background: #f8fafc !important; }
+    &:last-child { border-bottom: none !important; }
+  }
+
+  .p-paginator {
+    background: #f8fafc !important;
+    border-top: 1px solid #f1f5f9 !important;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+    padding: 0.75rem 1rem !important;
+  }
+}
+
+// ─── Tags / Badges ────────────────────────────────────────────────────────────
+.p-tag {
+  border-radius: 20px !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  padding: 0.25rem 0.625rem !important;
+  letter-spacing: 0.04em !important;
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+.p-tabview {
+  .p-tabview-nav {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    gap: 0.25rem;
+
+    li {
+      margin-bottom: -1px;
+
+      .p-tabview-nav-link {
+        border: none !important;
+        background: transparent !important;
+        color: #64748b !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        padding: 0.75rem 1.125rem !important;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+        transition: var(--transition-fast) !important;
+        gap: 0.5rem;
+
+        &:hover {
+          background: #f8fafc !important;
+          color: #334155 !important;
+        }
+      }
+
+      &.p-highlight .p-tabview-nav-link {
+        color: #3b82f6 !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid #3b82f6 !important;
+        background: transparent !important;
+      }
+    }
+  }
+
+  .p-tabview-panels {
+    background: transparent !important;
+    padding: 1.5rem 0 0 !important;
+  }
+}
+
+// ─── Dialogs ──────────────────────────────────────────────────────────────────
+.p-dialog {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.18) !important;
+  border: 1px solid #f1f5f9 !important;
+  overflow: hidden;
+
+  .p-dialog-header {
+    padding: 1.5rem 1.75rem 1.25rem !important;
+    background: #fff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+
+    .p-dialog-title { font-size: 1rem; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+    .p-dialog-header-icons .p-dialog-header-icon { border-radius: var(--radius-sm) !important; }
+  }
+
+  .p-dialog-content {
+    padding: 1.5rem 1.75rem !important;
+    background: #fff !important;
+  }
+
+  .p-dialog-footer {
+    padding: 1rem 1.75rem 1.25rem !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #f1f5f9 !important;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}
+
+.p-dialog-mask { backdrop-filter: blur(4px); background: rgba(15,23,42,0.35) !important; }
+
+// ─── Form fields ──────────────────────────────────────────────────────────────
+.field {
+  margin-bottom: 1.25rem;
+
+  > label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.01em;
+  }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+.p-toast {
+  .p-toast-message {
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+    backdrop-filter: blur(8px);
+  }
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+.p-skeleton { border-radius: var(--radius-sm) !important; }
+
+// ─── Utility classes ──────────────────────────────────────────────────────────
+.surface-section { background: #fff; border-radius: var(--radius-lg); border: 1px solid #f1f5f9; }
+
+.text-xs   { font-size: 0.75rem !important; }
+.text-sm   { font-size: 0.875rem !important; }
+.text-base { font-size: 1rem !important; }
+
+.font-medium { font-weight: 500 !important; }
+.font-semibold { font-weight: 600 !important; }
+.font-bold { font-weight: 700 !important; }
+
+.text-slate-400 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-slate-600 { color: #475569 !important; }
+.text-slate-700 { color: #334155 !important; }
+.text-slate-900 { color: #0f172a !important; }
+
+// ─── Stat value helper ────────────────────────────────────────────────────────
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #0f172a;
+}
+.stat-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 0.375rem;
+}
+
+// ─── Action bar ───────────────────────────────────────────────────────────────
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.875rem 1.25rem;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid #f1f5f9;
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 1.5rem;
+}

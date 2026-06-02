@@ -1,0 +1,83 @@
+<div class="page-container">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Patients</h2>
+      <p>Manage and view all registered patients</p>
+    </div>
+    <a pButton routerLink="create" label="New Patient" icon="pi pi-plus"
+       class="p-button-sm"></a>
+  </div>
+
+  <!-- Search bar -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <i class="pi pi-search search-icon"></i>
+      <input pInputText [(ngModel)]="query" placeholder="Search by name, MRN, phone..."
+             (keyup.enter)="onSearch()" class="search-input" />
+    </div>
+    <button pButton label="Search" icon="pi pi-search" class="p-button-sm"
+            (click)="onSearch()"></button>
+  </div>
+
+  <!-- Table -->
+  <p-table
+    [value]="patients()"
+    [lazy]="true"
+    [totalRecords]="total()"
+    [loading]="loading()"
+    [paginator]="true"
+    [rows]="20"
+    (onLazyLoad)="onPage($any($event))"
+    styleClass="p-datatable-sm">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th>MRN</th>
+        <th>Patient</th>
+        <th>Date of Birth</th>
+        <th>Gender</th>
+        <th>Phone</th>
+        <th style="width:80px"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-p>
+      <tr>
+        <td>
+          <span class="mrn-badge">{{ p.mrn }}</span>
+        </td>
+        <td>
+          <div class="patient-cell">
+            <div class="patient-avatar">{{ (p.firstName || '?').charAt(0) }}</div>
+            <span class="patient-name">{{ p.firstName }} {{ p.lastName }}</span>
+          </div>
+        </td>
+        <td class="text-slate-500">{{ p.dateOfBirth | date:'mediumDate' }}</td>
+        <td>
+          <span class="gender-badge gender-{{ (p.gender || '').toLowerCase() }}">{{ p.gender }}</span>
+        </td>
+        <td class="text-slate-500">{{ p.phone ?? '—' }}</td>
+        <td>
+          <a pButton icon="pi pi-arrow-right" [routerLink]="[p.id]"
+             class="p-button-text p-button-sm p-button-rounded" title="Open Chart"></a>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6">
+          <div class="empty-state">
+            <i class="pi pi-users empty-icon"></i>
+            <p>No patients found</p>
+            <span>Try a different search term or register a new patient</span>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+  </p-table>
+
+</div>

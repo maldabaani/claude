@@ -1,0 +1,58 @@
+<p-toast />
+<div class="page-container">
+  <div class="flex align-items-center gap-3 mb-4">
+    <a pButton routerLink=".." icon="pi pi-arrow-left" class="p-button-text p-button-sm"></a>
+    <h2 class="card-title mb-0">Onboard New Clinic</h2>
+  </div>
+
+  <p-card styleClass="max-w-lg">
+    <form [formGroup]="form" (ngSubmit)="submit()">
+
+      @if (errorMsg()) {
+        <p-message severity="error" [text]="errorMsg()" styleClass="w-full mb-3" />
+      }
+
+      <div class="field">
+        <label>Clinic Name *</label>
+        <input pInputText formControlName="name" placeholder="e.g. Green Valley Medical Center" class="w-full" />
+        @if (form.get('name')?.invalid && form.get('name')?.touched) {
+          <small class="error">Clinic name is required (min 2 chars)</small>
+        }
+      </div>
+
+      <div class="field">
+        <label>Database Identifier *
+          <small class="ml-2" style="color:var(--text-color-secondary)">(auto-generated, lowercase a-z 0-9 _)</small>
+        </label>
+        <input pInputText formControlName="dbName" placeholder="e.g. green_valley" class="w-full" />
+        @if (form.get('dbName')?.invalid && form.get('dbName')?.touched) {
+          <small class="error">3-50 lowercase letters, digits, or underscores</small>
+        }
+      </div>
+
+      <div class="field">
+        <label>Clinic Admin Email *</label>
+        <input pInputText formControlName="adminEmail" type="email"
+               placeholder="admin@greenvalley.com" class="w-full" />
+        @if (form.get('adminEmail')?.invalid && form.get('adminEmail')?.touched) {
+          <small class="error">Valid email required</small>
+        }
+      </div>
+
+      <div class="field">
+        <label>Admin Initial Password *</label>
+        <p-password formControlName="adminPassword" [feedback]="true"
+                    [toggleMask]="true" styleClass="w-full" inputStyleClass="w-full" />
+        @if (form.get('adminPassword')?.invalid && form.get('adminPassword')?.touched) {
+          <small class="error">Minimum 8 characters</small>
+        }
+      </div>
+
+      <div class="flex gap-2 mt-4">
+        <p-button type="submit" label="Create Clinic" icon="pi pi-building"
+                  [loading]="loading()" [disabled]="form.invalid" />
+        <a pButton routerLink=".." label="Cancel" class="p-button-outlined"></a>
+      </div>
+    </form>
+  </p-card>
+</div>

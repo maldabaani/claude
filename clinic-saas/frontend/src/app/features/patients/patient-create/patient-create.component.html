@@ -1,0 +1,61 @@
+<div class="page-container">
+  <div class="flex align-items-center gap-3 mb-4">
+    <a pButton routerLink=".." icon="pi pi-arrow-left" class="p-button-text p-button-sm"></a>
+    <h2 class="card-title mb-0">Register New Patient</h2>
+  </div>
+
+  <p-card>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="grid">
+        <div class="col-12 md:col-6 field">
+          <label>First Name *</label>
+          <input pInputText formControlName="firstName" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Last Name *</label>
+          <input pInputText formControlName="lastName" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Date of Birth *</label>
+          <p-calendar formControlName="dateOfBirth" dateFormat="yy-mm-dd"
+                      [showIcon]="true" styleClass="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Gender *</label>
+          <p-dropdown formControlName="gender" [options]="genderOptions"
+                      placeholder="Select gender" styleClass="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Phone</label>
+          <input pInputText formControlName="phone" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Email</label>
+          <input pInputText formControlName="email" type="email" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>City</label>
+          <input pInputText formControlName="city" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Country</label>
+          <input pInputText formControlName="country" class="w-full" />
+        </div>
+        <div class="col-12 md:col-6 field">
+          <label>Blood Type</label>
+          <p-dropdown formControlName="bloodType" [options]="bloodTypeOptions"
+                      placeholder="Select" styleClass="w-full" />
+        </div>
+        <div class="col-12 field">
+          <label>Allergies</label>
+          <input pInputText formControlName="allergies" class="w-full" placeholder="e.g. Penicillin" />
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <p-button type="submit" label="Register Patient" icon="pi pi-check" [loading]="loading" />
+        <a pButton routerLink=".." label="Cancel" class="p-button-outlined"></a>
+      </div>
+    </form>
+  </p-card>
+</div>

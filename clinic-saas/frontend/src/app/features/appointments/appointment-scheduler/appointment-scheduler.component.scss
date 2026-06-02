@@ -1,0 +1,84 @@
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  min-height: 480px;
+}
+
+.day-column {
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  overflow: hidden;
+
+  &.today {
+    border-color: var(--primary-color);
+  }
+}
+
+.day-header {
+  padding: 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  background: var(--surface-100);
+  border-bottom: 1px solid var(--surface-border);
+
+  &.today-header {
+    background: var(--primary-color);
+    color: #fff;
+  }
+}
+
+.day-body {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 420px;
+}
+
+.appt-block {
+  border-left: 3px solid #3b82f6;
+  background: var(--surface-50);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--surface-100);
+  }
+}
+
+.appt-time {
+  font-size: 0.72rem;
+  color: var(--text-color-secondary);
+  font-weight: 600;
+}
+
+.appt-type {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-appts {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+  padding-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .week-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .week-grid {
+    grid-template-columns: 1fr;
+  }
+}
