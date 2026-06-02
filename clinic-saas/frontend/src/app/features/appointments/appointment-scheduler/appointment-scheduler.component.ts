@@ -211,6 +211,10 @@ export class AppointmentSchedulerComponent implements OnInit {
     return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
+  doctorName(doctorId: string): string {
+    return this.doctors().find(d => d.value === doctorId)?.label ?? '—';
+  }
+
   statusSeverity(status: string): 'success' | 'info' | 'warning' | 'danger' | undefined {
     const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
       SCHEDULED: 'info', CONFIRMED: 'success', IN_PROGRESS: 'warning',

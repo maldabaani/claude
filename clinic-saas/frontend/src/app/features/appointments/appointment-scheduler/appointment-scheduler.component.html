@@ -51,6 +51,10 @@
         <span class="text-color-secondary">Status</span>
         <p-tag [value]="appt.status" [severity]="statusSeverity(appt.status)" />
       </div>
+      <div class="flex justify-content-between align-items-center">
+        <span class="text-color-secondary">Doctor</span>
+        <strong>{{ doctorName(appt.doctorId) }}</strong>
+      </div>
       <div class="flex justify-content-between">
         <span class="text-color-secondary">Type</span>
         <strong>{{ appt.appointmentType ?? '—' }}</strong>
