@@ -39,23 +39,23 @@ public class PatientService {
                 .bloodType(req.bloodType())
                 .allergies(req.allergies())
                 .build();
-        return PatientResponse.from(patientRepository.save(patient));
+        return toResponse(patientRepository.save(patient));
     }
 
     @AuditAccess(action = "PATIENT_SEARCH", resourceType = "PATIENT")
     @Transactional(value = "tenantTransactionManager", readOnly = true)
     public Page<PatientResponse> search(String query, Pageable pageable) {
         if (query == null || query.isBlank()) {
-            return patientRepository.findAll(pageable).map(PatientResponse::from);
+            return patientRepository.findAll(pageable).map(this::toResponse);
         }
-        return patientRepository.search(query, pageable).map(PatientResponse::from);
+        return patientRepository.search(query, pageable).map(this::toResponse);
     }
 
     @AuditAccess(action = "PATIENT_VIEW", resourceType = "PATIENT")
     @Transactional(value = "tenantTransactionManager", readOnly = true)
     public PatientResponse getById(UUID id) {
         return patientRepository.findById(id)
-                .map(PatientResponse::from)
+                .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
     }
 
@@ -66,6 +66,18 @@ public class PatientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
         patient.setActive(false);
         patientRepository.save(patient);
+    }
+
+    private PatientResponse toResponse(Patient p) {
+        org.springframework.security.core.Authentication auth =
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.clinicsaas.security.AppUserPrincipal principal) {
+            String role = principal.getRole();
+            if ("ADMIN".equals(role) || "DOCTOR".equals(role)) {
+                return PatientResponse.from(p);
+            }
+        }
+        return PatientResponse.masked(p);
     }
 
     private String generateMrn() {

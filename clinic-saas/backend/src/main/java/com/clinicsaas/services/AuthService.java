@@ -44,8 +44,25 @@ public class AuthService {
         try {
             User user = userRepository.findByEmail(req.email())
                     .orElseThrow(() -> new BadRequestException("Invalid credentials"));
+            // lockout check
+            if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(java.time.LocalDateTime.now())) {
+                throw new BadRequestException("Account is locked. Try again later.");
+            }
             if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
+                int attempts = user.getFailedLoginAttempts() + 1;
+                user.setFailedLoginAttempts(attempts);
+                if (attempts >= 5) {
+                    user.setLockedUntil(java.time.LocalDateTime.now().plusMinutes(15));
+                    user.setFailedLoginAttempts(0);
+                }
+                userRepository.save(user);
                 throw new BadRequestException("Invalid credentials");
+            }
+            // reset on success
+            if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
+                user.setFailedLoginAttempts(0);
+                user.setLockedUntil(null);
+                userRepository.save(user);
             }
             if (!user.isActive()) {
                 throw new BadRequestException("Account is disabled");
