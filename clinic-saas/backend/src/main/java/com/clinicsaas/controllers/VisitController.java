@@ -24,7 +24,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/visits")
-@PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE','RECEPTIONIST')")
 @RequiredArgsConstructor
 @Tag(name = "Visits")
 @SecurityRequirement(name = "bearerAuth")
@@ -33,6 +32,7 @@ public class VisitController {
     private final VisitService visitService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('VISIT_WRITE')")
     public ResponseEntity<VisitResponse> create(
             @Valid @RequestBody CreateVisitRequest req,
             @AuthenticationPrincipal AppUserPrincipal principal) {
@@ -40,11 +40,13 @@ public class VisitController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('VISIT_READ')")
     public ResponseEntity<VisitResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(visitService.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('VISIT_READ')")
     public ResponseEntity<Page<VisitResponse>> listByPatient(
             @RequestParam UUID patientId,
             @RequestParam(defaultValue = "0") int page,
@@ -53,6 +55,7 @@ public class VisitController {
     }
 
     @PostMapping("/{id}/vitals")
+    @PreAuthorize("hasAuthority('VISIT_WRITE')")
     public ResponseEntity<Void> recordVitals(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateVitalSignsRequest req,
@@ -62,6 +65,7 @@ public class VisitController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('VISIT_WRITE')")
     public ResponseEntity<VisitResponse> updateStatus(
             @PathVariable UUID id,
             @RequestParam VisitStatus status) {
@@ -69,16 +73,19 @@ public class VisitController {
     }
 
     @PutMapping("/{id}/checkout")
+    @PreAuthorize("hasAuthority('VISIT_WRITE')")
     public ResponseEntity<VisitResponse> checkout(@PathVariable UUID id) {
         return ResponseEntity.ok(visitService.checkout(id));
     }
 
     @GetMapping("/queue")
+    @PreAuthorize("hasAuthority('VISIT_READ')")
     public ResponseEntity<List<QueueItemResponse>> queue() {
         return ResponseEntity.ok(visitService.getQueue());
     }
 
     @GetMapping("/vitals")
+    @PreAuthorize("hasAuthority('VISIT_READ')")
     public ResponseEntity<List<VitalSignsResponse>> vitalsByPatient(@RequestParam UUID patientId) {
         return ResponseEntity.ok(visitService.getVitalsByPatient(patientId));
     }

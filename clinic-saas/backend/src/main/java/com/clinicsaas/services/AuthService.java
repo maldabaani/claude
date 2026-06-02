@@ -33,7 +33,7 @@ public class AuthService {
             throw new BadRequestException("Invalid credentials");
         }
         String token = jwtTokenProvider.generatePlatformToken(user.getId(), user.getEmail());
-        return AuthResponse.of(token, expirationMs, user.getRole().name(), null);
+        return AuthResponse.ofPlatformAdmin(token, expirationMs, user.getRole().name());
     }
 
     public AuthResponse loginTenant(LoginRequest req) {
