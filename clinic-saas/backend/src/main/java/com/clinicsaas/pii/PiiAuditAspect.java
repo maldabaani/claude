@@ -1,7 +1,6 @@
 package com.clinicsaas.pii;
 
 import com.clinicsaas.security.AppUserPrincipal;
-import com.clinicsaas.tenancy.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
