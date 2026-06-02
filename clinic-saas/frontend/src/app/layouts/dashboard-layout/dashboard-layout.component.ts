@@ -1,9 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { SidebarModule } from 'primeng/sidebar';
 import { ButtonModule } from 'primeng/button';
-import { MenuModule } from 'primeng/menu';
-import { AvatarModule } from 'primeng/avatar';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
@@ -11,15 +8,34 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [
-    CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    SidebarModule, ButtonModule, MenuModule, AvatarModule
-  ],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ButtonModule],
   templateUrl: './dashboard-layout.component.html',
   styleUrl: './dashboard-layout.component.scss'
 })
 export class DashboardLayoutComponent {
-  sidebarVisible = signal(false);
+
+  readonly today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  get clinicName(): string {
+    const user = this.auth.getCurrentUser();
+    return user?.userType === 'PLATFORM' ? 'Platform Admin' : 'My Clinic';
+  }
+
+  get userEmail(): string {
+    return this.auth.getCurrentUser()?.email ?? '';
+  }
+
+  get userRole(): string {
+    const role = this.auth.getCurrentUser()?.role ?? '';
+    return role.replace(/_/g, ' ').toLowerCase();
+  }
+
+  get userInitial(): string {
+    const email = this.userEmail;
+    return email ? email[0].toUpperCase() : 'U';
+  }
 
   get navItems(): MenuItem[] {
     const user = this.auth.getCurrentUser();
@@ -27,11 +43,14 @@ export class DashboardLayoutComponent {
       { label: 'Dashboard',    icon: 'pi pi-home',     routerLink: '/dashboard/home' }
     ];
     if (user?.userType === 'PLATFORM') {
-      base.push({ label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' });
+      base.push(
+        { label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' }
+      );
     } else {
       base.push(
         { label: 'Patients',     icon: 'pi pi-users',    routerLink: '/dashboard/patients' },
-        { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' }
+        { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' },
+        { label: 'Visits',       icon: 'pi pi-heart',    routerLink: '/dashboard/visits' }
       );
       if (user?.role === 'ADMIN') {
         base.push({ label: 'Staff', icon: 'pi pi-id-card', routerLink: '/dashboard/staff' });
