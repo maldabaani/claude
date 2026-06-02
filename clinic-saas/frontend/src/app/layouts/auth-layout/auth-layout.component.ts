@@ -7,49 +7,89 @@ import { RouterOutlet } from '@angular/router';
   imports: [RouterOutlet],
   template: `
     <div class="auth-shell">
+
+      <!-- Left panel -->
       <div class="auth-left">
-        <div class="auth-brand">
-          <div class="brand-icon"><i class="pi pi-heart-fill"></i></div>
-          <h1>Clinic SaaS</h1>
-          <p>Modern clinic management for healthcare professionals</p>
-        </div>
-        <div class="auth-features">
-          <div class="feature-item">
-            <div class="feature-icon"><i class="pi pi-users"></i></div>
-            <div>
-              <strong>Patient Management</strong>
-              <span>Complete patient records & history</span>
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+
+        <div class="left-content">
+          <div class="brand">
+            <div class="brand-icon"><i class="pi pi-heart-fill"></i></div>
+            <div class="brand-text">
+              <span class="brand-name">Clinic SaaS</span>
+              <span class="brand-tag">Healthcare Platform</span>
             </div>
           </div>
-          <div class="feature-item">
-            <div class="feature-icon"><i class="pi pi-calendar"></i></div>
-            <div>
-              <strong>Smart Scheduling</strong>
-              <span>Appointments & visit tracking</span>
+
+          <div class="hero-copy">
+            <h1>Modern clinic<br/>management,<br/><span class="accent">simplified.</span></h1>
+            <p>Everything your clinic needs — patients, scheduling, billing, and analytics — in one secure platform.</p>
+          </div>
+
+          <div class="feature-list">
+            <div class="feat">
+              <div class="feat-dot"></div>
+              <span>Complete patient records &amp; visit history</span>
+            </div>
+            <div class="feat">
+              <div class="feat-dot"></div>
+              <span>Smart appointment scheduling</span>
+            </div>
+            <div class="feat">
+              <div class="feat-dot"></div>
+              <span>Lab, radiology &amp; prescription management</span>
+            </div>
+            <div class="feat">
+              <div class="feat-dot"></div>
+              <span>Invoicing, payments &amp; insurance claims</span>
             </div>
           </div>
-          <div class="feature-item">
-            <div class="feature-icon"><i class="pi pi-chart-line"></i></div>
-            <div>
-              <strong>Billing & Analytics</strong>
-              <span>Invoicing, payments & reports</span>
+
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-val">500+</span>
+              <span class="stat-lbl">Clinics</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-val">99.9%</span>
+              <span class="stat-lbl">Uptime</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-val">HIPAA</span>
+              <span class="stat-lbl">Compliant</span>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Right panel: centered form -->
       <div class="auth-right">
-        <div class="auth-card">
-          <div class="auth-card-header">
+        <div class="form-wrapper">
+
+          <div class="form-logo">
+            <div class="logo-icon"><i class="pi pi-heart-fill"></i></div>
+          </div>
+
+          <div class="form-header">
             <h2>Welcome back</h2>
             <p>Sign in to your clinic account</p>
           </div>
+
           <router-outlet />
+
+          <div class="form-footer">
+            <span>Protected by 256-bit encryption</span>
+            <i class="pi pi-lock"></i>
+          </div>
         </div>
       </div>
+
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; }
 
     .auth-shell {
       min-height: 100vh;
@@ -57,135 +97,247 @@ import { RouterOutlet } from '@angular/router';
       font-family: 'Inter', sans-serif;
     }
 
+    /* ── LEFT PANEL ────────────────────────────────────────────── */
     .auth-left {
-      flex: 1;
-      background: linear-gradient(145deg, #0f172a 0%, #1e3a5f 50%, #1a2c4e 100%);
+      flex: 1.1;
+      background: linear-gradient(155deg, #080f1f 0%, #0d1f3c 40%, #112240 70%, #0a1628 100%);
       display: flex;
-      flex-direction: column;
+      align-items: center;
       justify-content: center;
       padding: 3rem;
       position: relative;
       overflow: hidden;
+    }
+
+    .glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.55;
+    }
+    .glow-1 {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(59,130,246,0.35) 0%, transparent 70%);
+      top: -10%; right: -5%;
+    }
+    .glow-2 {
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(99,102,241,0.28) 0%, transparent 70%);
+      bottom: 5%; left: -8%;
+    }
+    .glow-3 {
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .left-content {
+      position: relative;
+      z-index: 1;
+      max-width: 460px;
+      width: 100%;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      margin-bottom: 3rem;
+
+      .brand-icon {
+        width: 44px; height: 44px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+        i { font-size: 1.2rem; color: #fff; }
+      }
+
+      .brand-text {
+        display: flex; flex-direction: column;
+        .brand-name { font-size: 1.125rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; line-height: 1.2; }
+        .brand-tag  { font-size: 0.7rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+      }
+    }
+
+    .hero-copy {
+      margin-bottom: 2.5rem;
+
+      h1 {
+        font-size: clamp(1.875rem, 3.5vw, 2.625rem);
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        margin: 0 0 1rem;
+
+        .accent {
+          background: linear-gradient(90deg, #60a5fa, #818cf8);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      }
+
+      p {
+        font-size: 0.9375rem;
+        color: rgba(255,255,255,0.45);
+        line-height: 1.65;
+        max-width: 380px;
+      }
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 2.75rem;
+
+      .feat {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        .feat-dot {
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #60a5fa, #818cf8);
+          flex-shrink: 0;
+        }
+
+        span {
+          font-size: 0.875rem;
+          color: rgba(255,255,255,0.58);
+          font-weight: 400;
+        }
+      }
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 0.875rem;
+
+      .stat-card {
+        flex: 1;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 14px;
+        padding: 1rem 0.875rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        backdrop-filter: blur(12px);
+        gap: 0.25rem;
+
+        .stat-val {
+          font-size: 1.125rem;
+          font-weight: 800;
+          color: #fff;
+          letter-spacing: -0.02em;
+        }
+        .stat-lbl {
+          font-size: 0.7rem;
+          color: rgba(255,255,255,0.38);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+      }
+    }
+
+    /* ── RIGHT PANEL ───────────────────────────────────────────── */
+    .auth-right {
+      width: 500px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
 
       &::before {
         content: '';
         position: absolute;
-        top: -30%;
-        right: -20%;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
-        pointer-events: none;
-      }
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -20%;
-        left: -10%;
-        width: 400px;
-        height: 400px;
-        background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
-        pointer-events: none;
+        inset: 0;
+        background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
       }
     }
 
-    .auth-brand {
-      margin-bottom: 3rem;
+    .form-wrapper {
       position: relative;
       z-index: 1;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-      .brand-icon {
-        width: 52px;
-        height: 52px;
+    .form-logo {
+      margin-bottom: 1.75rem;
+
+      .logo-icon {
+        width: 56px; height: 56px;
         background: linear-gradient(135deg, #3b82f6, #6366f1);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 24px rgba(99,102,241,0.4);
-        margin-bottom: 1.25rem;
-        i { font-size: 1.4rem; color: #fff; }
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 24px rgba(99,102,241,0.3);
+        i { font-size: 1.5rem; color: #fff; }
       }
+    }
 
-      h1 {
-        font-size: 2rem;
+    .form-header {
+      text-align: center;
+      margin-bottom: 2.25rem;
+      width: 100%;
+
+      h2 {
+        font-size: 1.75rem;
         font-weight: 800;
-        color: #fff;
+        color: #0f172a;
         letter-spacing: -0.04em;
-        margin-bottom: 0.5rem;
+        margin: 0 0 0.375rem;
       }
 
       p {
-        font-size: 1rem;
-        color: rgba(255,255,255,0.5);
+        font-size: 0.9rem;
+        color: #64748b;
+        margin: 0;
         font-weight: 400;
-        line-height: 1.5;
       }
     }
 
-    .auth-features {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-
-      .feature-icon {
-        width: 42px;
-        height: 42px;
-        background: rgba(255,255,255,0.08);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.1);
-        i { font-size: 1rem; color: #93c5fd; }
-      }
-
-      > div {
-        display: flex;
-        flex-direction: column;
-        strong { font-size: 0.875rem; font-weight: 600; color: rgba(255,255,255,0.9); }
-        span { font-size: 0.8rem; color: rgba(255,255,255,0.45); margin-top: 1px; }
-      }
-    }
-
-    .auth-right {
-      width: 480px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f8fafc;
-      padding: 2rem;
-    }
-
-    .auth-card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 2.5rem;
+    /* inject full width into router-outlet child */
+    :host ::ng-deep .login-form {
       width: 100%;
-      max-width: 400px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.05);
-      border: 1px solid #f1f5f9;
     }
 
-    .auth-card-header {
-      margin-bottom: 2rem;
-      h2 { font-size: 1.5rem; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; margin: 0; }
-      p { font-size: 0.875rem; color: #64748b; margin: 0.375rem 0 0; }
+    .form-footer {
+      margin-top: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      color: #94a3b8;
+      font-size: 0.75rem;
+
+      i { font-size: 0.75rem; }
     }
 
-    @media (max-width: 768px) {
+    /* ── RESPONSIVE ────────────────────────────────────────────── */
+    @media (max-width: 900px) {
       .auth-left { display: none; }
-      .auth-right { width: 100%; background: #fff; }
+      .auth-right { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      .auth-right { padding: 1.5rem; background: #f8fafc; }
+      .form-wrapper {
+        background: #fff;
+        border-radius: 24px;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      }
     }
   `]
 })
