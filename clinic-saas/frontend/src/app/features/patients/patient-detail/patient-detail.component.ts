@@ -27,10 +27,10 @@ import { ClinicalService } from '../../../core/services/clinical.service';
 
 interface PatientDetail {
   id: string; medicalRecordNumber: string; firstName: string; lastName: string;
-  dateOfBirth: string; gender: string; bloodType: string; phone: string;
-  email: string; addressLine1: string; city: string; country: string;
-  emergencyContactName: string; emergencyContactPhone: string;
-  allergies: string; active: boolean; createdAt: string;
+  dateOfBirth: string; gender: string; bloodType?: string | null; phone?: string | null;
+  email?: string | null; addressLine1?: string | null; city?: string | null; country?: string | null;
+  emergencyContactName?: string | null; emergencyContactPhone?: string | null;
+  allergies?: string | null; active: boolean; createdAt: string;
 }
 
 @Component({

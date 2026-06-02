@@ -15,17 +15,15 @@ import { CommonModule } from '@angular/common';
 export class DashboardLayoutComponent {
 
   readonly today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
   });
 
   get clinicName(): string {
     const user = this.auth.getCurrentUser();
-    return user?.userType === 'PLATFORM' ? 'Platform Admin' : 'My Clinic';
+    return user?.userType === 'PLATFORM' ? 'Platform Admin' : 'Medical Clinic Management';
   }
 
-  get userEmail(): string {
-    return this.auth.getCurrentUser()?.email ?? '';
-  }
+  get userEmail(): string { return this.auth.getCurrentUser()?.email ?? ''; }
 
   get userRole(): string {
     const role = this.auth.getCurrentUser()?.role ?? '';
@@ -33,44 +31,27 @@ export class DashboardLayoutComponent {
   }
 
   get userInitial(): string {
-    const email = this.userEmail;
-    return email ? email[0].toUpperCase() : 'U';
+    return this.userEmail ? this.userEmail[0].toUpperCase() : 'U';
   }
 
   get navItems(): MenuItem[] {
     const user = this.auth.getCurrentUser();
     const base: MenuItem[] = [
-      { label: 'Dashboard',    icon: 'pi pi-home',     routerLink: '/dashboard/home' }
+      { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard/home' }
     ];
     if (user?.userType === 'PLATFORM') {
-      base.push(
-        { label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' }
-      );
+      base.push({ label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' });
     } else {
       base.push(
         { label: 'Patients',     icon: 'pi pi-users',    routerLink: '/dashboard/patients' },
         { label: 'Appointments', icon: 'pi pi-calendar', routerLink: '/dashboard/appointments' },
-        { label: 'Visits',       icon: 'pi pi-heart',    routerLink: '/dashboard/visits' }
+        // { label: 'Visits',       icon: 'pi pi-heart',    routerLink: '/dashboard/visits' }
       );
       if (user?.role === 'ADMIN') {
         base.push({ label: 'Staff', icon: 'pi pi-id-card', routerLink: '/dashboard/staff' });
       }
     }
     return base;
-  }
-
-  readonly today = new Date().toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-  });
-
-  get userInitial(): string {
-    return (this.auth.getCurrentUser()?.email ?? '?').charAt(0).toUpperCase();
-  }
-  get userEmail(): string { return this.auth.getCurrentUser()?.email ?? ''; }
-  get userRole(): string  { return this.auth.getCurrentUser()?.role  ?? ''; }
-  get clinicName(): string {
-    const user = this.auth.getCurrentUser();
-    return user?.userType === 'PLATFORM' ? 'Platform Admin' : 'Medical Clinic Management';
   }
 
   constructor(public auth: AuthService) {}
