@@ -38,6 +38,14 @@ public class PatientController {
         return ResponseEntity.ok(patientService.search(q, pageable));
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Search patients by query string")
+    public ResponseEntity<Page<PatientResponse>> searchByQuery(
+            @RequestParam(required = false) String query,
+            @PageableDefault(size = 20, sort = "lastName") Pageable pageable) {
+        return ResponseEntity.ok(patientService.search(query, pageable));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get patient by ID")
     public ResponseEntity<PatientResponse> getById(@PathVariable UUID id) {
