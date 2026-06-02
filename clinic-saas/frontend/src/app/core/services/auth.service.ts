@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs';
-import { AuthResponse, CurrentUser } from '../models/user.model';
+import { AuthResponse, CurrentUser, Permission } from '../models/user.model';
 
 interface LoginPayload {
   email: string;
@@ -12,9 +12,9 @@ interface LoginPayload {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly TOKEN_KEY  = 'clinic_token';
-  private readonly USER_KEY   = 'clinic_user';
-  private readonly BASE        = '/api/v1/auth';
+  private readonly TOKEN_KEY = 'clinic_token';
+  private readonly USER_KEY  = 'clinic_user';
+  private readonly BASE       = '/api/v1/auth';
 
   currentUser = signal<CurrentUser | null>(this.loadUser());
 
@@ -51,15 +51,25 @@ export class AuthService {
     return this.currentUser();
   }
 
+  hasPermission(permission: Permission): boolean {
+    return this.currentUser()?.permissions?.includes(permission) ?? false;
+  }
+
+  hasAnyPermission(...permissions: Permission[]): boolean {
+    const userPerms = this.currentUser()?.permissions ?? [];
+    return permissions.some(p => userPerms.includes(p));
+  }
+
   private storeSession(res: AuthResponse) {
     localStorage.setItem(this.TOKEN_KEY, res.accessToken);
     const payload = this.decodeJwt(res.accessToken);
     const user: CurrentUser = {
-      id: payload.sub,
-      email: payload.email,
-      role: res.role,
-      tenantId: res.tenantId,
-      userType: payload.type
+      id:          payload.sub,
+      email:       payload.email,
+      role:        res.role,
+      tenantId:    res.tenantId,
+      userType:    payload.type,
+      permissions: res.permissions ?? []
     };
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     this.currentUser.set(user);

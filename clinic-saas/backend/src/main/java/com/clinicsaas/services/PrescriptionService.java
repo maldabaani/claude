@@ -86,6 +86,23 @@ public class PrescriptionService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<PrescriptionResponse> listAll(String status) {
+        List<Prescription> prescriptions = prescriptionRepository.findAllByOrderByCreatedAtDesc();
+        if (status != null && !status.isBlank()) {
+            prescriptions = prescriptions.stream()
+                .filter(p -> p.getStatus() != null && p.getStatus().name().equals(status))
+                .toList();
+        }
+        return prescriptions.stream().map(p -> {
+            List<PrescriptionItemResponse> items = prescriptionItemRepository
+                    .findByPrescription_Id(p.getId()).stream()
+                    .map(PrescriptionItemResponse::from)
+                    .collect(Collectors.toList());
+            return PrescriptionResponse.from(p, items);
+        }).toList();
+    }
+
     private PrescriptionItem buildItem(PrescriptionItemRequest req, Prescription prescription) {
         Medication medication = null;
         if (req.medicationId() != null) {

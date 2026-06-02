@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!-- Masks email addresses and phone numbers in log messages (dev/default profiles) -->
+    <conversionRule conversionWord="mask"
+                    converterClass="com.clinicsaas.logging.MaskingConverter"/>
+
     <springProfile name="prod">
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -20,7 +24,7 @@
     <springProfile name="dev,default">
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) [%X{tenantId:-platform}] - %msg%n</pattern>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) [%X{tenantId:-platform}] - %mask(%msg)%n</pattern>
             </encoder>
         </appender>
         <root level="DEBUG">

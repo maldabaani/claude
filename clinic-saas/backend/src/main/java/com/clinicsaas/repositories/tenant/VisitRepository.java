@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface VisitRepository extends JpaRepository<Visit, UUID> {
@@ -16,4 +17,7 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     Page<Visit> findByPatientIdOrderByCreatedAtDesc(@Param("patientId") UUID patientId, Pageable pageable);
 
     long countByStatus(VisitStatus status);
+
+    @Query("SELECT v FROM Visit v WHERE v.status IN :statuses ORDER BY v.checkedInAt ASC NULLS LAST")
+    List<Visit> findActiveQueue(@Param("statuses") List<VisitStatus> statuses);
 }

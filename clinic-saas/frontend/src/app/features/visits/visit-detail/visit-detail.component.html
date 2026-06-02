@@ -19,12 +19,19 @@
             @if (v.chiefComplaint) { &nbsp;·&nbsp; {{ v.chiefComplaint }} }
           </span>
         </div>
-        @if (!isCompleted()) {
-          <button pButton label="Check Out" icon="pi pi-sign-out"
-                  class="p-button-success p-button-sm"
-                  [loading]="checkingOut()"
-                  (click)="checkout()"></button>
-        }
+        <div class="flex gap-2">
+          @if (!isCompleted()) {
+            <button pButton label="Check Out" icon="pi pi-sign-out"
+                    class="p-button-success p-button-sm"
+                    [loading]="checkingOut()"
+                    (click)="checkout()"></button>
+          }
+          @if (isCompleted()) {
+            <button pButton label="Discharge Summary" icon="pi pi-print"
+                    class="p-button-outlined p-button-sm"
+                    (click)="printDischargeSummary()"></button>
+          }
+        </div>
       }
     }
   </div>
@@ -136,7 +143,7 @@
         @if (labOrders().length === 0) {
           <p class="text-sm m-0" style="color:var(--text-color-secondary)">No lab orders.</p>
         } @else {
-          <p-table [value]="labOrders()" styleClass="p-datatable-sm">
+          <p-table [value]="labOrders()" styleClass="p-datatable-sm" responsiveLayout="scroll">
             <ng-template pTemplate="header">
               <tr>
                 <th>Order #</th><th>Tests</th><th>Priority</th><th>Status</th><th>Date</th><th></th>
@@ -173,11 +180,15 @@
         }
         @for (rx of prescriptions(); track rx.id) {
           <div class="border-1 surface-border border-round p-3 mb-2">
-            <div class="flex align-items-center gap-2 mb-2">
-              <code class="text-sm">{{ rx.prescriptionNumber }}</code>
-              <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
+            <div class="flex align-items-center justify-content-between gap-2 mb-2">
+              <div class="flex align-items-center gap-2">
+                <code class="text-sm">{{ rx.prescriptionNumber }}</code>
+                <p-tag [value]="rx.status" [severity]="statusSev(rx.status)" />
+              </div>
+              <button pButton icon="pi pi-print" label="Print" class="p-button-text p-button-sm p-button-secondary"
+                      (click)="downloadPrescription(rx)"></button>
             </div>
-            <p-table [value]="rx.items" styleClass="p-datatable-sm">
+            <p-table [value]="rx.items" styleClass="p-datatable-sm" responsiveLayout="scroll">
               <ng-template pTemplate="header">
                 <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Days</th></tr>
               </ng-template>
@@ -241,7 +252,7 @@
   <!-- ===================== DIALOGS ===================== -->
 
   <!-- Vitals Dialog -->
-  <p-dialog header="Record Vitals" [(visible)]="showVitals" [modal]="true" [style]="{width:'540px'}"
+  <p-dialog header="Record Vitals" [(visible)]="showVitals" [modal]="true" [style]="{width:'min(92vw,540px)'}"
             [draggable]="false">
     <form [formGroup]="vitalsForm" class="grid">
       <div class="col-6">
@@ -292,7 +303,7 @@
   </p-dialog>
 
   <!-- Diagnosis Dialog -->
-  <p-dialog header="Add Diagnosis" [(visible)]="showDiagnosis" [modal]="true" [style]="{width:'480px'}"
+  <p-dialog header="Add Diagnosis" [(visible)]="showDiagnosis" [modal]="true" [style]="{width:'min(92vw,480px)'}"
             [draggable]="false">
     <form [formGroup]="diagnosisForm" class="flex flex-column gap-3">
       <div>
@@ -326,7 +337,7 @@
   </p-dialog>
 
   <!-- Lab Order Dialog -->
-  <p-dialog header="Order Lab Tests" [(visible)]="showLab" [modal]="true" [style]="{width:'520px'}"
+  <p-dialog header="Order Lab Tests" [(visible)]="showLab" [modal]="true" [style]="{width:'min(92vw,520px)'}"
             [draggable]="false">
     <form [formGroup]="labOrderForm" class="flex flex-column gap-3">
       <div>
@@ -355,7 +366,7 @@
   </p-dialog>
 
   <!-- Prescription Dialog -->
-  <p-dialog header="New Prescription" [(visible)]="showPrescription" [modal]="true" [style]="{width:'700px'}"
+  <p-dialog header="New Prescription" [(visible)]="showPrescription" [modal]="true" [style]="{width:'min(92vw,700px)'}"
             [draggable]="false">
     <form [formGroup]="prescriptionForm" class="flex flex-column gap-3">
 
@@ -427,7 +438,7 @@
   </p-dialog>
 
   <!-- Radiology Dialog -->
-  <p-dialog header="Radiology Order" [(visible)]="showRadiology" [modal]="true" [style]="{width:'480px'}"
+  <p-dialog header="Radiology Order" [(visible)]="showRadiology" [modal]="true" [style]="{width:'min(92vw,480px)'}"
             [draggable]="false">
     <form [formGroup]="radiologyForm" class="flex flex-column gap-3">
       <div>
@@ -462,7 +473,7 @@
   </p-dialog>
 
   <!-- Lab Results Entry Dialog -->
-  <p-dialog header="Enter Lab Results" [(visible)]="showResults" [modal]="true" [style]="{width:'720px'}"
+  <p-dialog header="Enter Lab Results" [(visible)]="showResults" [modal]="true" [style]="{width:'min(92vw,720px)'}"
             [draggable]="false">
     @if (selectedLabOrder(); as order) {
       <div class="mb-2 flex align-items-center gap-2">
@@ -525,7 +536,7 @@
   </p-dialog>
 
   <!-- Radiology Report Dialog -->
-  <p-dialog header="Radiology Report" [(visible)]="showReport" [modal]="true" [style]="{width:'560px'}"
+  <p-dialog header="Radiology Report" [(visible)]="showReport" [modal]="true" [style]="{width:'min(92vw,560px)'}"
             [draggable]="false">
     @if (selectedRadOrder(); as order) {
       <div class="mb-3 flex align-items-center gap-2">

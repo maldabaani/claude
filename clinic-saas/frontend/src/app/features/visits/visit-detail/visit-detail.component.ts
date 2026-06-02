@@ -20,6 +20,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { MessageService } from 'primeng/api';
 import { HttpClient } from '@angular/common/http';
 import { ClinicalService, LabTestItem, MedicationItem, DiagnosisResponse } from '../../../core/services/clinical.service';
+import { PdfService } from '../../../core/services/pdf.service';
 
 interface ResultEdit {
   resultValue: string;
@@ -135,7 +136,8 @@ export class VisitDetailComponent implements OnInit {
     private fb:    FormBuilder,
     private http:  HttpClient,
     private svc:   ClinicalService,
-    private msg:   MessageService
+    private msg:   MessageService,
+    private pdf:   PdfService
   ) {
     this.vitalsForm = this.fb.group({
       bpSystolic: [null], bpDiastolic: [null], heartRate: [null],
@@ -414,4 +416,22 @@ export class VisitDetailComponent implements OnInit {
   medicationOptions(){ return this.medications().map(m => ({ label: `${m.genericName}${m.brandName ? ' / ' + m.brandName : ''} ${m.strength ?? ''}`, value: m.id })); }
   isCompleted():       boolean { return this.visit()?.status === 'COMPLETED'; }
   orderResultItems(): any[] { return this.selectedLabOrder()?.items ?? []; }
+
+  downloadPrescription(rx: any) {
+    const v = this.visit();
+    if (!v) return;
+    this.http.get<any>(`/api/v1/patients/${v.patientId}`).subscribe(p => {
+      this.pdf.printPrescription(rx,
+        { firstName: p.firstName, lastName: p.lastName, medicalRecordNumber: p.medicalRecordNumber, dateOfBirth: p.dateOfBirth }
+      );
+    });
+  }
+
+  printDischargeSummary() {
+    const v = this.visit();
+    if (!v) return;
+    this.http.get<any>(`/api/v1/patients/${v.patientId}`).subscribe(p => {
+      this.pdf.printDischargeSummary(v, p, null, this.diagnoses(), this.prescriptions());
+    });
+  }
 }

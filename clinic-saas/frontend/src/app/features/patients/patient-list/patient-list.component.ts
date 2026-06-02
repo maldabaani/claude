@@ -24,10 +24,12 @@ import { PatientService } from '../patient.service';
       align-items: center;
       gap: 0.75rem;
       margin-bottom: 1.25rem;
+      flex-wrap: wrap;
     }
     .search-input-wrap {
       position: relative;
       flex: 1;
+      min-width: 200px;
       max-width: 420px;
     }
     .search-icon {

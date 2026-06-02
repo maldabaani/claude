@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/lab-orders")
-@PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE')")
 @RequiredArgsConstructor
 @Tag(name = "Lab Orders")
 @SecurityRequirement(name = "bearerAuth")
@@ -29,6 +28,7 @@ public class LabController {
     private final LabService labService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('LAB_WRITE')")
     public ResponseEntity<LabOrderResponse> create(
             @Valid @RequestBody CreateLabOrderRequest req,
             @AuthenticationPrincipal AppUserPrincipal principal) {
@@ -36,22 +36,32 @@ public class LabController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('LAB_READ')")
     public ResponseEntity<LabOrderResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(labService.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('LAB_READ')")
     public ResponseEntity<List<LabOrderResponse>> listByVisit(@RequestParam UUID visitId) {
         return ResponseEntity.ok(labService.listByVisit(visitId));
     }
 
     @GetMapping("/tests")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE')")
+    @PreAuthorize("hasAuthority('LAB_READ')")
     public ResponseEntity<List<LabTestResponse>> listTests() {
         return ResponseEntity.ok(labService.listActiveTests());
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasAuthority('LAB_READ')")
+    public ResponseEntity<List<LabOrderResponse>> listAll(
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(labService.listAll(status));
+    }
+
     @PutMapping("/items/{itemId}/result")
+    @PreAuthorize("hasAuthority('LAB_WRITE')")
     public ResponseEntity<Void> addResult(
             @PathVariable UUID itemId,
             @Valid @RequestBody AddLabResultRequest req,
