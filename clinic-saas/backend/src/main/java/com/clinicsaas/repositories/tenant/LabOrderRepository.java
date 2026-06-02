@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface LabOrderRepository extends JpaRepository<LabOrder, UUID> {
     List<LabOrder> findByVisit_IdOrderByCreatedAtDesc(UUID visitId);
     List<LabOrder> findByPatientIdOrderByCreatedAtDesc(UUID patientId);
+    List<LabOrder> findAllByOrderByCreatedAtDesc();
 }

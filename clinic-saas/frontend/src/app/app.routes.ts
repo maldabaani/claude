@@ -65,6 +65,24 @@ export const routes: Routes = [
           import('./features/staff/staff.routes').then(m => m.STAFF_ROUTES)
       },
       {
+        path: 'lab',
+        canActivate: [permissionGuard('LAB_READ')],
+        loadChildren: () =>
+          import('./features/lab/lab.routes').then(m => m.LAB_ROUTES)
+      },
+      {
+        path: 'radiology',
+        canActivate: [permissionGuard('RADIOLOGY_READ')],
+        loadChildren: () =>
+          import('./features/radiology/radiology.routes').then(m => m.RADIOLOGY_ROUTES)
+      },
+      {
+        path: 'pharmacy',
+        canActivate: [permissionGuard('PRESCRIPTION_READ')],
+        loadChildren: () =>
+          import('./features/pharmacy/pharmacy.routes').then(m => m.PHARMACY_ROUTES)
+      },
+      {
         path: 'platform',
         loadChildren: () =>
           import('./features/platform/platform.routes').then(m => m.PLATFORM_ROUTES)

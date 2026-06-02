@@ -1,4 +1,13 @@
-export type Role = 'PLATFORM_ADMIN' | 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
+export type Role =
+  | 'PLATFORM_ADMIN'
+  | 'ADMIN'
+  | 'DOCTOR'
+  | 'NURSE'
+  | 'RECEPTIONIST'
+  | 'LAB_TECHNICIAN'
+  | 'RADIOLOGIST'
+  | 'PHARMACIST'
+  | 'BILLING_CLERK';
 
 export type Permission =
   | 'PATIENT_READ'    | 'PATIENT_WRITE'    | 'PATIENT_DELETE'

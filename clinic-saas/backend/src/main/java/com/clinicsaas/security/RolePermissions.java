@@ -21,24 +21,37 @@ public final class RolePermissions {
             VISIT_READ, VISIT_WRITE,
             LAB_READ, LAB_WRITE,
             PRESCRIPTION_READ, PRESCRIPTION_WRITE,
-            RADIOLOGY_READ, RADIOLOGY_WRITE,
+            RADIOLOGY_READ, RADIOLOGY_WRITE,  // doctors ORDER radiology
             BILLING_READ,
             REPORTS_READ
         ),
 
         Role.NURSE, EnumSet.of(
             PATIENT_READ, PATIENT_WRITE,
-            APPOINTMENT_READ, APPOINTMENT_WRITE,
-            VISIT_READ, VISIT_WRITE,
-            LAB_READ, LAB_WRITE,
-            RADIOLOGY_READ
+            VISIT_READ, VISIT_WRITE,      // queue + vitals
+            LAB_READ                      // see results only
         ),
 
         Role.RECEPTIONIST, EnumSet.of(
             PATIENT_READ, PATIENT_WRITE,
             APPOINTMENT_READ, APPOINTMENT_WRITE,
-            VISIT_READ,
             BILLING_READ
+        ),
+
+        Role.LAB_TECHNICIAN, EnumSet.of(
+            LAB_READ, LAB_WRITE           // ONLY lab orders + enter results
+        ),
+
+        Role.RADIOLOGIST, EnumSet.of(
+            RADIOLOGY_READ, RADIOLOGY_WRITE  // ONLY radiology orders + write reports
+        ),
+
+        Role.PHARMACIST, EnumSet.of(
+            PRESCRIPTION_READ, PRESCRIPTION_WRITE  // ONLY prescriptions
+        ),
+
+        Role.BILLING_CLERK, EnumSet.of(
+            BILLING_READ, BILLING_WRITE   // ONLY invoices + payments
         )
     );
 

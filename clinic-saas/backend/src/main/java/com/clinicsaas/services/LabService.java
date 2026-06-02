@@ -140,6 +140,23 @@ public class LabService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<LabOrderResponse> listAll(String status) {
+        List<LabOrder> orders = labOrderRepository.findAllByOrderByCreatedAtDesc();
+        if (status != null && !status.isBlank()) {
+            orders = orders.stream()
+                .filter(o -> o.getStatus() != null && o.getStatus().name().equals(status))
+                .toList();
+        }
+        return orders.stream().map(order -> {
+            List<LabOrderItemResponse> items = labOrderItemRepository
+                    .findByLabOrder_Id(order.getId()).stream()
+                    .map(LabOrderItemResponse::from)
+                    .collect(Collectors.toList());
+            return LabOrderResponse.from(order, items);
+        }).toList();
+    }
+
     private String buildNormalRangeSnapshot(LabTest labTest) {
         if (labTest.getNormalRangeText() != null) {
             return labTest.getNormalRangeText();

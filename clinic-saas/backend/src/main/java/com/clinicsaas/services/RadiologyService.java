@@ -135,6 +135,17 @@ public class RadiologyService {
         return RadiologyOrderResponse.from(order, RadiologyReportResponse.from(savedReport));
     }
 
+    @Transactional(value = "tenantTransactionManager", readOnly = true)
+    public List<RadiologyOrderResponse> listAll(String status) {
+        List<RadiologyOrder> orders = radiologyOrderRepository.findAllByOrderByCreatedAtDesc();
+        if (status != null && !status.isBlank()) {
+            orders = orders.stream()
+                .filter(o -> o.getStatus() != null && o.getStatus().name().equals(status))
+                .toList();
+        }
+        return orders.stream().map(this::buildResponse).toList();
+    }
+
     private RadiologyOrderResponse buildResponse(RadiologyOrder order) {
         RadiologyReportResponse reportResponse = radiologyStudyRepository
                 .findByRadiologyOrder_Id(order.getId())
