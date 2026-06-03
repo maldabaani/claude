@@ -9,8 +9,10 @@ import com.clinicsaas.dtos.response.PaymentResponse;
 import com.clinicsaas.entities.enums.InvoiceStatus;
 import com.clinicsaas.entities.tenant.Invoice;
 import com.clinicsaas.entities.tenant.InvoiceItem;
+import com.clinicsaas.entities.tenant.InsurancePolicy;
 import com.clinicsaas.entities.tenant.Payment;
 import com.clinicsaas.exceptions.ResourceNotFoundException;
+import com.clinicsaas.repositories.tenant.InsurancePolicyRepository;
 import com.clinicsaas.repositories.tenant.InvoiceItemRepository;
 import com.clinicsaas.repositories.tenant.InvoiceRepository;
 import com.clinicsaas.repositories.tenant.PaymentRepository;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +38,8 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
     private final PaymentRepository paymentRepository;
+    private final InsurancePolicyRepository insurancePolicyRepository;
+    private final InsuranceClaimService insuranceClaimService;
 
     @Transactional("tenantTransactionManager")
     public InvoiceResponse create(CreateInvoiceRequest req) {
@@ -48,7 +53,7 @@ public class InvoiceService {
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Invoice invoice = Invoice.builder()
+        Invoice.InvoiceBuilder builder = Invoice.builder()
                 .patientId(req.patientId())
                 .visitId(req.visitId())
                 .invoiceNumber(invoiceNumber)
@@ -57,9 +62,34 @@ public class InvoiceService {
                 .totalAmount(subtotal)
                 .dueDate(req.dueDate())
                 .issuedAt(LocalDateTime.now())
-                .notes(req.notes())
-                .build();
+                .notes(req.notes());
 
+        UUID policyId = req.insurancePolicyId();
+        if (policyId != null) {
+            InsurancePolicy policy = insurancePolicyRepository.findById(policyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("InsurancePolicy", policyId));
+
+            BigDecimal copay = policy.getCopayAmount() != null ? policy.getCopayAmount() : BigDecimal.ZERO;
+            BigDecimal coveragePct = policy.getCoveragePercentage() != null
+                    ? policy.getCoveragePercentage()
+                    : new BigDecimal("100");
+
+            // patientLiability = copay + (subtotal - copay) * (1 - coveragePct/100)
+            BigDecimal remainingAfterCopay = subtotal.subtract(copay).max(BigDecimal.ZERO);
+            BigDecimal insuranceFraction = coveragePct.divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP);
+            BigDecimal patientShare = remainingAfterCopay.multiply(BigDecimal.ONE.subtract(insuranceFraction));
+            BigDecimal patientLiability = copay.add(patientShare).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal insuranceLiability = subtotal.subtract(patientLiability).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+
+            builder.insurancePolicyId(policyId)
+                   .patientLiabilityAmount(patientLiability)
+                   .insuranceLiabilityAmount(insuranceLiability);
+
+            log.debug("Insurance split for invoice {}: patientLiability={}, insuranceLiability={}",
+                    invoiceNumber, patientLiability, insuranceLiability);
+        }
+
+        Invoice invoice = builder.build();
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         List<InvoiceItem> items = req.items().stream()
@@ -70,6 +100,11 @@ public class InvoiceService {
         List<InvoiceItemResponse> itemResponses = savedItems.stream()
                 .map(InvoiceItemResponse::from)
                 .collect(Collectors.toList());
+
+        if (policyId != null) {
+            log.debug("Auto-creating draft insurance claim for invoice {}", savedInvoice.getInvoiceNumber());
+            insuranceClaimService.createForInvoice(savedInvoice.getId(), policyId);
+        }
 
         log.debug("Created invoice {} for patient {}", invoiceNumber, req.patientId());
         return InvoiceResponse.from(savedInvoice, itemResponses, List.of());
