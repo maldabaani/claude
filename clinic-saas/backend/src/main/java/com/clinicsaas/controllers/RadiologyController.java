@@ -27,7 +27,7 @@ public class RadiologyController {
     private final RadiologyService radiologyService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    @PreAuthorize("hasAuthority('RADIOLOGY_WRITE')")
     public ResponseEntity<RadiologyOrderResponse> create(
             @Valid @RequestBody CreateRadiologyOrderRequest req,
             @AuthenticationPrincipal AppUserPrincipal principal) {
@@ -35,13 +35,13 @@ public class RadiologyController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE')")
+    @PreAuthorize("hasAuthority('RADIOLOGY_READ')")
     public ResponseEntity<RadiologyOrderResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(radiologyService.getById(id));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE')")
+    @PreAuthorize("hasAuthority('RADIOLOGY_READ')")
     public ResponseEntity<List<RadiologyOrderResponse>> list(
             @RequestParam(required = false) UUID visitId,
             @RequestParam(required = false) UUID patientId) {
@@ -51,8 +51,15 @@ public class RadiologyController {
         return ResponseEntity.ok(radiologyService.listByPatient(patientId));
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasAuthority('RADIOLOGY_READ')")
+    public ResponseEntity<List<RadiologyOrderResponse>> listAll(
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(radiologyService.listAll(status));
+    }
+
     @PostMapping("/{id}/report")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    @PreAuthorize("hasAuthority('RADIOLOGY_WRITE')")
     public ResponseEntity<RadiologyOrderResponse> addReport(
             @PathVariable UUID id,
             @Valid @RequestBody AddRadiologyReportRequest req,

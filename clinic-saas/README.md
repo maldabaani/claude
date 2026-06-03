@@ -1,6 +1,6 @@
 # Clinic SaaS — Medical Clinic Management Platform
 
-A production-grade, multi-tenant **Medical Clinic Management SaaS** built from scratch with a strict enterprise technology stack. This monorepo contains the backend API, frontend SPA, DevOps configuration, and CI/CD pipeline.
+A production-grade, multi-tenant **Medical Clinic Management SaaS** built with a strict enterprise technology stack. This monorepo contains the backend API, frontend SPA, DevOps configuration, and CI/CD pipeline.
 
 ---
 
@@ -9,23 +9,16 @@ A production-grade, multi-tenant **Medical Clinic Management SaaS** built from s
 1. [Technology Stack](#technology-stack)
 2. [Architecture Overview](#architecture-overview)
 3. [Project Structure](#project-structure)
-4. [Architectural Decisions](#architectural-decisions)
-5. [Quick Start — Running Locally](#quick-start--running-locally)
-6. [Phase-by-Phase Breakdown](#phase-by-phase-breakdown)
-   - [Phase 1 — DevOps Foundation](#phase-1--devops-foundation)
-   - [Phase 2 — Backend Project Files](#phase-2--backend-project-files)
-   - [Phase 3 — Multi-Tenancy Engine & Entities](#phase-3--multi-tenancy-engine--entities)
-   - [Phase 4 — JPA Config, Security & OpenAPI](#phase-4--jpa-config-security--openapi)
-   - [Phase 5 — Business Layer (Exceptions, DTOs, Services, Controllers)](#phase-5--business-layer)
-   - [Phase 6 — Database Migrations (Flyway)](#phase-6--database-migrations-flyway)
-   - [Phase 7 — Angular Core Layer](#phase-7--angular-core-layer)
-   - [Phase 8 — Angular Feature Modules](#phase-8--angular-feature-modules)
-7. [Environment Variables Reference](#environment-variables-reference)
-8. [CI/CD Pipeline](#cicd-pipeline)
-9. [API Reference](#api-reference)
-10. [Data Model](#data-model)
-11. [Security Model](#security-model)
-12. [Development Workflow](#development-workflow)
+4. [Quick Start — Running Locally](#quick-start--running-locally)
+5. [Phase-by-Phase Breakdown](#phase-by-phase-breakdown)
+6. [Security Model](#security-model)
+7. [RBAC — Roles & Permissions](#rbac--roles--permissions)
+8. [PII Data Protection](#pii-data-protection)
+9. [Environment Variables Reference](#environment-variables-reference)
+10. [CI/CD Pipeline](#cicd-pipeline)
+11. [API Reference](#api-reference)
+12. [Data Model](#data-model)
+13. [Development Workflow](#development-workflow)
 
 ---
 
@@ -39,14 +32,16 @@ A production-grade, multi-tenant **Medical Clinic Management SaaS** built from s
 | **ORM** | Spring Data JPA + Hibernate | 6.x |
 | **Database** | PostgreSQL | 16 |
 | **Migrations** | Flyway | Auto-run on startup |
+| **Rate Limiting** | Bucket4j | 8.10.x |
+| **AOP** | Spring AOP (AspectJ) | — |
 | **API Docs** | SpringDoc OpenAPI 3 | 2.5.x |
 | **Logging** | Logback + Logstash JSON encoder | Structured JSON in prod |
 | **Metrics** | Spring Actuator + Micrometer Prometheus | — |
-| **Frontend** | Angular | 17+ (Strict mode, Standalone) |
+| **Frontend** | Angular | 17+ (Strict mode, Standalone, Signals) |
 | **UI Library** | PrimeNG + PrimeFlex + PrimeIcons | 17.x |
 | **Scheduler** | FullCalendar (via PrimeNG) | 6.x |
 | **Containerization** | Docker + Docker Compose | — |
-| **CI/CD** | GitHub Actions → GHCR → VPS SSH deploy | — |
+| **CI/CD** | GitHub Actions → GHCR | — |
 
 ---
 
@@ -57,12 +52,20 @@ A production-grade, multi-tenant **Medical Clinic Management SaaS** built from s
 │                        BROWSER                              │
 │              Angular 17 SPA (PrimeNG UI)                    │
 │   /auth  /dashboard  /patients  /appointments               │
+│   /queue  /lab  /radiology  /pharmacy  /billing             │
 └────────────────────────┬────────────────────────────────────┘
                          │  HTTP  /api/v1/*
                          │  Bearer JWT
 ┌────────────────────────▼────────────────────────────────────┐
 │               Spring Boot 3.x Backend                       │
+│                                                             │
+│  LoginRateLimitFilter (Bucket4j — per-IP, 10 req/min)      │
+│    ↓                                                        │
 │  JwtAuthFilter → TenantContext → Controller → Service       │
+│    ↓                                                        │
+│  @PreAuthorize (per-method permission checks)               │
+│    ↓                                                        │
+│  PiiAuditAspect (@AfterReturning — INSERT-only audit log)   │
 │                                                             │
 │  ┌─────────────────┐   ┌─────────────────────────────────┐  │
 │  │ Platform EMF    │   │ Tenant Routing EMF              │  │
@@ -74,20 +77,16 @@ A production-grade, multi-tenant **Medical Clinic Management SaaS** built from s
 │  clinic_platform DB  │  │  tenant_abc DB  tenant_xyz DB  │
 │  (Flyway: platform/) │  │  (Flyway: tenant/ — per tenant)│
 │  tenants             │  │  users  patients  appointments │
-│  platform_users      │  │                                │
-└──────────────────────┘  └────────────────────────────────┘
+│  platform_users      │  │  visits  lab_orders            │
+└──────────────────────┘  │  radiology_orders              │
+                          │  prescriptions  invoices       │
+                          │  audit_logs                    │
+                          └────────────────────────────────┘
 ```
 
 ### Multi-Tenancy Model: Separate Database per Tenant
 
-Each onboarded clinic gets its **own isolated PostgreSQL database**. The platform database (`clinic_platform`) is the master registry that stores tenant metadata. When a new tenant is provisioned:
-
-1. Backend creates a new PostgreSQL database dynamically.
-2. Flyway runs the tenant migration set against the new database.
-3. An initial `ADMIN` user is seeded for the clinic.
-4. Tenant metadata is saved to the platform database.
-
-On every authenticated request, the `JwtAuthFilter` reads the `tenantId` claim from the JWT and sets it on `TenantContext` (a `ThreadLocal`). The `TenantDataSourceRouter` (extends `AbstractRoutingDataSource`) then routes all JPA operations for that request to the correct tenant database — **zero cross-tenant data leakage by design**.
+Each onboarded clinic gets its **own isolated PostgreSQL database**. The platform database (`clinic_platform`) is the master registry. On every authenticated request, `JwtAuthFilter` reads the `tenantId` claim from the JWT and sets it on `TenantContext` (a `ThreadLocal`). The `TenantDataSourceRouter` (extends `AbstractRoutingDataSource`) routes all JPA operations to the correct tenant database — **zero cross-tenant data leakage by design**.
 
 ---
 
@@ -98,77 +97,121 @@ clinic-saas/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml              # GitHub Actions pipeline
+│       └── ci.yml                     # GitHub Actions CI pipeline
 │
-├── backend/                       # Spring Boot 3.x application
-│   ├── Dockerfile                 # Multi-stage: Maven cache → JRE 17 Alpine
+├── backend/                           # Spring Boot 3.x application
+│   ├── Dockerfile
 │   ├── pom.xml
 │   └── src/main/
 │       ├── java/com/clinicsaas/
 │       │   ├── ClinicSaasApplication.java
 │       │   ├── config/
-│       │   │   ├── DataSourceConfig.java      # Platform + Tenant datasource beans
-│       │   │   ├── PlatformJpaConfig.java     # @EnableJpaRepositories for platform
-│       │   │   ├── TenantJpaConfig.java       # @EnableJpaRepositories for tenant
-│       │   │   ├── SecurityConfig.java        # Spring Security filter chain
-│       │   │   └── OpenApiConfig.java         # Swagger UI + JWT scheme
+│       │   │   ├── DataSourceConfig.java
+│       │   │   ├── PlatformJpaConfig.java
+│       │   │   ├── TenantJpaConfig.java        # scans repositories.tenant + pii
+│       │   │   ├── SecurityConfig.java         # headers, CORS, filters
+│       │   │   └── OpenApiConfig.java
 │       │   ├── multitenancy/
-│       │   │   ├── TenantContext.java         # ThreadLocal tenant ID
-│       │   │   ├── TenantDataSourceRouter.java # AbstractRoutingDataSource
-│       │   │   ├── TenantDataSourceManager.java # HikariCP pool manager
-│       │   │   └── TenantFlywayMigrator.java  # Per-tenant Flyway runner
+│       │   │   ├── TenantContext.java
+│       │   │   ├── TenantDataSourceRouter.java
+│       │   │   ├── TenantDataSourceManager.java
+│       │   │   └── TenantFlywayMigrator.java
 │       │   ├── security/
-│       │   │   ├── JwtTokenProvider.java      # Token generation & validation
-│       │   │   ├── JwtAuthFilter.java         # OncePerRequestFilter
-│       │   │   └── AppUserPrincipal.java      # Unified platform+tenant principal
+│       │   │   ├── JwtTokenProvider.java
+│       │   │   ├── JwtAuthFilter.java
+│       │   │   ├── AppUserPrincipal.java       # returns ROLE_X + permission authorities
+│       │   │   ├── RolePermissions.java        # static Role→Set<Permission> registry
+│       │   │   └── LoginRateLimitFilter.java   # Bucket4j per-IP rate limit
+│       │   ├── pii/
+│       │   │   ├── AuditLog.java               # INSERT-only audit entity
+│       │   │   ├── AuditLogRepository.java
+│       │   │   ├── AuditAccess.java            # method annotation
+│       │   │   ├── PiiAuditAspect.java         # @AfterReturning AOP aspect
+│       │   │   ├── EncryptionService.java      # AES-256-GCM
+│       │   │   └── EncryptedStringConverter.java # JPA @Converter
+│       │   ├── logging/
+│       │   │   └── MaskingConverter.java       # redacts email/phone in log lines
 │       │   ├── entities/
 │       │   │   ├── platform/  Tenant, PlatformUser
-│       │   │   ├── tenant/    User, Patient, Appointment
-│       │   │   └── enums/     Role, PlatformRole, AppointmentStatus, Gender, BloodType
+│       │   │   ├── tenant/    User, Patient, Appointment, Visit,
+│       │   │   │              LabOrder, RadiologyOrder, Prescription, Invoice
+│       │   │   └── enums/     Role, Permission, PlatformRole,
+│       │   │                  AppointmentStatus, VisitStatus, Gender, BloodType
 │       │   ├── repositories/
 │       │   │   ├── platform/  TenantRepository, PlatformUserRepository
-│       │   │   └── tenant/    UserRepository, PatientRepository, AppointmentRepository
-│       │   ├── services/      AuthService, TenantService, PatientService, AppointmentService
-│       │   ├── controllers/   AuthController, TenantController, PatientController, AppointmentController
+│       │   │   └── tenant/    UserRepository, PatientRepository,
+│       │   │                  AppointmentRepository, VisitRepository,
+│       │   │                  LabOrderRepository, RadiologyOrderRepository,
+│       │   │                  PrescriptionRepository, InvoiceRepository
+│       │   ├── services/
+│       │   │   AuthService, TenantService, PatientService,
+│       │   │   AppointmentService, VisitService, LabService,
+│       │   │   RadiologyService, PrescriptionService, InvoiceService,
+│       │   │   UserManagementService
+│       │   ├── controllers/
+│       │   │   AuthController, TenantController, PatientController,
+│       │   │   AppointmentController, VisitController, LabController,
+│       │   │   RadiologyController, PrescriptionController,
+│       │   │   InvoiceController, UserManagementController, MeController
 │       │   ├── dtos/
-│       │   │   ├── request/   LoginRequest, CreateTenantRequest, CreatePatientRequest, CreateAppointmentRequest
-│       │   │   └── response/  AuthResponse, TenantResponse, PatientResponse, AppointmentResponse
-│       │   └── exceptions/    GlobalExceptionHandler, ResourceNotFoundException, BadRequestException, TenantProvisioningException
+│       │   │   ├── request/   LoginRequest, CreateTenantRequest,
+│       │   │   │              CreatePatientRequest, CreateAppointmentRequest,
+│       │   │   │              CreateUserRequest, ChangePasswordRequest
+│       │   │   └── response/  AuthResponse (with permissions[]),
+│       │   │                  PatientResponse (masked/full PII),
+│       │   │                  AppointmentResponse, VisitResponse, ...
+│       │   └── exceptions/    GlobalExceptionHandler, ResourceNotFoundException,
+│       │                      BadRequestException, TenantProvisioningException
 │       └── resources/
 │           ├── application.yml
 │           ├── application-dev.yml
 │           ├── application-prod.yml
-│           ├── logback-spring.xml
+│           ├── logback-spring.xml             # MaskingConverter for dev logs
 │           └── db/
-│               ├── platform/migration/  V1__create_tenants_table.sql, V2__create_platform_users_table.sql
-│               └── tenant/migration/    V1__create_users_table.sql, V2__create_patients_table.sql, V3__create_appointments_table.sql
+│               ├── platform/migration/
+│               │   V1__create_tenants_table.sql
+│               │   V2__create_platform_users_table.sql
+│               └── tenant/migration/
+│                   V1__create_users_table.sql
+│                   V2__create_patients_table.sql
+│                   V3__create_appointments_table.sql
+│                   V4__create_visits_table.sql
+│                   V5__create_lab_orders_table.sql
+│                   V6__create_radiology_orders_table.sql
+│                   V7__create_prescriptions_table.sql
+│                   V8__create_invoices_table.sql
+│                   V9__create_audit_logs_table.sql
+│                   V10__account_lockout.sql
 │
-├── frontend/                      # Angular 17+ application
-│   ├── Dockerfile                 # Multi-stage: Node 20 build → Nginx Alpine serve
-│   ├── nginx.conf                 # SPA fallback + /api proxy + gzip + static caching
+├── frontend/                          # Angular 17+ application
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   ├── angular.json
-│   ├── tsconfig.json              # strict: true
-│   ├── package.json               # PrimeNG, PrimeFlex, FullCalendar
-│   └── src/
-│       ├── main.ts
-│       ├── styles.scss
-│       └── app/
-│           ├── app.component.ts
-│           ├── app.config.ts      # provideRouter, provideHttpClient with interceptors
-│           ├── app.routes.ts      # Lazy-loaded route tree
-│           ├── core/
-│           │   ├── interceptors/  jwt.interceptor.ts, error.interceptor.ts
-│           │   ├── guards/        auth.guard.ts, role.guard.ts
-│           │   ├── services/      auth.service.ts
-│           │   └── models/        user.model.ts, patient.model.ts, appointment.model.ts, api-response.model.ts
-│           ├── layouts/
-│           │   ├── auth-layout/   Centered card wrapper for public routes
-│           │   └── dashboard-layout/ Fixed sidebar + topbar shell
-│           └── features/
-│               ├── auth/          login/  (+ auth.routes.ts)
-│               ├── dashboard/     KPI cards home page
-│               ├── patients/      patient-list/, patient-create/, patient.service.ts
-│               └── appointments/  appointment-scheduler/ (FullCalendar), appointment.service.ts
+│   ├── tsconfig.json                  # strict: true
+│   ├── package.json
+│   └── src/app/
+│       ├── app.config.ts
+│       ├── app.routes.ts              # permission-guarded lazy routes
+│       ├── core/
+│       │   ├── interceptors/          jwt.interceptor.ts, error.interceptor.ts
+│       │   ├── guards/                auth.guard.ts, permission.guard.ts
+│       │   ├── directives/            has-permission.directive.ts
+│       │   ├── services/              auth.service.ts (hasPermission, hasAnyPermission)
+│       │   └── models/                user.model.ts (Permission type, CurrentUser)
+│       ├── layouts/
+│       │   ├── auth-layout/
+│       │   └── dashboard-layout/      # role-aware nav (hides inaccessible items)
+│       └── features/
+│           ├── auth/                  login/
+│           ├── dashboard/             home KPI cards
+│           ├── patients/              list, create, detail (masked PII for non-ADMIN/DOCTOR)
+│           ├── appointments/          FullCalendar scheduler
+│           ├── queue/                 queue-board (Kanban: WAITING→IN_PROGRESS→DONE)
+│           ├── lab/                   lab-board (all orders, inline result entry)
+│           ├── radiology/             radiology-board (all orders, write reports)
+│           ├── pharmacy/              pharmacy-board (all prescriptions, mark dispensed)
+│           ├── billing/               invoices list, create invoice
+│           └── admin/                 user management
 │
 ├── docker-compose.yml
 └── .env.example
@@ -176,86 +219,39 @@ clinic-saas/
 
 ---
 
-## Architectural Decisions
-
-| Decision | Choice | Rationale |
-|---|---|---|
-| **Multi-tenancy** | Separate DB per tenant | Maximum data isolation; clinic data is medical — no row-level leakage risk |
-| **Tenant resolution** | JWT `tenantId` claim | Stateless, no header forgery surface; resolved once per request in filter |
-| **DB migrations** | Flyway (two paths) | `db/platform/migration` for master DB; `db/tenant/migration` applied to every new tenant DB on provisioning |
-| **Migration trigger** | Auto on startup (platform) / on provision (tenant) | Zero-downtime safe; tenant DBs migrated in `TenantService.provision()` |
-| **JPA dual config** | Two `EntityManagerFactory` beans, two `TransactionManager` beans | `platform*` for `repositories.platform`, `tenant*` for `repositories.tenant` |
-| **JWT strategy** | Stateless only (no refresh token store) | Simpler infra for MVP; swap to Redis-backed rotation later |
-| **Roles** | Static enum RBAC | `PLATFORM_ADMIN` (cross-tenant), `ADMIN / DOCTOR / NURSE / RECEPTIONIST` (tenant-scoped) |
-| **UI framework** | PrimeNG | Rich component set; `FullCalendar` integration via `p-fullCalendar` for appointment scheduler |
-| **API versioning** | `/api/v1/` prefix on all routes | Protects future clients from breaking changes |
-| **Error format** | RFC 9457 `ProblemDetail` | Standard, machine-readable; Spring 6 native support |
-| **Logging** | Structured JSON (Logstash encoder) in `prod`, human-readable in `dev` | Ready for log aggregators (ELK, Loki) |
-| **Metrics** | Micrometer + Prometheus | Actuator endpoints: `/actuator/health`, `/actuator/metrics`, `/actuator/prometheus` |
-| **CI/CD registry** | GitHub Container Registry (GHCR) | Native to GitHub Actions, free with `GITHUB_TOKEN` |
-| **CD deploy** | SSH to VPS (`appleboy/ssh-action`) | Most portable; swap for ECS/Railway by replacing the `deploy` job |
-
----
-
 ## Quick Start — Running Locally
 
 ### Prerequisites
 
-| Tool | Minimum Version |
+| Tool | Version |
 |---|---|
-| Docker Desktop (or Docker Engine + Compose plugin) | 24.x |
-| Java JDK (for running backend outside Docker) | 17 |
-| Node.js (for running frontend outside Docker) | 20 |
-| Maven (for backend outside Docker) | 3.9 |
+| Docker Desktop | 24.x |
+| Java JDK (local backend) | 17 |
+| Node.js (local frontend) | 20 |
+| Maven | 3.9 |
 
----
-
-### Option A — Full Stack via Docker Compose (Recommended)
-
-This is the fastest way to get everything running:
+### Option A — Full Stack via Docker Compose
 
 ```bash
-# 1. Navigate to the project root
 cd clinic-saas
-
-# 2. Copy the example env file and review it
 cp .env.example .env
-# Edit .env — change JWT_SECRET to a real 256-bit value (see below)
+# Edit .env: set JWT_SECRET and PII_ENCRYPTION_KEY
 
-# 3. Build and start all services
 docker compose up --build
-
-# Services started:
-#   postgres   → localhost:5432
-#   backend    → localhost:8080
-#   frontend   → localhost:80
+# postgres → localhost:5432
+# backend  → localhost:8080  (Swagger: http://localhost:8080/swagger-ui.html)
+# frontend → localhost:80
 ```
 
-Docker Compose health checks ensure PostgreSQL is fully ready before Spring Boot starts. The backend will:
-1. Run platform Flyway migrations automatically.
-2. Expose the Swagger UI at `http://localhost:8080/swagger-ui.html`.
+Stop: `docker compose down` (keep data) or `docker compose down -v` (fresh start).
 
-The frontend Angular app will be at `http://localhost:80`.
-
-> **Stop everything:**
-> ```bash
-> docker compose down          # keep the data volume
-> docker compose down -v       # also delete the postgres volume (fresh start)
-> ```
-
----
-
-### Option B — Backend Only (for API development)
+### Option B — Backend Only
 
 ```bash
-# Start only the database
 cd clinic-saas
 docker compose up postgres -d
 
-# Run the Spring Boot backend locally
 cd backend
-
-# Export required environment variables
 export PLATFORM_DB_URL=jdbc:postgresql://localhost:5432/clinic_platform
 export PLATFORM_DB_USER=clinic_admin
 export PLATFORM_DB_PASSWORD=clinic_secret
@@ -263,39 +259,27 @@ export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_ADMIN_USER=clinic_admin
 export POSTGRES_ADMIN_PASSWORD=clinic_secret
-export JWT_SECRET=<base64-encoded-256bit-secret>
+export JWT_SECRET=<base64-256bit>
 export JWT_EXPIRATION_MS=86400000
+export PII_ENCRYPTION_KEY=<base64-256bit>
 export SPRING_PROFILES_ACTIVE=dev
 
 mvn spring-boot:run
 ```
 
-Backend runs on `http://localhost:8080`. Swagger UI: `http://localhost:8080/swagger-ui.html`.
-
----
-
-### Option C — Frontend Only (for UI development)
+### Option C — Frontend Only
 
 ```bash
-# Assumes the backend is already running on :8080
 cd clinic-saas/frontend
 npm install
-npm start
-# → Angular dev server at http://localhost:4200
-# → Vite proxy routes /api → http://localhost:8080 (via proxy.conf.json)
+npm start          # dev server at http://localhost:4200, proxies /api → :8080
 ```
 
----
-
-### Generating a Valid JWT Secret
-
-The JWT secret must be a **Base64-encoded string of at least 32 random bytes (256 bits)**.
+### Generating Secrets
 
 ```bash
-# Generate one with OpenSSL:
+# JWT secret and PII encryption key (both need a 256-bit base64 value):
 openssl rand -base64 32
-# Example output: k8F3mZ9pQrT2vX5wY7aN1cD4eG6hJ0lM8nO+B/iK2qE=
-# Paste this value into JWT_SECRET in your .env file.
 ```
 
 ---
@@ -304,380 +288,344 @@ openssl rand -base64 32
 
 ### Phase 1 — DevOps Foundation
 
-**Files:** `docker-compose.yml`, `.env.example`, `.gitignore`, `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `.github/workflows/ci-cd.yml`
+`docker-compose.yml`, Dockerfiles, `nginx.conf`, `.github/workflows/ci.yml`
 
-**What it sets up:**
-
-- **`docker-compose.yml`** — Single file driving the full stack. Services: `postgres`, `backend`, `frontend`. Uses `condition: service_healthy` so Spring Boot never starts until PostgreSQL passes `pg_isready`. All credentials are injected via `.env` — no hardcoded values.
-- **`backend/Dockerfile`** — Two stages:
-  1. `maven:3.9.6-eclipse-temurin-17-alpine` — downloads dependencies in a separate layer (cached between builds as long as `pom.xml` doesn't change), then compiles.
-  2. `eclipse-temurin:17-jre-alpine` — copies only the fat JAR, runs as a non-root `spring` user.
-- **`frontend/Dockerfile`** — Two stages:
-  1. `node:20-alpine` — `npm ci` (cached), `ng build --configuration production`.
-  2. `nginx:1.25-alpine` — copies `dist/` to Nginx HTML root; uses custom `nginx.conf`.
-- **`nginx.conf`** — Handles the Angular SPA fallback (`try_files $uri /index.html`), proxies `/api/` to the backend container, enables gzip, sets 1-year cache on static assets.
-- **`ci-cd.yml`** — Four jobs:
-  1. `test-backend` — spins up a Postgres service container, runs `mvn verify`.
-  2. `test-frontend` — runs `npm ci` + `ng build --configuration production`.
-  3. `build-and-push` — builds both Docker images (GitHub Actions cache via `type=gha`), pushes to GHCR with `latest` and `$SHA` tags.
-  4. `deploy` — SSHs into your VPS, pulls the new images, runs `docker compose up -d`.
-
-**Configure it:**
-
-```bash
-# Copy and customise before first run:
-cp .env.example .env
-```
-
-| Variable | What to change |
-|---|---|
-| `POSTGRES_PASSWORD` | Use a strong password in any non-local environment |
-| `JWT_SECRET` | **Must** be changed — see the generation command above |
-| `SPRING_PROFILES_ACTIVE` | `dev` locally, `prod` on server |
-
----
+- Multi-stage Dockerfiles (Maven cache layer → JRE 17 Alpine; Node build → Nginx Alpine).
+- `nginx.conf` — SPA fallback, `/api` proxy to backend, gzip, 1-year static asset cache.
+- CI pipeline: two parallel jobs — *Backend (Testcontainers + PostgreSQL)* and *Frontend (ng build production)* — both must pass before Docker images are built.
 
 ### Phase 2 — Backend Project Files
 
-**Files:** `backend/pom.xml`, `ClinicSaasApplication.java`, `application.yml`, `application-dev.yml`, `application-prod.yml`, `logback-spring.xml`
+`pom.xml`, `ClinicSaasApplication.java`, `application.yml`, `logback-spring.xml`
 
-**Key decisions:**
-
-- `ClinicSaasApplication` explicitly **excludes** `DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration`, and `FlywayAutoConfiguration`. This is required because we manually configure two separate datasources — Spring Boot's autoconfiguration would conflict.
-- **`application.yml`** is the base config. It reads all secrets from environment variables (never hardcoded). Profile-specific files override only what changes:
-  - `application-dev.yml` — enables `DEBUG` logging, SQL printing, Swagger UI.
-  - `application-prod.yml` — disables Swagger, raises logging threshold to `WARN`, restricts Actuator endpoints.
-- **`logback-spring.xml`** uses `<springProfile>` to switch between human-readable console output (`dev`) and structured JSON via `LogstashEncoder` (`prod`). The JSON output includes MDC fields `tenantId` and `userId` — automatically populated by `JwtAuthFilter` on every request.
-
-**Configure it:**
-
-All configuration is driven by environment variables. See the [Environment Variables Reference](#environment-variables-reference) section.
-
-To run against a custom Postgres instance:
-```bash
-export PLATFORM_DB_URL=jdbc:postgresql://my-host:5432/clinic_platform
-export PLATFORM_DB_USER=my_user
-export PLATFORM_DB_PASSWORD=my_pass
-```
-
----
+- `ClinicSaasApplication` excludes `DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration`, and `FlywayAutoConfiguration` — required for the dual-datasource setup.
+- `logback-spring.xml` uses `<springProfile>` to produce human-readable console logs in `dev` and structured JSON (`LogstashEncoder`) in `prod`. MDC fields `tenantId` and `userId` are set per request.
 
 ### Phase 3 — Multi-Tenancy Engine & Entities
 
-**Files:** `multitenancy/` package, `entities/` package
-
-#### Multi-Tenancy Components
+`multitenancy/` package, `entities/` package
 
 | Class | Role |
 |---|---|
-| `TenantContext` | `ThreadLocal<String>` storing the current request's tenant DB name. Set in `JwtAuthFilter`, cleared in `finally` block. |
-| `TenantDataSourceRouter` | Extends `AbstractRoutingDataSource`. Overrides `determineTargetDataSource()` to delegate directly to `TenantDataSourceManager` — bypasses the static target map so new tenants are routed without restart. |
-| `TenantDataSourceManager` | Maintains a `ConcurrentHashMap<String, DataSource>` of HikariCP pools (one per tenant DB). Creates a new pool on first access via `computeIfAbsent`. Also exposes `provisionDatabase(dbName)` which issues `CREATE DATABASE` using a raw JDBC connection. |
-| `TenantFlywayMigrator` | Runs `classpath:db/tenant/migration` against a given tenant datasource. Called by `TenantService` during tenant provisioning. |
-
-#### Entities
-
-**Platform entities** (live in `clinic_platform` DB — managed by `platformEntityManagerFactory`):
-- `Tenant` — name, dbName (the PostgreSQL database name), adminEmail, active flag.
-- `PlatformUser` — email, passwordHash, role (`PLATFORM_ADMIN`).
-
-**Tenant entities** (live in each tenant DB — managed by `tenantEntityManagerFactory`):
-- `User` — email, passwordHash, firstName, lastName, role (ADMIN/DOCTOR/NURSE/RECEPTIONIST), active.
-- `Patient` — MRN (auto-generated `MRN-XXXXXXXX`), full demographics, blood type, allergies.
-- `Appointment` — patientId, doctorId, scheduledAt, durationMinutes, status (6-state workflow), notes.
-
----
+| `TenantContext` | `ThreadLocal<String>` storing the current request's tenant DB name |
+| `TenantDataSourceRouter` | `AbstractRoutingDataSource` — routes to the correct HikariCP pool |
+| `TenantDataSourceManager` | `ConcurrentHashMap<String, DataSource>` — creates pools on demand |
+| `TenantFlywayMigrator` | Runs `db/tenant/migration` against a new tenant DB at provision time |
 
 ### Phase 4 — JPA Config, Security & OpenAPI
 
-**Files:** `config/` package, `security/` package
-
-#### Dual JPA Configuration
-
-Two completely independent JPA stacks are configured:
+Two independent JPA stacks:
 
 ```
 platformDataSource  →  platformEntityManagerFactory  →  platformTransactionManager
-                        scans: entities.platform
-                        serves: repositories.platform
+                        scans: entities.platform + repositories.platform
 
 tenantDataSource    →  tenantEntityManagerFactory    →  tenantTransactionManager
-(routing)               scans: entities.tenant
-                        serves: repositories.tenant
+(routing)               scans: entities.tenant + pii (AuditLog)
+                        serves: repositories.tenant + pii (AuditLogRepository)
 ```
 
-- **`@Primary`** is placed on `platformEntityManagerFactory` and `platformTransactionManager`. This means `@Transactional` with no qualifier uses the platform transaction manager — safe for platform operations.
-- Tenant services **must** explicitly annotate `@Transactional("tenantTransactionManager")` or `@Transactional(value = "tenantTransactionManager", readOnly = true)`.
+`@Primary` is on the platform beans — bare `@Transactional` uses platform; tenant services must qualify with `@Transactional("tenantTransactionManager")`.
 
-#### Security Filter Chain
+### Phase 5 — Business Layer
+
+Global exception handler returns **RFC 9457 `ProblemDetail`** for all errors. All entities are mapped to `*Response` records — entities are never exposed directly.
+
+Tenant provisioning flow:
+```
+POST /api/v1/platform/tenants  (PLATFORM_ADMIN)
+    1. Validate uniqueness
+    2. CREATE DATABASE
+    3. Run Flyway V1–V10 against new DB
+    4. Seed ADMIN user
+    5. Save Tenant record
+```
+
+### Phase 6 — Database Migrations (Flyway)
+
+#### Platform (`db/platform/migration/`)
+
+| File | Creates |
+|---|---|
+| `V1` | `tenants` |
+| `V2` | `platform_users` |
+
+#### Tenant (`db/tenant/migration/`)
+
+| File | Creates |
+|---|---|
+| `V1` | `users` |
+| `V2` | `patients` (PII columns encrypted at rest via `EncryptedStringConverter`) |
+| `V3` | `appointments` (6-state workflow) |
+| `V4` | `visits` (queue / status workflow) |
+| `V5` | `lab_orders` |
+| `V6` | `radiology_orders` |
+| `V7` | `prescriptions` |
+| `V8` | `invoices` |
+| `V9` | `audit_logs` (INSERT-only PII access log) |
+| `V10` | `failed_login_attempts`, `locked_until` columns on `users` |
+
+### Phase 7 — Angular Core Layer
+
+- **Signals**: `signal<T>()` and `computed()` used throughout for reactive state.
+- **`jwtInterceptor`** — attaches `Authorization: Bearer <token>` to every request.
+- **`errorInterceptor`** — catches 401 globally, logs out and redirects to login.
+- **`authGuard`** — protects the `/dashboard` tree.
+- **`permissionGuard`** — factory: `canActivate: [permissionGuard('PATIENT_READ')]`; checks that the current user holds the required permission.
+- **`*appHasPermission`** — structural directive to conditionally render UI elements: `*appHasPermission="'PATIENT_WRITE'"`.
+- **`AuthService`** — `hasPermission(p)`, `hasAnyPermission(...ps)` helpers; permissions stored from `AuthResponse.permissions[]`.
+
+### Phase 8 — Angular Feature Modules
+
+| Feature | Access Control |
+|---|---|
+| Patients (list/create/edit) | `PATIENT_READ` / `PATIENT_WRITE` |
+| Appointments (FullCalendar) | `APPOINTMENT_READ` / `APPOINTMENT_WRITE` |
+| Queue Board (Kanban) | `VISIT_READ` / `VISIT_WRITE` |
+| Lab Board | `LAB_READ` / `LAB_WRITE` |
+| Radiology Board | `RADIOLOGY_READ` / `RADIOLOGY_WRITE` |
+| Pharmacy Board | `PRESCRIPTION_READ` / `PRESCRIPTION_WRITE` |
+| Billing / Invoices | `BILLING_READ` / `BILLING_WRITE` |
+| User Management | `STAFF_READ` / `STAFF_WRITE` |
+
+Each board is role-aware: the sidebar navigation hides tabs the current user has no permission to access. `@PreAuthorize` on every controller method enforces the same rules server-side.
+
+### Phase 9 — Security Hardening
+
+#### Rate Limiting
+
+`LoginRateLimitFilter` (Bucket4j) intercepts only `/auth/login` and `/auth/platform/login`. Each client IP gets a `Bucket` of 10 tokens that refills every minute. On exhaustion: `HTTP 429` with a JSON body.
+
+#### Account Lockout
+
+`AuthService` tracks failed login attempts per user:
+- **5 consecutive failures** → account locked for 15 minutes (`locked_until` column).
+- Successful login resets the counter.
+
+#### Security Headers (`SecurityConfig`)
+
+| Header | Value |
+|---|---|
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` |
+
+#### CORS
+
+Allowed origins are read from the `CORS_ALLOWED_ORIGINS` environment variable (comma-separated). Default: `http://localhost,http://localhost:4200`. Only `GET POST PUT PATCH DELETE OPTIONS` are allowed.
+
+#### Password Policy
+
+`CreateUserRequest` and `ChangePasswordRequest` enforce: minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character via `@Pattern`.
+
+#### Log Sanitization
+
+`MaskingConverter` (Logback `MessageConverter`) replaces email addresses with `[email]` and phone numbers with `[phone]` in all log lines (dev profile). Prevents PII from appearing in log files.
+
+### Phase 10 — PII Data Protection
+
+See [PII Data Protection](#pii-data-protection) section below.
+
+### Phase 11 — RBAC / Permission System
+
+See [RBAC — Roles & Permissions](#rbac--roles--permissions) section below.
+
+---
+
+## Security Model
+
+### Request Filter Chain
 
 ```
 HTTP Request
     ↓
-JwtAuthFilter (OncePerRequestFilter)
-    │  1. Extract Bearer token from Authorization header
-    │  2. Validate JWT signature
-    │  3. Read claims: type, tenantId, role, email, sub
-    │  4. If type=TENANT → TenantContext.setCurrentTenant(tenantId)
-    │  5. Build AppUserPrincipal and set SecurityContext
+LoginRateLimitFilter  (Bucket4j — only on /auth/** paths)
     ↓
-Spring Security authorization check
-    │  - PUBLIC_PATHS → permitAll
-    │  - /api/v1/platform/** → ROLE_PLATFORM_ADMIN
-    │  - /api/v1/patients/** → ROLE_ADMIN / DOCTOR / NURSE / RECEPTIONIST
-    │  - /api/v1/appointments/** → all authenticated roles
+JwtAuthFilter
+    1. Extract Bearer token
+    2. Validate signature
+    3. Read claims: type, tenantId, role, email, sub
+    4. If TENANT → TenantContext.setCurrentTenant(tenantId)
+    5. Build AppUserPrincipal (grants: ROLE_X + all Permission names)
+    6. Set SecurityContext
     ↓
-Controller → Service → Repository → TenantDataSourceRouter → Correct tenant DB
+Spring Security path check
+    PUBLIC_PATHS        → permitAll
+    /api/v1/platform/** → ROLE_PLATFORM_ADMIN
+    anyRequest          → authenticated
     ↓
-TenantContext.clear() + MDC.clear()  (in finally block)
+@PreAuthorize("hasAuthority('PATIENT_READ')") per controller method
+    ↓
+PiiAuditAspect (@AfterReturning on @AuditAccess methods)
+    → INSERT into audit_logs (userId, email, role, action, resourceType, resourceId, ip)
+    ↓
+TenantContext.clear() + MDC.clear()
 ```
 
-#### OpenAPI / Swagger
-
-Available at `http://localhost:8080/swagger-ui.html` (dev profile only; disabled in prod).
-
-All endpoints require a JWT — use the **Authorize** button at the top of the Swagger UI and paste a `Bearer <token>` value obtained from `POST /api/v1/auth/login`.
-
----
-
-### Phase 5 — Business Layer
-
-**Files:** `exceptions/`, `dtos/`, `services/`, `controllers/`
-
-#### Global Exception Handler
-
-All exceptions are converted to **RFC 9457 `ProblemDetail`** JSON responses:
+### JWT Claims
 
 ```json
 {
-  "type": "/errors/validation",
-  "title": "Validation Failed",
-  "status": 422,
-  "timestamp": "2025-05-31T12:00:00Z",
-  "errors": {
-    "email": "must be a valid email address",
-    "firstName": "must not be blank"
-  }
+  "sub": "<user-uuid>",
+  "email": "doctor@clinic.com",
+  "role": "DOCTOR",
+  "tenantId": "my_clinic_db",
+  "type": "TENANT",
+  "iat": 1748649600,
+  "exp": 1748736000
 }
 ```
 
-| Exception | HTTP Status |
-|---|---|
-| `MethodArgumentNotValidException` | `422 Unprocessable Entity` |
-| `ResourceNotFoundException` | `404 Not Found` |
-| `BadRequestException` | `400 Bad Request` |
-| `BadCredentialsException` | `401 Unauthorized` |
-| `AccessDeniedException` | `403 Forbidden` |
-| Any unhandled `Exception` | `500 Internal Server Error` |
+Platform admins have `type = "PLATFORM"` and no `tenantId`.
 
-#### DTOs
+### `GET /api/v1/me`
 
-All API contracts use Java records (immutable, no Lombok needed for DTOs). Entities are **never** exposed directly — controllers always return `*Response` record types.
+Returns the currently authenticated user's full profile including their permissions list:
 
-#### Tenant Provisioning Flow
-
-```
-POST /api/v1/platform/tenants  (PLATFORM_ADMIN only)
-    ↓
-TenantService.provision(req)
-    1. Validate dbName + adminEmail uniqueness
-    2. TenantDataSourceManager.provisionDatabase(dbName)  → CREATE DATABASE
-    3. TenantFlywayMigrator.migrate(dbName)               → run V1, V2, V3 migrations
-    4. Create ADMIN user in new tenant DB                 → seed credentials
-    5. Save Tenant record in platform DB
-    6. Return TenantResponse
+```json
+{
+  "id": "uuid",
+  "email": "doctor@clinic.com",
+  "role": "DOCTOR",
+  "tenantId": "my_clinic_db",
+  "userType": "TENANT",
+  "permissions": ["PATIENT_READ", "PATIENT_WRITE", "APPOINTMENT_READ", ...]
+}
 ```
 
 ---
 
-### Phase 6 — Database Migrations (Flyway)
+## RBAC — Roles & Permissions
 
-**Files:** `src/main/resources/db/`
+### Permission Enum (22 permissions)
 
-Two completely independent Flyway migration paths:
-
-#### Platform Migrations (`db/platform/migration/`)
-
-| File | Creates |
+| Category | Permissions |
 |---|---|
-| `V1__create_tenants_table.sql` | `tenants` table with indexes on `db_name` and `active` |
-| `V2__create_platform_users_table.sql` | `platform_users` table with index on `email` |
+| Patients | `PATIENT_READ`, `PATIENT_WRITE`, `PATIENT_DELETE` |
+| Appointments | `APPOINTMENT_READ`, `APPOINTMENT_WRITE`, `APPOINTMENT_DELETE` |
+| Visits/Queue | `VISIT_READ`, `VISIT_WRITE` |
+| Lab | `LAB_READ`, `LAB_WRITE` |
+| Radiology | `RADIOLOGY_READ`, `RADIOLOGY_WRITE` |
+| Prescriptions | `PRESCRIPTION_READ`, `PRESCRIPTION_WRITE` |
+| Billing | `BILLING_READ`, `BILLING_WRITE` |
+| Reports | `REPORTS_READ` |
+| Staff | `STAFF_READ`, `STAFF_WRITE` |
+| Settings | `SETTINGS_READ`, `SETTINGS_WRITE` |
 
-These run **automatically on backend startup** against `clinic_platform`.
+### Role → Permission Mapping
 
-#### Tenant Migrations (`db/tenant/migration/`)
+| Permission | ADMIN | DOCTOR | NURSE | RECEPTIONIST | LAB_TECH | RADIOLOGIST | PHARMACIST | BILLING |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| PATIENT_READ | ✅ | ✅ | ✅ | ✅ | — | — | — | — |
+| PATIENT_WRITE | ✅ | ✅ | ✅ | ✅ | — | — | — | — |
+| PATIENT_DELETE | ✅ | — | — | — | — | — | — | — |
+| APPOINTMENT_READ | ✅ | ✅ | — | ✅ | — | — | — | — |
+| APPOINTMENT_WRITE | ✅ | ✅ | — | ✅ | — | — | — | — |
+| APPOINTMENT_DELETE | ✅ | — | — | — | — | — | — | — |
+| VISIT_READ | ✅ | ✅ | ✅ | — | — | — | — | — |
+| VISIT_WRITE | ✅ | ✅ | ✅ | — | — | — | — | — |
+| LAB_READ | ✅ | ✅ | ✅ | — | ✅ | — | — | — |
+| LAB_WRITE | ✅ | ✅ | — | — | ✅ | — | — | — |
+| RADIOLOGY_READ | ✅ | ✅ | — | — | — | ✅ | — | — |
+| RADIOLOGY_WRITE | ✅ | ✅ | — | — | — | ✅ | — | — |
+| PRESCRIPTION_READ | ✅ | ✅ | — | — | — | — | ✅ | — |
+| PRESCRIPTION_WRITE | ✅ | ✅ | — | — | — | — | ✅ | — |
+| BILLING_READ | ✅ | ✅ | — | ✅ | — | — | — | ✅ |
+| BILLING_WRITE | ✅ | — | — | — | — | — | — | ✅ |
+| REPORTS_READ | ✅ | ✅ | — | — | — | — | — | — |
+| STAFF_READ | ✅ | — | — | — | — | — | — | — |
+| STAFF_WRITE | ✅ | — | — | — | — | — | — | — |
+| SETTINGS_READ | ✅ | — | — | — | — | — | — | — |
+| SETTINGS_WRITE | ✅ | — | — | — | — | — | — | — |
 
-| File | Creates |
-|---|---|
-| `V1__create_users_table.sql` | `users` table (clinic staff) |
-| `V2__create_patients_table.sql` | `patients` table with MRN uniqueness and search indexes |
-| `V3__create_appointments_table.sql` | `appointments` table with FK to patients + users, status CHECK constraint, composite indexes |
-
-These run **when a new tenant is provisioned** via `TenantFlywayMigrator`. To add a new column to all tenant databases, create `V4__...sql` in `db/tenant/migration/` — it will be applied to all existing tenant DBs on their next connection (via `baselineOnMigrate=true`) and automatically to all new ones.
-
-**Adding a new migration:**
-```bash
-# Always increment the version number
-touch backend/src/main/resources/db/tenant/migration/V4__add_notes_to_patients.sql
-# Edit the SQL, then restart or re-provision
-```
-
-> **Never edit an existing Flyway migration file** — Flyway checksums the files and will refuse to start if a previously-applied migration is modified.
+`AppUserPrincipal.getAuthorities()` returns **both** `ROLE_X` and each individual permission name as a `SimpleGrantedAuthority`. Controllers use `@PreAuthorize("hasAuthority('LAB_WRITE')")` per method.
 
 ---
 
-### Phase 7 — Angular Core Layer
+## PII Data Protection
 
-**Files:** `frontend/src/app/` — config, routes, core interceptors, guards, services, models
+### Encryption at Rest (AES-256-GCM)
 
-#### Bootstrap Chain
+Sensitive patient fields (`phone`, `email`, `address`, `emergencyContactPhone`) are transparently encrypted in PostgreSQL using `EncryptedStringConverter` — a JPA `@Converter` that encrypts on write and decrypts on read.
 
-```
-main.ts
-  bootstrapApplication(AppComponent, appConfig)
-    appConfig (app.config.ts)
-      provideRouter(routes, withComponentInputBinding())
-      provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor]))
-      provideAnimations()
-```
+- Algorithm: **AES-256-GCM** (authenticated encryption — detects tampering).
+- Key source: `PII_ENCRYPTION_KEY` environment variable (Base64-encoded 32-byte key).
+- A fresh random 12-byte IV is generated per field per write.
+- The stored value format: `base64(iv) + ":" + base64(ciphertext + authTag)`.
 
-#### HTTP Interceptors
+### Field-Level Masking
 
-| Interceptor | Behaviour |
-|---|---|
-| `jwtInterceptor` | Reads token from `localStorage` via `AuthService.getToken()`. Clones every outgoing request and adds `Authorization: Bearer <token>`. No-ops if not logged in. |
-| `errorInterceptor` | Catches `401` responses globally, calls `auth.logout()`, redirects to `/auth/login`. All other errors are re-thrown for component-level handling. |
+`PatientResponse` has two factory methods:
+- `PatientResponse.from(patient)` — full PII (used for ADMIN and DOCTOR).
+- `PatientResponse.masked(patient)` — phone shown as `****1234`, email as `j****@domain.com`.
 
-#### Route Guards
+`PatientService.toResponse()` checks the Spring Security context — ADMIN and DOCTOR see full data; all other roles see masked data.
 
-| Guard | Behaviour |
-|---|---|
-| `authGuard` | Checks `AuthService.isLoggedIn()`. Redirects to `/auth/login` if not authenticated. Protects the entire `/dashboard` tree. |
-| `roleGuard` | Reads `route.data['roles']` array. Checks current user role against allowed roles. Redirects to `/dashboard/home` if unauthorized. Usage: `{ canActivate: [roleGuard], data: { roles: ['ADMIN', 'DOCTOR'] } }` |
+### Audit Log
 
-#### AuthService
+Every method annotated with `@AuditAccess` is intercepted by `PiiAuditAspect` after it returns. An immutable record is written to `audit_logs`:
 
-Uses Angular **Signals** for reactive current-user state (`currentUser = signal<CurrentUser | null>(...)`). Stores the JWT and decoded user in `localStorage`. Decodes the JWT payload client-side (no extra HTTP call needed) to extract `id`, `email`, `role`, `tenantId`, `type`.
-
----
-
-### Phase 8 — Angular Feature Modules
-
-**Files:** `layouts/`, `features/`
-
-#### Layout System
-
-```
-app.routes.ts
-  /                      → AuthLayoutComponent (centered card)
-    /auth/login          → LoginComponent
-  /dashboard             → DashboardLayoutComponent (sidebar + topbar)
-    /dashboard/home      → DashboardComponent
-    /dashboard/patients  → PatientListComponent / PatientCreateComponent
-    /dashboard/appointments → AppointmentSchedulerComponent
+```sql
+audit_logs
+  id, user_id, user_email, user_role,
+  action, resource_type, resource_id, patient_id,
+  ip_address, details, accessed_at
 ```
 
-All routes use **lazy loading** (`loadComponent` / `loadChildren`) — the auth bundle and each feature bundle are separate JS chunks, loaded on demand.
-
-#### Features
-
-| Feature | Components | Notes |
-|---|---|---|
-| **Auth** | `LoginComponent` | Dual-mode login: provide `tenantId` for clinic staff; leave blank for platform admin. Reactive form with PrimeNG Password + InputText. |
-| **Dashboard** | `DashboardComponent` | KPI card grid (placeholder values — wire up to API calls in next sprint). |
-| **Patients** | `PatientListComponent`, `PatientCreateComponent` | Server-side paginated PrimeNG table with live search. Create form with calendar picker, gender + blood type dropdowns. |
-| **Appointments** | `AppointmentSchedulerComponent` | `FullCalendar` weekly view. Events colour-coded by status. Click an event to open a PrimeNG dialog with details. `select` callback is wired for creating new appointments from a clicked slot. |
+The table has no `UPDATE` or `DELETE` permissions — it is append-only. The `AuditLogRepository` and `AuditLog` entity live in `com.clinicsaas.pii`, which is registered with the tenant JPA context via `TenantJpaConfig`.
 
 ---
 
 ## Environment Variables Reference
-
-All variables are read from `.env` (Docker Compose) or exported to the shell (local dev). Set **all** of these before running.
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
 | `POSTGRES_USER` | `clinic_admin` | Yes | PostgreSQL superuser name |
 | `POSTGRES_PASSWORD` | `clinic_secret` | **Change in prod** | PostgreSQL superuser password |
 | `POSTGRES_PORT` | `5432` | No | Host port mapped to PostgreSQL |
-| `PLATFORM_DB_NAME` | `clinic_platform` | No | Name of the master platform database |
-| `PLATFORM_DB_URL` | — | Yes | Full JDBC URL (auto-set by Compose) |
-| `PLATFORM_DB_USER` | — | Yes | DB username for platform datasource |
-| `PLATFORM_DB_PASSWORD` | — | Yes | DB password for platform datasource |
-| `POSTGRES_HOST` | `localhost` | Yes | Hostname where Postgres runs (used by tenant provisioning) |
-| `POSTGRES_ADMIN_USER` | — | Yes | Postgres admin for `CREATE DATABASE` calls |
+| `PLATFORM_DB_NAME` | `clinic_platform` | No | Master platform database name |
+| `PLATFORM_DB_URL` | — | Yes | Full JDBC URL |
+| `PLATFORM_DB_USER` | — | Yes | Platform datasource username |
+| `PLATFORM_DB_PASSWORD` | — | Yes | Platform datasource password |
+| `POSTGRES_HOST` | `localhost` | Yes | Host for tenant DB provisioning |
+| `POSTGRES_ADMIN_USER` | — | Yes | Admin user for `CREATE DATABASE` |
 | `POSTGRES_ADMIN_PASSWORD` | — | Yes | Password for the above |
 | `JWT_SECRET` | — | **Must change** | Base64-encoded 256-bit HMAC secret |
 | `JWT_EXPIRATION_MS` | `86400000` | No | Token lifetime in ms (default 24 h) |
+| `PII_ENCRYPTION_KEY` | — | **Must set** | Base64-encoded 256-bit AES key |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost,http://localhost:4200` | No | Comma-separated allowed origins |
 | `SPRING_PROFILES_ACTIVE` | `dev` | No | `dev` or `prod` |
-| `BACKEND_PORT` | `8080` | No | Host port for the backend container |
-| `FRONTEND_PORT` | `80` | No | Host port for the frontend container |
+| `BACKEND_PORT` | `8080` | No | Host port for backend container |
+| `FRONTEND_PORT` | `80` | No | Host port for frontend container |
 
 ---
 
 ## CI/CD Pipeline
 
-The pipeline in `.github/workflows/ci-cd.yml` has four jobs that run on push to `main`:
+`.github/workflows/ci.yml` runs on every push:
 
 ```
-push to main
+push
     │
-    ├── test-backend  (JDK 17, Maven verify, Postgres service container)
+    ├── Backend – Test & Docker build
+    │     JDK 17, Testcontainers (PostgreSQL), mvn verify
+    │     docker build clinic-backend image
     │
-    ├── test-frontend  (Node 20, npm ci, ng build production)
-    │
-    └── build-and-push  (after both tests pass)
-            │  Builds backend + frontend Docker images
-            │  Pushes to GHCR:
-            │    ghcr.io/<owner>/<repo>/clinic-backend:latest
-            │    ghcr.io/<owner>/<repo>/clinic-backend:<git-sha>
-            │    ghcr.io/<owner>/<repo>/clinic-frontend:latest
-            │    ghcr.io/<owner>/<repo>/clinic-frontend:<git-sha>
-            │
-            └── deploy  (SSH into VPS)
-                    cd /opt/clinic-saas
-                    docker compose pull
-                    docker compose up -d --no-build
-                    docker image prune -f
+    └── Frontend – Build & Docker build
+          Node 20, npm ci, ng build --configuration production
+          docker build clinic-frontend image
 ```
 
-### Setting up CI/CD Secrets
-
-In your GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret Name | Value |
-|---|---|
-| `DEPLOY_HOST` | IP address or hostname of your VPS |
-| `DEPLOY_USER` | SSH username (e.g. `ubuntu`, `deploy`) |
-| `DEPLOY_SSH_KEY` | Contents of your SSH **private key** (`cat ~/.ssh/id_rsa`) |
-
-### Setting up the VPS
-
-```bash
-# On your VPS:
-mkdir -p /opt/clinic-saas
-cd /opt/clinic-saas
-
-# Copy your .env file with production values
-nano .env   # paste production env vars here
-
-# Copy docker-compose.yml
-# (or pull it from your repo)
-
-# First run (images are pulled from GHCR on deploy)
-docker compose up -d
-```
-
-Make sure the VPS user has Docker permissions:
-```bash
-sudo usermod -aG docker $USER
-```
+Both jobs run in parallel. The backend job spins up a real PostgreSQL instance via Testcontainers for integration tests.
 
 ---
 
 ## API Reference
 
-Base URL: `http://localhost:8080/api/v1`  
-Full interactive docs: `http://localhost:8080/swagger-ui.html`
+Base URL: `http://localhost:8080/api/v1`
+Interactive docs: `http://localhost:8080/swagger-ui.html` (dev profile)
 
 ### Authentication
 
@@ -685,6 +633,7 @@ Full interactive docs: `http://localhost:8080/swagger-ui.html`
 |---|---|---|---|
 | `POST` | `/auth/login` | Public | Clinic staff login. Body: `{ email, password, tenantId }` |
 | `POST` | `/auth/platform/login` | Public | Platform admin login. Body: `{ email, password }` |
+| `GET` | `/me` | Any authenticated | Current user profile + permissions list |
 
 **Login Response:**
 ```json
@@ -693,46 +642,91 @@ Full interactive docs: `http://localhost:8080/swagger-ui.html`
   "tokenType": "Bearer",
   "expiresIn": 86400000,
   "role": "DOCTOR",
-  "tenantId": "my_clinic_db"
+  "tenantId": "my_clinic_db",
+  "permissions": ["PATIENT_READ", "PATIENT_WRITE", "APPOINTMENT_READ", "VISIT_READ", "VISIT_WRITE", "LAB_READ", "LAB_WRITE", "PRESCRIPTION_READ", "PRESCRIPTION_WRITE", "RADIOLOGY_READ", "RADIOLOGY_WRITE", "BILLING_READ", "REPORTS_READ"]
 }
 ```
 
-### Platform — Tenant Management
+### Platform — Tenant Management (`PLATFORM_ADMIN`)
 
-| Method | Endpoint | Auth | Description |
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/platform/tenants` | Provision new clinic |
+| `GET` | `/platform/tenants` | List all tenants |
+| `GET` | `/platform/tenants/{id}` | Get tenant by ID |
+
+### Patients (`PATIENT_READ` / `PATIENT_WRITE`)
+
+| Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `POST` | `/platform/tenants` | `PLATFORM_ADMIN` | Provision a new clinic (creates DB + runs migrations + seeds admin user) |
-| `GET` | `/platform/tenants` | `PLATFORM_ADMIN` | List all tenants |
-| `GET` | `/platform/tenants/{id}` | `PLATFORM_ADMIN` | Get tenant by ID |
-
-**Create Tenant Body:**
-```json
-{
-  "name": "City Heart Clinic",
-  "dbName": "city_heart_clinic",
-  "adminEmail": "admin@cityheartclinic.com",
-  "adminPassword": "SecurePass123!"
-}
-```
-
-### Patients
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| `POST` | `/patients` | `ADMIN / DOCTOR / NURSE` | Register a new patient (MRN auto-generated) |
-| `GET` | `/patients?q=&page=&size=` | All roles | Search / paginate patients |
-| `GET` | `/patients/{id}` | All roles | Get patient by ID |
-| `DELETE` | `/patients/{id}` | `ADMIN / DOCTOR / NURSE` | Soft-delete (sets `active = false`) |
+| `POST` | `/patients` | `PATIENT_WRITE` | Register patient (MRN auto-generated) |
+| `GET` | `/patients?q=&page=&size=` | `PATIENT_READ` | Search / paginate |
+| `GET` | `/patients/{id}` | `PATIENT_READ` | Get by ID (masked for non-ADMIN/DOCTOR) |
+| `PUT` | `/patients/{id}` | `PATIENT_WRITE` | Update patient |
+| `DELETE` | `/patients/{id}` | `PATIENT_DELETE` | Soft-delete |
 
 ### Appointments
 
-| Method | Endpoint | Auth | Description |
+| Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `POST` | `/appointments` | All roles | Book a new appointment |
-| `GET` | `/appointments/{id}` | All roles | Get appointment by ID |
-| `GET` | `/appointments/doctor/{doctorId}` | All roles | Paginated list for a doctor |
-| `GET` | `/appointments/range?from=&to=` | All roles | Appointments in date range (ISO date: `2025-06-01`) |
-| `PATCH` | `/appointments/{id}/status?status=` | All roles | Update status (`CONFIRMED`, `COMPLETED`, etc.) |
+| `POST` | `/appointments` | `APPOINTMENT_WRITE` | Book appointment |
+| `GET` | `/appointments/{id}` | `APPOINTMENT_READ` | Get by ID |
+| `GET` | `/appointments/doctor/{doctorId}` | `APPOINTMENT_READ` | Doctor's appointments |
+| `GET` | `/appointments/range?from=&to=` | `APPOINTMENT_READ` | Date range |
+| `PATCH` | `/appointments/{id}/status?status=` | `APPOINTMENT_WRITE` | Update status |
+
+### Visits / Queue
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/visits` | `VISIT_WRITE` | Check in patient |
+| `GET` | `/visits/queue` | `VISIT_READ` | Active queue (all non-COMPLETED visits) |
+| `PATCH` | `/visits/{id}/status?status=` | `VISIT_WRITE` | Move through queue |
+
+### Lab Orders
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/lab/orders` | `LAB_WRITE` | Create lab order |
+| `GET` | `/lab/orders/all` | `LAB_READ` | All orders (lab board) |
+| `GET` | `/lab/orders/visit/{visitId}` | `LAB_READ` | Orders for a visit |
+| `PATCH` | `/lab/orders/{id}/result` | `LAB_WRITE` | Enter result |
+
+### Radiology Orders
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/radiology/orders` | `RADIOLOGY_WRITE` | Request scan |
+| `GET` | `/radiology/orders/all` | `RADIOLOGY_READ` | All orders (radiology board) |
+| `PATCH` | `/radiology/orders/{id}/report` | `RADIOLOGY_WRITE` | Write report |
+
+### Prescriptions
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/prescriptions` | `PRESCRIPTION_WRITE` | Create prescription |
+| `GET` | `/prescriptions/all` | `PRESCRIPTION_READ` | All prescriptions (pharmacy board) |
+| `GET` | `/prescriptions/visit/{visitId}` | `PRESCRIPTION_READ` | By visit |
+| `PATCH` | `/prescriptions/{id}/dispense` | `PRESCRIPTION_WRITE` | Mark dispensed |
+
+### Invoices / Billing
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/invoices` | `BILLING_WRITE` | Create invoice |
+| `GET` | `/invoices` | `BILLING_READ` | List all invoices |
+| `GET` | `/invoices/{id}` | `BILLING_READ` | Get invoice |
+| `PATCH` | `/invoices/{id}/pay` | `BILLING_WRITE` | Record payment |
+
+### User Management (`STAFF_READ` / `STAFF_WRITE`)
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `GET` | `/users` | `STAFF_READ` | List clinic staff |
+| `POST` | `/users` | `STAFF_WRITE` | Create staff user |
+| `PUT` | `/users/{id}` | `STAFF_WRITE` | Update user |
+| `DELETE` | `/users/{id}` | `STAFF_WRITE` | Deactivate user |
+| `POST` | `/users/{id}/change-password` | `STAFF_WRITE` | Change password |
 
 ---
 
@@ -741,11 +735,8 @@ Full interactive docs: `http://localhost:8080/swagger-ui.html`
 ### Platform Database (`clinic_platform`)
 
 ```sql
-tenants
-  id UUID PK | name | db_name UNIQUE | admin_email | active | created_at
-
-platform_users
-  id UUID PK | email UNIQUE | password_hash | role | created_at
+tenants         id | name | db_name UNIQUE | admin_email | active | created_at
+platform_users  id | email UNIQUE | password_hash | role | created_at
 ```
 
 ### Tenant Database (one per clinic)
@@ -753,18 +744,55 @@ platform_users
 ```sql
 users
   id UUID PK | email UNIQUE | password_hash | first_name | last_name
-  role (ADMIN|DOCTOR|NURSE|RECEPTIONIST) | active | created_at | updated_at
+  role (ADMIN|DOCTOR|NURSE|RECEPTIONIST|LAB_TECHNICIAN|RADIOLOGIST|PHARMACIST|BILLING_CLERK)
+  active | failed_login_attempts | locked_until | created_at | updated_at
 
 patients
-  id UUID PK | mrn UNIQUE | first_name | last_name | date_of_birth
-  gender | phone | email | address_line1 | city | country
-  emergency_contact_name | emergency_contact_phone
+  id UUID PK | mrn UNIQUE | first_name | last_name | date_of_birth | gender
+  phone (encrypted) | email (encrypted) | address_line1 (encrypted)
+  emergency_contact_name | emergency_contact_phone (encrypted)
   blood_type | allergies TEXT | active | created_at | updated_at
 
 appointments
-  id UUID PK | patient_id FK→patients | doctor_id FK→users
+  id UUID PK | patient_id FK | doctor_id FK
   scheduled_at | duration_minutes | status | appointment_type | notes
   cancellation_reason | created_at | updated_at
+
+visits
+  id UUID PK | patient_id FK | appointment_id FK
+  status (WAITING|TRIAGE|WITH_DOCTOR|IN_PROCEDURE|PENDING_RESULTS|COMPLETED)
+  chief_complaint | notes | checked_in_at | completed_at | created_at
+
+lab_orders
+  id UUID PK | visit_id FK | patient_id FK | ordered_by FK
+  test_name | status (PENDING|IN_PROGRESS|COMPLETED) | result TEXT
+  ordered_at | resulted_at
+
+radiology_orders
+  id UUID PK | visit_id FK | patient_id FK | ordered_by FK
+  study_type | status (PENDING|SCHEDULED|COMPLETED) | report TEXT
+  ordered_at | reported_at
+
+prescriptions
+  id UUID PK | visit_id FK | patient_id FK | prescribed_by FK
+  medication_name | dosage | frequency | duration_days
+  status (ACTIVE|DISPENSED|CANCELLED) | dispensed_at | created_at
+
+invoices
+  id UUID PK | patient_id FK | visit_id FK
+  amount | status (DRAFT|ISSUED|PAID|VOID)
+  issued_at | paid_at | created_at
+
+audit_logs  (INSERT-only — no UPDATE/DELETE)
+  id UUID PK | user_id | user_email | user_role
+  action | resource_type | resource_id | patient_id
+  ip_address | details | accessed_at
+```
+
+### Visit / Queue Status Workflow
+
+```
+WAITING → TRIAGE → WITH_DOCTOR → IN_PROCEDURE → PENDING_RESULTS → COMPLETED
 ```
 
 ### Appointment Status Workflow
@@ -778,78 +806,47 @@ SCHEDULED → NO_SHOW
 
 ---
 
-## Security Model
-
-### JWT Claims
-
-Every token contains:
-
-```json
-{
-  "sub": "<user-uuid>",
-  "email": "user@clinic.com",
-  "role": "DOCTOR",
-  "tenantId": "my_clinic_db",
-  "type": "TENANT",
-  "iat": 1748649600,
-  "exp": 1748736000
-}
-```
-
-For platform admins: `type = "PLATFORM"`, `tenantId` is absent.
-
-### Role Permissions Summary
-
-| Endpoint Group | PLATFORM_ADMIN | ADMIN | DOCTOR | NURSE | RECEPTIONIST |
-|---|---|---|---|---|---|
-| `/platform/**` | ✅ | — | — | — | — |
-| `POST /patients` | — | ✅ | ✅ | ✅ | — |
-| `GET /patients` | — | ✅ | ✅ | ✅ | ✅ |
-| `DELETE /patients` | — | ✅ | ✅ | ✅ | — |
-| `POST /appointments` | — | ✅ | ✅ | ✅ | ✅ |
-| `GET /appointments` | — | ✅ | ✅ | ✅ | ✅ |
-| `PATCH /appointments/status` | — | ✅ | ✅ | ✅ | ✅ |
-
-Fine-grained method-level security is enforced via `@PreAuthorize` on controllers, with the filter chain providing the coarse-grained path-level guard.
-
----
-
 ## Development Workflow
 
-### Adding a New Feature (example: Prescriptions)
+### Adding a New Migration
 
-1. **Migration** — Add `V4__create_prescriptions_table.sql` in `db/tenant/migration/`.
-2. **Entity** — Create `Prescription.java` in `entities/tenant/`.
-3. **Repository** — Create `PrescriptionRepository.java` in `repositories/tenant/`.
-4. **DTOs** — Add `CreatePrescriptionRequest.java` and `PrescriptionResponse.java`.
-5. **Service** — Create `PrescriptionService.java` using `@Transactional("tenantTransactionManager")`.
-6. **Controller** — Create `PrescriptionController.java` at `/api/v1/prescriptions`.
-7. **Frontend Model** — Add `prescription.model.ts` in `core/models/`.
-8. **Frontend Service** — Add `prescription.service.ts` in the feature folder.
-9. **Feature Route** — Add to `app.routes.ts` under `/dashboard`.
+```bash
+# Increment the version number
+touch backend/src/main/resources/db/tenant/migration/V11__my_change.sql
+# Write the SQL, then restart the backend
+```
 
-### Adding a New Tenant Role
+Never edit an existing migration file — Flyway checksums them and will refuse to start if a previously-applied file is modified.
 
-1. Add the value to `Role.java` enum.
-2. Update `SecurityConfig.java` with the appropriate `hasAnyRole(...)` rule.
-3. Update `roleGuard` usages in route definitions.
-4. Add the role to the Angular `Role` type in `user.model.ts`.
+### Adding a New Feature (example: Imaging Results)
 
-### Running Backend Tests
+1. **Migration** — `V11__create_imaging_results_table.sql`
+2. **Entity** — `ImagingResult.java` in `entities/tenant/`
+3. **Repository** — `ImagingResultRepository.java` in `repositories/tenant/`
+4. **DTOs** — request + response records
+5. **Service** — `@Transactional("tenantTransactionManager")`
+6. **Controller** — `@PreAuthorize("hasAuthority('RADIOLOGY_READ')")` per method; add `@AuditAccess` to read methods
+7. **Permission** — add to `RolePermissions` map if a new permission is needed
+8. **Frontend** — model, service, component, add route with `permissionGuard(...)`, add nav item with `*appHasPermission`
+
+### Adding a New Role
+
+1. Add to `Role.java` enum.
+2. Define its permissions in `RolePermissions.java`.
+3. Add to the Angular `Role` type in `user.model.ts`.
+4. Add to nav items in `dashboard-layout.component.ts` with appropriate `*appHasPermission`.
+
+### Running Tests
 
 ```bash
 cd clinic-saas/backend
-mvn test
-# or with a running postgres:
-mvn verify
+mvn verify      # runs Testcontainers integration tests (needs Docker)
+mvn test        # unit tests only
 ```
 
-### Checking Actuator Health
+### Checking Health & Metrics
 
 ```bash
 curl http://localhost:8080/actuator/health | jq
-# { "status": "UP", "components": { "db": { "status": "UP" }, ... } }
-
 curl http://localhost:8080/actuator/prometheus
-# Prometheus metrics output
 ```

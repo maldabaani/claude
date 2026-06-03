@@ -12,5 +12,6 @@ public record CreateInvoiceRequest(
         UUID visitId,
         LocalDate dueDate,
         String notes,
-        @NotEmpty List<InvoiceItemRequest> items
+        @NotEmpty List<InvoiceItemRequest> items,
+        UUID insurancePolicyId
 ) {}

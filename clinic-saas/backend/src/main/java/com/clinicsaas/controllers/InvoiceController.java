@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/invoices")
-@PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
 @RequiredArgsConstructor
 @Tag(name = "Invoices")
 @SecurityRequirement(name = "bearerAuth")
@@ -29,6 +28,7 @@ public class InvoiceController {
     private final InvoiceService invoiceService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('BILLING_WRITE')")
     public ResponseEntity<InvoiceResponse> create(
             @Valid @RequestBody CreateInvoiceRequest req,
             @AuthenticationPrincipal AppUserPrincipal principal) {
@@ -36,11 +36,13 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('BILLING_READ')")
     public ResponseEntity<InvoiceResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(invoiceService.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('BILLING_READ')")
     public ResponseEntity<Page<InvoiceResponse>> listByPatient(
             @RequestParam UUID patientId,
             @RequestParam(defaultValue = "0") int page,
@@ -49,6 +51,7 @@ public class InvoiceController {
     }
 
     @PostMapping("/{id}/payments")
+    @PreAuthorize("hasAuthority('BILLING_WRITE')")
     public ResponseEntity<InvoiceResponse> addPayment(
             @PathVariable UUID id,
             @Valid @RequestBody AddPaymentRequest req,

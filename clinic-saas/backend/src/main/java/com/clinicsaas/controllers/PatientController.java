@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,12 +26,14 @@ public class PatientController {
     private final PatientService patientService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PATIENT_WRITE')")
     @Operation(summary = "Register a new patient")
     public ResponseEntity<PatientResponse> create(@Valid @RequestBody CreatePatientRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(patientService.create(req));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PATIENT_READ')")
     @Operation(summary = "Search / list patients")
     public ResponseEntity<Page<PatientResponse>> search(
             @RequestParam(required = false) String q,
@@ -39,6 +42,7 @@ public class PatientController {
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('PATIENT_READ')")
     @Operation(summary = "Search patients by query string")
     public ResponseEntity<Page<PatientResponse>> searchByQuery(
             @RequestParam(required = false) String query,
@@ -47,12 +51,14 @@ public class PatientController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PATIENT_READ')")
     @Operation(summary = "Get patient by ID")
     public ResponseEntity<PatientResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(patientService.getById(id));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PATIENT_DELETE')")
     @Operation(summary = "Deactivate patient (soft delete)")
     public ResponseEntity<Void> deactivate(@PathVariable UUID id) {
         patientService.deactivate(id);

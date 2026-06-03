@@ -24,6 +24,9 @@ public record InvoiceResponse(
         LocalDateTime issuedAt,
         LocalDateTime paidAt,
         LocalDateTime createdAt,
+        UUID insurancePolicyId,
+        BigDecimal patientLiabilityAmount,
+        BigDecimal insuranceLiabilityAmount,
         List<InvoiceItemResponse> items,
         List<PaymentResponse> payments
 ) {
@@ -43,6 +46,9 @@ public record InvoiceResponse(
                 inv.getIssuedAt(),
                 inv.getPaidAt(),
                 inv.getCreatedAt(),
+                inv.getInsurancePolicyId(),
+                inv.getPatientLiabilityAmount(),
+                inv.getInsuranceLiabilityAmount(),
                 items,
                 payments
         );

@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface PrescriptionRepository extends JpaRepository<Prescription, UUID> {
     List<Prescription> findByPatientIdOrderByCreatedAtDesc(UUID patientId);
     List<Prescription> findByVisit_Id(UUID visitId);
+    List<Prescription> findAllByOrderByCreatedAtDesc();
 }

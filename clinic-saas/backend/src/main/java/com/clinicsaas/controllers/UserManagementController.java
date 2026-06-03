@@ -27,25 +27,25 @@ public class UserManagementController {
     private final UserManagementService userService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('STAFF_READ')")
     public ResponseEntity<List<UserResponse>> list() {
         return ResponseEntity.ok(userService.listAll());
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('STAFF_WRITE')")
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest req) {
         return ResponseEntity.status(201).body(userService.createUser(req));
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('STAFF_WRITE')")
     public ResponseEntity<UserResponse> toggleStatus(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.toggleStatus(id));
     }
 
     @PutMapping("/{id}/password")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('STAFF_WRITE')")
     public ResponseEntity<Void> changePassword(
             @PathVariable UUID id,
             @Valid @RequestBody ChangePasswordRequest req) {

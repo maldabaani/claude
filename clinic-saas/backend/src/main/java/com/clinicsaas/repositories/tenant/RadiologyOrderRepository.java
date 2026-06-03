@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface RadiologyOrderRepository extends JpaRepository<RadiologyOrder, UUID> {
     List<RadiologyOrder> findByVisit_IdOrderByCreatedAtDesc(UUID visitId);
     List<RadiologyOrder> findByPatientIdOrderByCreatedAtDesc(UUID patientId);
+    List<RadiologyOrder> findAllByOrderByCreatedAtDesc();
 }

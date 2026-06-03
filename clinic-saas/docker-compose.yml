@@ -39,6 +39,8 @@ services:
       POSTGRES_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-clinic_secret}
       JWT_SECRET: ${JWT_SECRET:-Y2xpbmljU2Fhc0p3dFNlY3JldEtleUZvckRldmVsb3BtZW50T25seVVzZQ==}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      # 32-byte base64 key — MUST be changed in production (generate: openssl rand -base64 32)
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-dGVzdEVuY3J5cHRpb25LZXlGb3JEZXZlbG9wbWVudCE=}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:

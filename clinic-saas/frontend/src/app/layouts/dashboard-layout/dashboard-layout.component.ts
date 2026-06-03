@@ -81,24 +81,25 @@ export class DashboardLayoutComponent implements OnInit {
 
   get navItems(): MenuItem[] {
     const user = this.auth.getCurrentUser();
+    const has = (p: any) => this.auth.hasPermission(p);
     const base: MenuItem[] = [
       { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard/home' }
     ];
     if (user?.userType === 'PLATFORM') {
       base.push({ label: 'Manage Clinics', icon: 'pi pi-building', routerLink: '/dashboard/platform/tenants' });
     } else {
-      base.push(
-        { label: 'Patients',     icon: 'pi pi-users',       routerLink: '/dashboard/patients' },
-        { label: 'Appointments', icon: 'pi pi-calendar',    routerLink: '/dashboard/appointments' },
-        { label: 'Queue',        icon: 'pi pi-list',         routerLink: '/dashboard/queue' },
-        // { label: 'Visits',       icon: 'pi pi-heart',    routerLink: '/dashboard/visits' }
-      );
-      if (user?.role === 'ADMIN') {
-        base.push(
-          { label: 'Reports', icon: 'pi pi-chart-bar', routerLink: '/dashboard/reports' },
-          { label: 'Staff',   icon: 'pi pi-id-card',   routerLink: '/dashboard/staff' }
-        );
-      }
+      // Clinical screens — only shown to roles that actually use them
+      if (has('PATIENT_READ'))        base.push({ label: 'Patients',      icon: 'pi pi-users',       routerLink: '/dashboard/patients' });
+      if (has('APPOINTMENT_READ'))    base.push({ label: 'Appointments',  icon: 'pi pi-calendar',    routerLink: '/dashboard/appointments' });
+      if (has('VISIT_READ'))          base.push({ label: 'Queue',         icon: 'pi pi-list',         routerLink: '/dashboard/queue' });
+      // Specialist boards — each role sees only their own board
+      if (has('LAB_READ'))            base.push({ label: 'Lab Board',     icon: 'pi pi-flask',        routerLink: '/dashboard/lab' });
+      if (has('RADIOLOGY_READ'))      base.push({ label: 'Radiology',     icon: 'pi pi-image',        routerLink: '/dashboard/radiology' });
+      if (has('PRESCRIPTION_READ'))   base.push({ label: 'Pharmacy',      icon: 'pi pi-tablet',       routerLink: '/dashboard/pharmacy' });
+      if (has('BILLING_READ'))        base.push({ label: 'Billing',       icon: 'pi pi-credit-card',  routerLink: '/dashboard/billing' });
+      // Admin-only
+      if (has('REPORTS_READ'))        base.push({ label: 'Reports',       icon: 'pi pi-chart-bar',    routerLink: '/dashboard/reports' });
+      if (has('STAFF_READ'))          base.push({ label: 'Staff',         icon: 'pi pi-id-card',      routerLink: '/dashboard/staff' });
     }
     return base;
   }

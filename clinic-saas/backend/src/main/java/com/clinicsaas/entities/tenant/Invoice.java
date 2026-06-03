@@ -60,4 +60,15 @@ public class Invoice extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "insurance_policy_id")
+    private UUID insurancePolicyId;
+
+    @Column(name = "patient_liability_amount", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal patientLiabilityAmount = BigDecimal.ZERO;
+
+    @Column(name = "insurance_liability_amount", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal insuranceLiabilityAmount = BigDecimal.ZERO;
 }
