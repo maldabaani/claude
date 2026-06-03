@@ -14,6 +14,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { CalendarModule } from 'primeng/calendar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { HttpClient } from '@angular/common/http';
@@ -26,6 +27,8 @@ import {
 import { ClinicalService } from '../../../core/services/clinical.service';
 import { PdfService } from '../../../core/services/pdf.service';
 import { ChartModule } from 'primeng/chart';
+import { InsuranceService } from '../../../core/services/insurance.service';
+import { InsurancePayer, InsurancePolicy } from '../../../core/models/insurance.model';
 
 interface PatientDetail {
   id: string; medicalRecordNumber: string; firstName: string; lastName: string;
@@ -41,8 +44,8 @@ interface PatientDetail {
   imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
             TabViewModule, CardModule, ButtonModule, TagModule, TableModule,
             SkeletonModule, TimelineModule, DialogModule, DropdownModule,
-            InputTextModule, InputTextareaModule, InputNumberModule, ToastModule,
-            ChartModule],
+            InputTextModule, InputTextareaModule, InputNumberModule, CalendarModule,
+            ToastModule, ChartModule],
   providers: [MessageService],
   templateUrl: './patient-detail.component.html',
   styles: [`
@@ -230,6 +233,23 @@ export class PatientDetailComponent implements OnInit {
   savingPayment  = signal(false);
   selectedInvoice = signal<any>(null);
 
+  // ── Insurance state ────────────────────────────────────────
+  policies         = signal<InsurancePolicy[]>([]);
+  payers           = signal<InsurancePayer[]>([]);
+  loadingPolicies  = signal(false);
+  showAddPolicy    = signal(false);
+  savingPolicy     = signal(false);
+
+  policyForm!: FormGroup;
+
+  coverageTypes = [
+    { label: 'Basic',         value: 'BASIC' },
+    { label: 'Standard',      value: 'STANDARD' },
+    { label: 'Comprehensive', value: 'COMPREHENSIVE' },
+    { label: 'Family',        value: 'FAMILY' },
+    { label: 'Individual',    value: 'INDIVIDUAL' }
+  ];
+
   visitTypes = [
     { label: 'Walk-In',    value: 'WALK_IN' },
     { label: 'Scheduled',  value: 'SCHEDULED' },
@@ -306,7 +326,8 @@ export class PatientDetailComponent implements OnInit {
     private svc:      ClinicalService,
     private msg:      MessageService,
     private fb:       FormBuilder,
-    private pdf:      PdfService
+    private pdf:      PdfService,
+    private insuranceSvc: InsuranceService
   ) {
     this.startVisitForm = this.fb.group({
       visitType:      ['WALK_IN', Validators.required],
@@ -341,6 +362,19 @@ export class PatientDetailComponent implements OnInit {
       paymentMethod:        ['CASH', Validators.required],
       transactionReference: [''],
       notes:                ['']
+    });
+
+    this.policyForm = this.fb.group({
+      payerId:            ['', Validators.required],
+      policyNumber:       ['', Validators.required],
+      memberNumber:       [''],
+      coverageType:       [''],
+      validFrom:          [null],
+      validTo:            [null],
+      copayAmount:        [null],
+      deductibleAmount:   [null],
+      coveragePercentage: [null],
+      notes:              ['']
     });
   }
 
@@ -377,9 +411,10 @@ export class PatientDetailComponent implements OnInit {
       rad:       this.visitSvc.getRadiologyByPatient(id).pipe(catchError(() => of([]))),
       allergies: this.svc.getAllergies(id).pipe(catchError(() => of([]))),
       history:   this.svc.getMedicalHistory(id).pipe(catchError(() => of([]))),
-      vitals:    this.visitSvc.getVitalsByPatient(id).pipe(catchError(() => of([])))
+      vitals:    this.visitSvc.getVitalsByPatient(id).pipe(catchError(() => of([]))),
+      policies:  this.insuranceSvc.getPoliciesByPatient(id).pipe(catchError(() => of([])))
     }).subscribe({
-      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history, vitals }) => {
+      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history, vitals, policies }) => {
         this.patient.set(patient);
         this.visits.set((visits as any).content ?? visits);
         this.labOrders.set(labs as LabOrderResponse[]);
@@ -389,10 +424,78 @@ export class PatientDetailComponent implements OnInit {
         this.allergiesList.set(allergies as any[]);
         this.medHistory.set(history as any[]);
         this.vitalsHistory.set(vitals as any[]);
+        this.policies.set(policies as InsurancePolicy[]);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  loadPolicies() {
+    const patientId = this.patient()?.id;
+    if (!patientId) return;
+    this.loadingPolicies.set(true);
+    this.insuranceSvc.getPoliciesByPatient(patientId)
+      .pipe(catchError(() => of([])))
+      .subscribe(data => {
+        this.policies.set(data as InsurancePolicy[]);
+        this.loadingPolicies.set(false);
+      });
+  }
+
+  openAddPolicy() {
+    this.insuranceSvc.getPayers()
+      .pipe(catchError(() => of([])))
+      .subscribe(data => this.payers.set(data as InsurancePayer[]));
+    this.policyForm.reset();
+    this.showAddPolicy.set(true);
+  }
+
+  savePolicy() {
+    if (this.policyForm.invalid) return;
+    const patientId = this.patient()?.id;
+    if (!patientId) return;
+    this.savingPolicy.set(true);
+    const val = this.policyForm.value;
+    const payload: any = {
+      patientId,
+      payerId:            val.payerId,
+      policyNumber:       val.policyNumber,
+      memberNumber:       val.memberNumber || null,
+      coverageType:       val.coverageType || null,
+      validFrom:          val.validFrom ? (val.validFrom instanceof Date ? val.validFrom.toISOString().split('T')[0] : val.validFrom) : null,
+      validTo:            val.validTo ? (val.validTo instanceof Date ? val.validTo.toISOString().split('T')[0] : val.validTo) : null,
+      copayAmount:        val.copayAmount ?? null,
+      deductibleAmount:   val.deductibleAmount ?? null,
+      coveragePercentage: val.coveragePercentage ?? null,
+      notes:              val.notes || null
+    };
+    this.insuranceSvc.createPolicy(payload).subscribe({
+      next: () => {
+        this.msg.add({ severity: 'success', summary: 'Insurance policy added' });
+        this.showAddPolicy.set(false);
+        this.savingPolicy.set(false);
+        this.loadPolicies();
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to add policy' });
+        this.savingPolicy.set(false);
+      }
+    });
+  }
+
+  deactivatePolicy(policyId: string) {
+    this.insuranceSvc.deactivatePolicy(policyId).subscribe({
+      next: () => {
+        this.policies.update(list => list.map(p => p.id === policyId ? { ...p, active: false } : p));
+        this.msg.add({ severity: 'success', summary: 'Policy deactivated' });
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to deactivate policy' })
+    });
+  }
+
+  policySeverity(active: boolean): 'success' | 'danger' {
+    return active ? 'success' : 'danger';
   }
 
   get fullName(): string {

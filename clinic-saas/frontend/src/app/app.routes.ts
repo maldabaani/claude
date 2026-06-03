@@ -83,6 +83,12 @@ export const routes: Routes = [
           import('./features/pharmacy/pharmacy.routes').then(m => m.PHARMACY_ROUTES)
       },
       {
+        path: 'billing',
+        canActivate: [permissionGuard('BILLING_READ')],
+        loadChildren: () =>
+          import('./features/billing/billing.routes').then(m => m.BILLING_ROUTES)
+      },
+      {
         path: 'platform',
         loadChildren: () =>
           import('./features/platform/platform.routes').then(m => m.PLATFORM_ROUTES)
