@@ -16,6 +16,10 @@ public class InsurancePolicy extends BaseEntity {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payer_id")
+    private InsurancePayer payer;
+
     @Column(name = "insurer_name", nullable = false, length = 200)
     private String insurerName;
 
@@ -49,4 +53,7 @@ public class InsurancePolicy extends BaseEntity {
     @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 }
