@@ -1,2 +1,0 @@
-package com.clinicsaas.entities.enums;
-public enum DosageFrequency { ONCE_DAILY, TWICE_DAILY, THREE_TIMES_DAILY, FOUR_TIMES_DAILY, EVERY_6_HOURS, EVERY_8_HOURS, EVERY_12_HOURS, AS_NEEDED, WEEKLY, BIWEEKLY, MONTHLY }

@@ -1,2 +1,0 @@
-package com.clinicsaas.entities.enums;
-public enum MedicationForm { TABLET, CAPSULE, SYRUP, SUSPENSION, INJECTION, CREAM, OINTMENT, GEL, INHALER, DROPS, SUPPOSITORY, PATCH, POWDER, LOZENGE }
