@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -7,6 +7,7 @@ import { CalendarModule } from 'primeng/calendar';
 import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { MessageModule } from 'primeng/message';
 import { PatientService } from '../patient.service';
 
 @Component({
@@ -14,14 +15,14 @@ import { PatientService } from '../patient.service';
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, RouterLink,
-    InputTextModule, CalendarModule, DropdownModule, ButtonModule, CardModule
+    InputTextModule, CalendarModule, DropdownModule, ButtonModule, CardModule, MessageModule
   ],
   templateUrl: './patient-create.component.html'
 })
 export class PatientCreateComponent {
   form: FormGroup;
   loading = false;
-  saved   = false;
+  errorMsg = signal('');
 
   genderOptions = [
     { label: 'Male',   value: 'MALE'   },
@@ -49,12 +50,28 @@ export class PatientCreateComponent {
     });
   }
 
+  field(name: string) { return this.form.get(name); }
+  invalid(name: string) { const f = this.field(name); return f?.invalid && f?.touched; }
+
   submit() {
+    this.errorMsg.set('');
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading = true;
-    this.svc.create(this.form.value).subscribe({
+    const raw = { ...this.form.value };
+    const dob: Date = raw.dateOfBirth;
+    if (dob instanceof Date) {
+      const y = dob.getFullYear();
+      const m = String(dob.getMonth() + 1).padStart(2, '0');
+      const d = String(dob.getDate()).padStart(2, '0');
+      raw.dateOfBirth = `${y}-${m}-${d}`;
+    }
+    this.svc.create(raw).subscribe({
       next: () => this.router.navigate(['/dashboard/patients']),
-      error: () => { this.loading = false; }
+      error: (err) => {
+        this.loading = false;
+        const detail = err?.error?.detail ?? err?.error?.message ?? err?.message;
+        this.errorMsg.set(detail || 'Failed to register patient. Please try again.');
+      }
     });
   }
 }
