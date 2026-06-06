@@ -1,0 +1,119 @@
+@use '@angular/material' as mat;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// Design Tokens
+:root {
+  --color-primary: #0F172A;
+  --color-accent: #3B82F6;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F8FAFC;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-muted: #64748B;
+
+  --priority-critical: #DC2626;
+  --priority-high: #EA580C;
+  --priority-medium: #CA8A04;
+  --priority-low: #16A34A;
+
+  --status-new: #3B82F6;
+  --status-open: #6366F1;
+  --status-pending: #EAB308;
+  --status-on-hold: #94A3B8;
+  --status-resolved: #22C55E;
+  --status-closed: #475569;
+
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 64px;
+}
+
+// Custom Angular Material Theme
+$helpdesk-primary: mat.define-palette(mat.$blue-palette, 600);
+$helpdesk-accent: mat.define-palette(mat.$indigo-palette, A200);
+$helpdesk-warn: mat.define-palette(mat.$red-palette);
+
+$helpdesk-theme: mat.define-light-theme((
+  color: (
+    primary: $helpdesk-primary,
+    accent: $helpdesk-accent,
+    warn: $helpdesk-warn,
+  ),
+  typography: mat.define-typography-config(
+    $font-family: 'Inter, sans-serif',
+  ),
+  density: 0,
+));
+
+@include mat.all-component-themes($helpdesk-theme);
+
+// Dark mode theme
+.dark {
+  --color-surface: #1E293B;
+  --color-surface-2: #0F172A;
+  --color-border: #334155;
+  --color-text-primary: #F1F5F9;
+  --color-text-muted: #94A3B8;
+
+  $helpdesk-dark: mat.define-dark-theme((
+    color: (
+      primary: $helpdesk-primary,
+      accent: $helpdesk-accent,
+      warn: $helpdesk-warn,
+    ),
+  ));
+
+  @include mat.all-component-colors($helpdesk-dark);
+}
+
+// Base styles
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+  margin: 0;
+}
+
+h1, h2, h3, h4 { font-family: 'Sora', sans-serif; }
+
+// Skeleton loader animation
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+// Priority badge colors
+.badge-critical { background: #FEF2F2; color: var(--priority-critical); border: 1px solid #FECACA; }
+.badge-high { background: #FFF7ED; color: var(--priority-high); border: 1px solid #FED7AA; }
+.badge-medium { background: #FEFCE8; color: var(--priority-medium); border: 1px solid #FEF08A; }
+.badge-low { background: #F0FDF4; color: var(--priority-low); border: 1px solid #BBF7D0; }
+
+// Status badge colors
+.badge-new { background: #EFF6FF; color: var(--status-new); border: 1px solid #BFDBFE; }
+.badge-open { background: #EEF2FF; color: var(--status-open); border: 1px solid #C7D2FE; }
+.badge-pending { background: #FEFCE8; color: var(--status-pending); border: 1px solid #FEF08A; }
+.badge-on-hold { background: #F8FAFC; color: var(--status-on-hold); border: 1px solid #CBD5E1; }
+.badge-resolved { background: #F0FDF4; color: var(--status-resolved); border: 1px solid #BBF7D0; }
+.badge-closed { background: #F8FAFC; color: var(--status-closed); border: 1px solid #CBD5E1; }
+
+// Custom scrollbar
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+// Material overrides
+.mat-mdc-card { border-radius: 12px !important; }
+.mat-mdc-button { border-radius: 8px !important; }
+.mat-mdc-raised-button { border-radius: 8px !important; }
