@@ -5,25 +5,45 @@
   </div>
 
   <p-card>
+    @if (errorMsg()) {
+      <p-message severity="error" [text]="errorMsg()" styleClass="w-full mb-3" />
+    }
+
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="grid">
         <div class="col-12 md:col-6 field">
           <label>First Name *</label>
-          <input pInputText formControlName="firstName" class="w-full" />
+          <input pInputText formControlName="firstName" class="w-full"
+                 [class.ng-invalid]="invalid('firstName')" [class.ng-dirty]="invalid('firstName')" />
+          @if (invalid('firstName')) {
+            <small class="p-error">First name is required.</small>
+          }
         </div>
         <div class="col-12 md:col-6 field">
           <label>Last Name *</label>
-          <input pInputText formControlName="lastName" class="w-full" />
+          <input pInputText formControlName="lastName" class="w-full"
+                 [class.ng-invalid]="invalid('lastName')" [class.ng-dirty]="invalid('lastName')" />
+          @if (invalid('lastName')) {
+            <small class="p-error">Last name is required.</small>
+          }
         </div>
         <div class="col-12 md:col-6 field">
           <label>Date of Birth *</label>
           <p-calendar formControlName="dateOfBirth" dateFormat="yy-mm-dd"
-                      [showIcon]="true" styleClass="w-full" />
+                      [showIcon]="true" styleClass="w-full"
+                      [class.ng-invalid]="invalid('dateOfBirth')" />
+          @if (invalid('dateOfBirth')) {
+            <small class="p-error">Date of birth is required.</small>
+          }
         </div>
         <div class="col-12 md:col-6 field">
           <label>Gender *</label>
           <p-dropdown formControlName="gender" [options]="genderOptions"
-                      placeholder="Select gender" styleClass="w-full" />
+                      placeholder="Select gender" styleClass="w-full"
+                      [class.ng-invalid]="invalid('gender')" />
+          @if (invalid('gender')) {
+            <small class="p-error">Gender is required.</small>
+          }
         </div>
         <div class="col-12 md:col-6 field">
           <label>Phone</label>
@@ -31,7 +51,11 @@
         </div>
         <div class="col-12 md:col-6 field">
           <label>Email</label>
-          <input pInputText formControlName="email" type="email" class="w-full" />
+          <input pInputText formControlName="email" type="email" class="w-full"
+                 [class.ng-invalid]="invalid('email')" [class.ng-dirty]="invalid('email')" />
+          @if (invalid('email')) {
+            <small class="p-error">Enter a valid email address.</small>
+          }
         </div>
         <div class="col-12 md:col-6 field">
           <label>City</label>
