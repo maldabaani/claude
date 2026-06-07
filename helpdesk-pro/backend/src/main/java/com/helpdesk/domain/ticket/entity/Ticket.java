@@ -1,10 +1,8 @@
 package com.helpdesk.domain.ticket.entity;
 
 import com.helpdesk.shared.audit.AuditableEntity;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Type;
 
 import java.time.Instant;
 import java.util.ArrayList;
