@@ -8,6 +8,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-admin-shell',
@@ -101,6 +102,11 @@ import { AuthService } from '../../core/auth/auth.service';
           </div>
 
           <div class="flex items-center gap-2">
+            <button (click)="themeService.toggle()"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                    title="Toggle dark mode">
+              <i [class]="'pi ' + (themeService.isDark() ? 'pi-sun' : 'pi-moon')" style="font-size:18px"></i>
+            </button>
             <button (click)="topMenu.toggle($event)" class="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
               <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                    style="background:linear-gradient(135deg,#6366F1,#4F46E5)">A</div>
@@ -179,7 +185,7 @@ export class AdminShellComponent {
     { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
   ];
 
-  constructor(public auth: AuthService, private router: Router) {}
+  constructor(public auth: AuthService, public themeService: ThemeService, private router: Router) {}
 
   toggleCollapsed() { this.collapsed.update(v => !v); }
 

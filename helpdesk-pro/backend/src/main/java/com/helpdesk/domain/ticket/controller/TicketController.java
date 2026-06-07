@@ -6,6 +6,8 @@ import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
+import com.helpdesk.domain.ticket.entity.TicketWatcher;
+import com.helpdesk.domain.ticket.repository.TicketWatcherRepository;
 import com.helpdesk.domain.ticket.service.PresenceService;
 import com.helpdesk.domain.ticket.service.TicketService;
 import com.helpdesk.domain.user.entity.User;
@@ -36,6 +38,7 @@ public class TicketController {
 
     private final TicketService ticketService;
     private final PresenceService presenceService;
+    private final TicketWatcherRepository ticketWatcherRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -149,6 +152,57 @@ public class TicketController {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    // ── Watchers ──────────────────────────────────────────────────────────────
+
+    @GetMapping("/{id}/watchers")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<String>>> getWatchers(@PathVariable UUID id) {
+        List<String> emails = ticketWatcherRepository.findByTicketId(id)
+                .stream().map(TicketWatcher::getEmail).toList();
+        return ResponseEntity.ok(ApiResponse.ok(emails));
+    }
+
+    @PostMapping("/{id}/watchers")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> addWatcher(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal User currentUser) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email is required"));
+        }
+        TicketWatcher watcher = TicketWatcher.builder()
+                .ticketId(id)
+                .email(email.toLowerCase().trim())
+                .addedBy(currentUser.getId())
+                .build();
+        ticketWatcherRepository.save(watcher);
+        return ResponseEntity.ok(ApiResponse.ok("Watcher added", null));
+    }
+
+    @DeleteMapping("/{id}/watchers/{email}")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> removeWatcher(
+            @PathVariable UUID id,
+            @PathVariable String email) {
+        ticketWatcherRepository.deleteByTicketIdAndEmail(id, email);
+        return ResponseEntity.ok(ApiResponse.ok("Watcher removed", null));
+    }
+
+    // ── Merge ─────────────────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/merge")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> mergeTicket(
+            @PathVariable UUID id,
+            @RequestBody Map<String, UUID> body,
+            @AuthenticationPrincipal User currentUser) {
+        UUID targetTicketId = body.get("targetTicketId");
+        TicketResponse result = ticketService.mergeTicket(id, targetTicketId, currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.ok("Ticket merged", result));
     }
 
     @PostMapping("/bulk")

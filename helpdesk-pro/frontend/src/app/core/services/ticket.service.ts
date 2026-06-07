@@ -67,6 +67,22 @@ export class TicketService {
     return this.http.post<ApiResponse<Attachment>>(`${this.base}/${ticketId}/attachments`, formData).pipe(map(r => r.data));
   }
 
+  getWatchers(ticketId: string): Observable<string[]> {
+    return this.http.get<ApiResponse<string[]>>(`${this.base}/${ticketId}/watchers`).pipe(map(r => r.data));
+  }
+
+  addWatcher(ticketId: string, email: string): Observable<void> {
+    return this.http.post<ApiResponse<void>>(`${this.base}/${ticketId}/watchers`, { email }).pipe(map(() => undefined));
+  }
+
+  removeWatcher(ticketId: string, email: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.base}/${ticketId}/watchers/${encodeURIComponent(email)}`).pipe(map(() => undefined));
+  }
+
+  mergeTicket(sourceId: string, targetTicketId: string): Observable<Ticket> {
+    return this.http.post<ApiResponse<Ticket>>(`${this.base}/${sourceId}/merge`, { targetTicketId }).pipe(map(r => r.data));
+  }
+
   recordPresence(ticketId: string): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.base}/${ticketId}/presence`, {}).pipe(map(r => r.data));
   }

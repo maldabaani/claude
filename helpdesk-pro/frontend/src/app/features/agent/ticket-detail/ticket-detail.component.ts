@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -10,6 +10,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TextareaModule } from 'primeng/textarea';
 import { PopoverModule } from 'primeng/popover';
 import { InputTextModule } from 'primeng/inputtext';
+import { DialogModule } from 'primeng/dialog';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -26,7 +27,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
     ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
-    PopoverModule, InputTextModule,
+    PopoverModule, InputTextModule, DialogModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -326,11 +327,94 @@ import { environment } from '../../../../environments/environment';
                   </button>
                 </div>
               </div>
+
+              <!-- Watchers -->
+              <div style="border-top:1px solid #F1F5F9;padding-top:16px">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Watchers</label>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span *ngFor="let w of watchers()"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
+                    {{ w }}
+                    <button (click)="removeWatcher(w)" class="hover:text-red-500 transition-colors leading-none">
+                      <i class="pi pi-times" style="font-size:11px"></i>
+                    </button>
+                  </span>
+                  <span *ngIf="watchers().length === 0" class="text-xs text-slate-300 italic">No watchers</span>
+                </div>
+                <div class="flex gap-1.5">
+                  <input #watcherInput
+                         type="email"
+                         class="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                         placeholder="email@example.com"
+                         (keydown.enter)="addWatcher(watcherInput.value); watcherInput.value = ''"
+                         style="font-family:inherit">
+                  <button (click)="addWatcher(watcherInput.value); watcherInput.value = ''"
+                          class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white"
+                          style="background:#2563EB">
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Merge ticket button -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="p-4">
+              <button (click)="showMergeDialog()"
+                      class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-arrow-right-arrow-left" style="font-size:15px"></i>
+                Merge Ticket
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Merge dialog -->
+    <p-dialog [(visible)]="mergeDialogVisible" [modal]="true" header="Merge Ticket"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for a target ticket to merge this ticket into. All comments will be moved to the target ticket and this ticket will be closed.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Enter subject or ticket ID..."
+                 [ngModel]="mergeSearch()"
+                 (ngModelChange)="onMergeSearch($event)" />
+        </div>
+        <div *ngIf="mergeResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let t of mergeResults()"
+               (click)="selectMergeTarget(t)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="mergeTargetId() === t.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ t.title }}</span>
+              <span class="text-xs font-mono text-slate-400">{{ t.ticketNumber }}</span>
+            </div>
+            <span class="text-xs text-slate-400">{{ t.status }}</span>
+          </div>
+        </div>
+        <div *ngIf="mergeSearch().length > 1 && mergeResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No matching tickets found
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="mergeDialogVisible = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmMerge()"
+                [disabled]="!mergeTargetId() || merging"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ merging ? 'Merging...' : 'Merge' }}
+        </button>
+      </ng-template>
+    </p-dialog>
   `,
 })
 export class AgentTicketDetailComponent implements OnInit, OnDestroy {
@@ -342,6 +426,17 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   pendingFiles = signal<File[]>([]);
   loading = signal(true);
   submitting = false;
+
+  // Watchers
+  watchers = signal<string[]>([]);
+
+  // Merge
+  mergeDialogVisible = false;
+  mergeSearch = signal('');
+  mergeResults = signal<Ticket[]>([]);
+  mergeTargetId = signal<string | null>(null);
+  merging = false;
+  private mergeSearchTimeout: any;
   replyControl = new FormControl('', Validators.required);
   noteMode: 'public' | 'internal' = 'public';
   currentStatus: TicketStatus = 'NEW';
@@ -398,6 +493,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private ticketService: TicketService,
     private userService: UserService,
     private departmentService: DepartmentService,
@@ -467,6 +563,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     });
     this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
     this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
+    this.ticketService.getWatchers(id).subscribe(w => this.watchers.set(w));
 
     // Presence: record and poll
     this.ticketService.recordPresence(id).subscribe();
@@ -547,6 +644,58 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     const ticket = this.ticket()!;
     const newTags = ticket.tags.filter(t => t !== tag);
     this.ticketService.updateTicket(ticket.id, { tags: newTags }).subscribe(t => this.ticket.set(t));
+  }
+
+  addWatcher(value: string) {
+    const email = value.trim();
+    if (!email) return;
+    const id = this.ticket()!.id;
+    this.ticketService.addWatcher(id, email).subscribe(() => {
+      this.ticketService.getWatchers(id).subscribe(w => this.watchers.set(w));
+    });
+  }
+
+  removeWatcher(email: string) {
+    const id = this.ticket()!.id;
+    this.ticketService.removeWatcher(id, email).subscribe(() => {
+      this.watchers.update(list => list.filter(w => w !== email));
+    });
+  }
+
+  showMergeDialog() {
+    this.mergeDialogVisible = true;
+    this.mergeSearch.set('');
+    this.mergeResults.set([]);
+    this.mergeTargetId.set(null);
+  }
+
+  onMergeSearch(query: string) {
+    this.mergeSearch.set(query);
+    clearTimeout(this.mergeSearchTimeout);
+    if (query.length < 2) { this.mergeResults.set([]); return; }
+    this.mergeSearchTimeout = setTimeout(() => {
+      this.ticketService.getTickets({ search: query, size: 10 }).subscribe(page => {
+        this.mergeResults.set(page.content.filter(t => t.id !== this.ticket()!.id));
+      });
+    }, 300);
+  }
+
+  selectMergeTarget(t: Ticket) {
+    this.mergeTargetId.set(t.id);
+  }
+
+  confirmMerge() {
+    const targetId = this.mergeTargetId();
+    if (!targetId) return;
+    this.merging = true;
+    this.ticketService.mergeTicket(this.ticket()!.id, targetId).subscribe({
+      next: () => {
+        this.merging = false;
+        this.mergeDialogVisible = false;
+        this.router.navigate(['/agent/tickets', targetId]);
+      },
+      error: () => { this.merging = false; },
+    });
   }
 
   topBarClass(): string {

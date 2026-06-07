@@ -5,6 +5,8 @@ import { TabsModule } from 'primeng/tabs';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { CheckboxModule } from 'primeng/checkbox';
+import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/services/settings.service';
 
@@ -12,7 +14,7 @@ import { SettingsService } from '../../../core/services/settings.service';
   selector: 'app-settings',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule,
-    TabsModule, InputTextModule, ButtonModule, ToggleSwitchModule],
+    TabsModule, InputTextModule, ButtonModule, ToggleSwitchModule, CheckboxModule, SelectModule],
   template: `
     <div class="space-y-6">
       <div>
@@ -25,6 +27,7 @@ import { SettingsService } from '../../../core/services/settings.service';
           <p-tablist>
             <p-tab value="0">General</p-tab>
             <p-tab value="1">Email Notifications</p-tab>
+            <p-tab value="2">Business Hours</p-tab>
           </p-tablist>
           <p-tabpanels>
 
@@ -98,6 +101,59 @@ import { SettingsService } from '../../../core/services/settings.service';
               </div>
             </p-tabpanel>
 
+            <!-- Business Hours tab -->
+            <p-tabpanel value="2">
+              <div class="p-8 max-w-lg space-y-6">
+                <div>
+                  <h3 class="font-bold text-gray-900 mb-1">Business Hours</h3>
+                  <p class="text-sm text-slate-400">Configure working hours for SLA calculations.</p>
+                </div>
+
+                <div class="space-y-4">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1.5">Start Time</label>
+                      <p-select [options]="hourOptions" [(ngModel)]="bhStart" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1.5">End Time</label>
+                      <p-select [options]="hourOptions" [(ngModel)]="bhEnd" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Business Days</label>
+                    <div class="flex flex-wrap gap-3">
+                      <div *ngFor="let day of weekDays" class="flex items-center gap-1.5">
+                        <p-checkbox [inputId]="'day-' + day.value" [value]="day.value"
+                                    [(ngModel)]="selectedDays" />
+                        <label [for]="'day-' + day.value" class="text-sm text-gray-700 cursor-pointer">{{ day.label }}</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Timezone</label>
+                    <input pInputText [(ngModel)]="bhTimezone" class="w-full" placeholder="UTC" />
+                  </div>
+                </div>
+
+                <div *ngIf="bhSaved()"
+                     class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
+                     style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
+                  <i class="pi pi-check-circle" style="font-size:16px"></i>
+                  Business hours saved successfully
+                </div>
+
+                <button pButton type="button" (click)="saveBusinessHours()"
+                        [disabled]="bhSaving()"
+                        styleClass="!rounded-lg !font-semibold !px-6">
+                  <i class="pi pi-save mr-2" style="font-size:18px"></i>
+                  {{ bhSaving() ? 'Saving...' : 'Save Business Hours' }}
+                </button>
+              </div>
+            </p-tabpanel>
+
           </p-tabpanels>
         </p-tabs>
       </div>
@@ -115,11 +171,38 @@ export class SettingsComponent implements OnInit {
   generalSaved = signal(false);
   notifSaved = signal(false);
 
+  // Business hours
+  bhStart = '09:00';
+  bhEnd = '17:00';
+  bhTimezone = 'UTC';
+  selectedDays: string[] = ['1','2','3','4','5'];
+  bhSaving = signal(false);
+  bhSaved = signal(false);
+
+  hourOptions = Array.from({ length: 24 }, (_, i) => {
+    const h = i.toString().padStart(2, '0');
+    return { label: `${h}:00`, value: `${h}:00` };
+  });
+
+  weekDays = [
+    { label: 'Mon', value: '1' },
+    { label: 'Tue', value: '2' },
+    { label: 'Wed', value: '3' },
+    { label: 'Thu', value: '4' },
+    { label: 'Fri', value: '5' },
+    { label: 'Sat', value: '6' },
+    { label: 'Sun', value: '7' },
+  ];
+
   constructor(private fb: FormBuilder, private settingsService: SettingsService) {}
 
   ngOnInit() {
     this.settingsService.getSettings().subscribe(s => {
       this.generalForm.patchValue({ companyName: s.companyName, supportEmail: s.supportEmail });
+      if (s.businessHoursStart) this.bhStart = s.businessHoursStart;
+      if (s.businessHoursEnd) this.bhEnd = s.businessHoursEnd;
+      if (s.businessTimezone) this.bhTimezone = s.businessTimezone;
+      if (s.businessDays) this.selectedDays = s.businessDays.split(',').map((d: string) => d.trim());
       this.emailTemplates.set([
         { key: 'notifyTicketCreated',  name: 'Ticket Created',  trigger: 'On ticket submission',          enabled: s.notifyTicketCreated },
         { key: 'notifyCommentAdded',   name: 'Comment Added',   trigger: 'On new reply or internal note', enabled: s.notifyCommentAdded },
@@ -139,6 +222,23 @@ export class SettingsComponent implements OnInit {
         setTimeout(() => this.generalSaved.set(false), 3000);
       },
       error: () => this.saving.set(false),
+    });
+  }
+
+  saveBusinessHours() {
+    this.bhSaving.set(true);
+    this.settingsService.updateSettings({
+      businessHoursStart: this.bhStart,
+      businessHoursEnd: this.bhEnd,
+      businessDays: this.selectedDays.join(','),
+      businessTimezone: this.bhTimezone,
+    }).subscribe({
+      next: () => {
+        this.bhSaving.set(false);
+        this.bhSaved.set(true);
+        setTimeout(() => this.bhSaved.set(false), 3000);
+      },
+      error: () => this.bhSaving.set(false),
     });
   }
 

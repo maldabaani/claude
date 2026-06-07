@@ -13,6 +13,10 @@ export interface AppSettings {
   notifyStatusChanged: boolean;
   notifyTicketAssigned: boolean;
   notifySlaBreached: boolean;
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  businessDays: string;
+  businessTimezone: string;
 }
 
 @Injectable({ providedIn: 'root' })

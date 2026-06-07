@@ -29,6 +29,8 @@ import java.util.Optional;
 import java.util.UUID;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.audit.service.AuditLogService;
+import com.helpdesk.domain.comment.entity.Comment;
+import com.helpdesk.domain.comment.repository.CommentRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +43,7 @@ public class TicketService {
     private final NotificationService notificationService;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final CommentRepository commentRepository;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -158,6 +161,36 @@ public class TicketService {
             } catch (Exception ignored) {}
         }
         return Map.of("processed", processed, "total", request.ticketIds().size());
+    }
+
+    @Transactional
+    public TicketResponse mergeTicket(UUID sourceId, UUID targetId, UUID actorId) {
+        Ticket source = getTicket(sourceId);
+        Ticket target = getTicket(targetId);
+
+        // Move all comments from source to target
+        List<Comment> comments = commentRepository.findByTicketId(sourceId, true);
+        for (Comment c : comments) {
+            c.setTicketId(targetId);
+        }
+        commentRepository.saveAll(comments);
+
+        // Add a system comment on the source ticket
+        Comment mergeNote = Comment.builder()
+                .ticketId(sourceId)
+                .authorId(actorId)
+                .body("Merged into ticket #" + target.getTicketNumber())
+                .internal(false)
+                .build();
+        commentRepository.save(mergeNote);
+
+        // Close source ticket
+        source.setStatus(TicketStatus.CLOSED);
+        source.setClosedAt(Instant.now());
+        ticketRepository.save(source);
+
+        auditLogService.log("TICKET", sourceId, "MERGED", actorId, null, "{\"targetTicketId\":\"" + targetId + "\"}");
+        return toResponse(target);
     }
 
     private void autoAssign(Ticket ticket) {

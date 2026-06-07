@@ -11,6 +11,7 @@ import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { WebSocketService } from '../../core/services/websocket.service';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-agent-shell',
@@ -106,6 +107,13 @@ import { WebSocketService } from '../../core/services/websocket.service';
           </div>
 
           <div class="flex items-center gap-1">
+            <!-- Dark mode toggle -->
+            <button (click)="themeService.toggle()"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                    title="Toggle dark mode">
+              <i [class]="'pi ' + (themeService.isDark() ? 'pi-sun' : 'pi-moon')" style="font-size:18px"></i>
+            </button>
+
             <!-- Notification bell -->
             <button (click)="notifMenu.toggle($event)"
                     class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
@@ -192,6 +200,7 @@ export class AgentShellComponent implements OnInit {
   constructor(
     public auth: AuthService,
     public notifService: NotificationService,
+    public themeService: ThemeService,
     private ws: WebSocketService,
     private router: Router,
   ) {}

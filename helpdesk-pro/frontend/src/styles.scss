@@ -224,6 +224,25 @@ a, button { transition: all 0.15s ease; }
   }
 }
 
+// ─── Dark Mode ────────────────────────────────────────────────────────────────
+.dark {
+  --surface-ground: #0f172a;
+  --surface-section: #1e293b;
+  --surface-card: #1e293b;
+  --surface-overlay: #1e293b;
+  --surface-border: #334155;
+  --surface-hover: #334155;
+  --text-color: #e2e8f0;
+  --text-color-secondary: #94a3b8;
+}
+
+.dark body { background: var(--surface-ground); color: var(--text-color); }
+.dark .bg-white { background: var(--surface-card) !important; }
+.dark .bg-gray-50, .dark .bg-slate-50 { background: var(--surface-section) !important; }
+.dark .text-gray-900 { color: var(--text-color) !important; }
+.dark .text-slate-400, .dark .text-gray-500 { color: var(--text-color-secondary) !important; }
+.dark .border-gray-100, .dark .border-gray-200 { border-color: var(--surface-border) !important; }
+
 // ─── Sidebar nav ──────────────────────────────────────────────────────────────
 .sidebar-nav-item {
   display: flex;
