@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HelpDesk Pro — Setup Wizard</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --navy:#0F172A;--blue:#3B82F6;--blue-dark:#2563EB;
+      --green:#22C55E;--red:#EF4444;--yellow:#EAB308;
+      --border:#E2E8F0;--surface:#F8FAFC;--muted:#64748B;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--navy);min-height:100vh}
+
+    /* ── Header ── */
+    header{background:var(--navy);padding:0 2rem}
+    .header-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+    .logo{display:flex;align-items:center;gap:10px;color:white;font-weight:700;font-size:1.1rem;text-decoration:none}
+    .logo-icon{width:34px;height:34px;background:var(--blue);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem}
+    .header-version{color:#64748B;font-size:.8rem}
+
+    /* ── Progress bar ── */
+    .wizard-progress{background:white;border-bottom:1px solid var(--border);padding:1.2rem 2rem}
+    .progress-inner{max-width:860px;margin:0 auto}
+    .steps{display:flex;gap:0;counter-reset:step}
+    .step-item{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+    .step-item:not(:last-child)::after{content:'';position:absolute;top:16px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+    .step-item.done:not(:last-child)::after{background:var(--blue)}
+    .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:white;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--muted);position:relative;z-index:1;transition:all .3s}
+    .step-item.active .step-circle{border-color:var(--blue);background:var(--blue);color:white}
+    .step-item.done .step-circle{border-color:var(--blue);background:var(--blue);color:white}
+    .step-item.done .step-circle::after{content:'✓'}
+    .step-item.done .step-num{display:none}
+    .step-label{font-size:.72rem;color:var(--muted);margin-top:6px;text-align:center;font-weight:500}
+    .step-item.active .step-label{color:var(--blue);font-weight:700}
+    .step-item.done .step-label{color:var(--blue)}
+
+    /* ── Main card ── */
+    .wizard-wrap{max-width:860px;margin:2rem auto;padding:0 1rem}
+    .wizard-card{background:white;border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+
+    /* Panel */
+    .panel{display:none}
+    .panel.active{display:block}
+
+    /* Panel header */
+    .panel-header{padding:1.5rem 2rem;border-bottom:1px solid var(--border);background:#FAFAFA}
+    .panel-header h2{font-size:1.25rem;font-weight:700;color:var(--navy);margin-bottom:.3rem}
+    .panel-header p{color:var(--muted);font-size:.88rem}
+
+    /* Panel body */
+    .panel-body{padding:2rem}
+
+    /* Section */
+    .form-section{margin-bottom:2rem}
+    .form-section:last-child{margin-bottom:0}
+    .section-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.85rem;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+    .section-icon{font-size:1rem}
+
+    /* Form grid */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .form-grid.full{grid-template-columns:1fr}
+    .form-grid.three{grid-template-columns:1fr 1fr 1fr}
+    @media(max-width:600px){.form-grid,.form-grid.three{grid-template-columns:1fr}}
+
+    /* Field */
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field label{font-size:.82rem;font-weight:600;color:#374151}
+    .field .hint{font-size:.75rem;color:var(--muted);margin-top:2px}
+    .field input,.field select,.field textarea{
+      border:1.5px solid var(--border);border-radius:9px;padding:.6rem .85rem;
+      font-size:.9rem;color:var(--navy);background:white;outline:none;transition:border .2s;width:100%
+    }
+    .field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .field input.error,.field select.error{border-color:var(--red)}
+    .field .err-msg{font-size:.75rem;color:var(--red);display:none}
+    .field.has-error .err-msg{display:block}
+    .field.has-error input,.field.has-error select{border-color:var(--red)}
+
+    /* Password toggle */
+    .pw-wrap{position:relative}
+    .pw-wrap input{padding-right:2.5rem}
+    .pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:0}
+
+    /* Info box */
+    .info-box{display:flex;gap:10px;padding:.85rem 1rem;border-radius:10px;font-size:.85rem;margin-bottom:1rem}
+    .info-box.info{background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF}
+    .info-box.warn{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E}
+    .info-box.success{background:#F0FDF4;border:1px solid #BBF7D0;color:#166534}
+    .info-box .icon{flex-shrink:0;font-size:1rem}
+
+    /* Test connection */
+    .test-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:1.5px solid var(--blue);background:white;color:var(--blue);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;margin-top:.5rem}
+    .test-btn:hover{background:var(--blue);color:white}
+    .test-result{margin-top:.6rem;font-size:.82rem;font-weight:600;display:none}
+    .test-result.ok{color:var(--green);display:flex;align-items:center;gap:5px}
+    .test-result.fail{color:var(--red);display:flex;align-items:center;gap:5px}
+
+    /* Navigation */
+    .panel-footer{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 2rem;border-top:1px solid var(--border);background:#FAFAFA}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 24px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+    .btn-primary{background:var(--blue);color:white}
+    .btn-primary:hover{background:var(--blue-dark);transform:translateY(-1px)}
+    .btn-secondary{background:white;color:var(--navy);border:1.5px solid var(--border)}
+    .btn-secondary:hover{background:var(--surface)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+    /* Review panel */
+    .review-group{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem}
+    .review-group h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:.8rem}
+    .review-row{display:flex;justify-content:space-between;align-items:center;font-size:.88rem;padding:.3rem 0;border-bottom:1px solid var(--border)}
+    .review-row:last-child{border-bottom:none}
+    .review-row .key{color:var(--muted)}
+    .review-row .val{font-weight:600;color:var(--navy)}
+    .review-row .val.secret{color:var(--muted);font-style:italic}
+
+    /* Install panel */
+    .install-log{background:#0F172A;color:#E2E8F0;border-radius:12px;padding:1.2rem;font-family:monospace;font-size:.82rem;height:240px;overflow-y:auto;line-height:1.8}
+    .log-line{opacity:0;animation:fadeIn .3s forwards}
+    @keyframes fadeIn{to{opacity:1}}
+    .log-ok{color:#86EFAC}
+    .log-err{color:#FCA5A5}
+    .log-info{color:#7DD3FC}
+    .log-warn{color:#FCD34D}
+    .spinner{display:inline-block;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Success panel */
+    .success-wrap{text-align:center;padding:2.5rem 2rem}
+    .success-icon{font-size:4rem;margin-bottom:1rem}
+    .success-wrap h2{font-size:1.6rem;font-weight:700;margin-bottom:.5rem}
+    .success-wrap p{color:var(--muted);margin-bottom:1.5rem;font-size:.95rem}
+    .cred-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0;text-align:left}
+    @media(max-width:600px){.cred-cards{grid-template-columns:1fr}}
+    .cred-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem}
+    .cred-card .role{font-size:.72rem;text-transform:uppercase;font-weight:700;letter-spacing:.06em;color:var(--blue);margin-bottom:.5rem}
+    .cred-card .email{font-size:.82rem;font-weight:600;color:var(--navy)}
+    .cred-card .pw{font-size:.78rem;color:var(--muted)}
+    .launch-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem}
+    .launch-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 26px;border-radius:11px;font-weight:700;font-size:.92rem;text-decoration:none;transition:all .2s}
+    .launch-btn.primary{background:var(--blue);color:white}
+    .launch-btn.primary:hover{background:var(--blue-dark)}
+    .launch-btn.outline{border:2px solid var(--border);color:var(--navy);background:white}
+    .launch-btn.outline:hover{border-color:var(--blue);color:var(--blue)}
+
+    /* Generated config */
+    .config-box{position:relative;background:#0F172A;border-radius:12px;padding:1.2rem;margin-top:1rem}
+    .config-box pre{color:#E2E8F0;font-size:.78rem;font-family:monospace;white-space:pre-wrap;line-height:1.7}
+    .config-copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#94A3B8;border-radius:7px;padding:4px 10px;font-size:.72rem;cursor:pointer}
+    .config-copy:hover{background:rgba(255,255,255,.2);color:white}
+
+    /* Tabs for config output */
+    .tab-bar{display:flex;gap:4px;margin-bottom:-.5rem}
+    .tab{padding:7px 16px;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:#F1F5F9;font-size:.8rem;cursor:pointer;color:var(--muted);font-weight:600}
+    .tab.active{background:white;color:var(--navy);border-bottom:1px solid white;margin-bottom:-1px;position:relative;z-index:1}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">🎧</div>
+      HelpDesk Pro Installer
+    </a>
+    <span class="header-version">v1.0.0</span>
+  </div>
+</header>
+
+<!-- Progress -->
+<div class="wizard-progress">
+  <div class="progress-inner">
+    <div class="steps" id="stepBar">
+      <div class="step-item active" id="si0">
+        <div class="step-circle"><span class="step-num">1</span></div>
+        <div class="step-label">System</div>
+      </div>
+      <div class="step-item" id="si1">
+        <div class="step-circle"><span class="step-num">2</span></div>
+        <div class="step-label">Database</div>
+      </div>
+      <div class="step-item" id="si2">
+        <div class="step-circle"><span class="step-num">3</span></div>
+        <div class="step-label">Admin Account</div>
+      </div>
+      <div class="step-item" id="si3">
+        <div class="step-circle"><span class="step-num">4</span></div>
+        <div class="step-label">Review</div>
+      </div>
+      <div class="step-item" id="si4">
+        <div class="step-circle"><span class="step-num">5</span></div>
+        <div class="step-label">Install</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wizard-wrap">
+<div class="wizard-card">
+
+  <!-- ══ PANEL 0: System Settings ══ -->
+  <div class="panel active" id="p0">
+    <div class="panel-header">
+      <h2>⚙️ System Settings</h2>
+      <p>Configure your helpdesk name, URL, and default language.</p>
+    </div>
+    <div class="panel-body">
+      <div class="form-section">
+        <div class="section-title"><span class="section-icon">🌐</span> Helpdesk Info</div>
+        <div class="form-grid full">
+          <div class="field" id="f-hdname">
+            <label>Helpdesk Name *</label>
+            <input id="hdName" type="text" value="HelpDesk Pro" placeholder="e.g. Acme Support">
+            <span class="hint">Displayed in emails and the browser tab.</span>
+            <span class="err-msg">Helpdesk name is required.</span>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1rem">
+          <div class="field" id="f-hdurl">
+            <label>Helpdesk URL *</label>
+            <input id="hdUrl" type="text" value="http://localhost:4200" placeholder="http://localhost:4200">
+            <span class="hint">The public URL where the frontend will be accessible.</span>
+            <span class="err-msg">URL is required.</span>
+          </div>
+          <div class="field">
+            <label>Default Language</label>
+            <select id="hdLang">
+              <option value="en">English (United States)</option>
+              <option value="ar">العربية</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title"><span class="section-icon">📧</span> Email Settings</div>
+        <div class="form-grid">
+          <div class="field" id="f-email">
+            <label>Default Support Email *</label>
+            <input id="hdEmail" type="email" value="" placeholder="support@yourcompany.com">
+            <span class="err-msg">Valid email is required.</span>
+          </div>
+          <div class="field">
+            <label>SMTP Host</label>
+            <input id="smtpHost" type="text" value="localhost" placeholder="localhost or smtp.gmail.com">
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1rem">
+          <div class="field">
+            <label>SMTP Port</label>
+            <input id="smtpPort" type="number" value="1025" placeholder="1025">
+          </div>
+          <div class="field">
+            <label>SMTP Username <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input id="smtpUser" type="text" placeholder="Leave blank for local MailHog">
+          </div>
+        </div>
+        <div class="info-box info" style="margin-top:.8rem">
+          <span class="icon">💡</span>
+          <span>Using <strong>MailHog</strong> locally? Keep host <code>localhost</code> and port <code>1025</code>. For Gmail use <code>smtp.gmail.com</code> port <code>587</code>.</span>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title"><span class="section-icon">🔒</span> Security</div>
+        <div class="form-grid full">
+          <div class="field" id="f-jwt">
+            <label>JWT Secret Key *</label>
+            <div class="pw-wrap">
+              <input id="jwtSecret" type="password" value="" placeholder="Min. 32 characters — used to sign auth tokens">
+              <button class="pw-toggle" onclick="togglePw('jwtSecret',this)">👁</button>
+            </div>
+            <span class="hint">Keep this secret and at least 32 characters long.</span>
+            <span class="err-msg">JWT secret must be at least 32 characters.</span>
+          </div>
+        </div>
+        <button class="test-btn" onclick="genSecret()">🎲 Generate Random Secret</button>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <span></span>
+      <button class="btn btn-primary" onclick="nextPanel(0)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══ PANEL 1: Database ══ -->
+  <div class="panel" id="p1">
+    <div class="panel-header">
+      <h2>🗄️ Database Configuration</h2>
+      <p>Connect to your existing PostgreSQL installation. Make sure PostgreSQL is running.</p>
+    </div>
+    <div class="panel-body">
+      <div class="info-box info">
+        <span class="icon">ℹ️</span>
+        <span>No Docker needed — this connects to your locally installed PostgreSQL. Make sure you've created the <strong>helpdesk</strong> database (see Step 4 in the Install Guide).</span>
+      </div>
+
+      <div class="form-section" style="margin-top:1rem">
+        <div class="section-title"><span class="section-icon">🔌</span> Connection Details</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Host</label>
+            <input id="dbHost" type="text" value="localhost">
+          </div>
+          <div class="field">
+            <label>Port</label>
+            <input id="dbPort" type="number" value="5432">
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1rem">
+          <div class="field" id="f-dbname">
+            <label>Database Name *</label>
+            <input id="dbName" type="text" value="helpdesk">
+            <span class="err-msg">Database name is required.</span>
+          </div>
+          <div class="field" id="f-dbuser">
+            <label>Username *</label>
+            <input id="dbUser" type="text" value="helpdesk">
+            <span class="err-msg">Username is required.</span>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1rem">
+          <div class="field" id="f-dbpass">
+            <label>Password *</label>
+            <div class="pw-wrap">
+              <input id="dbPass" type="password" value="helpdesk">
+              <button class="pw-toggle" onclick="togglePw('dbPass',this)">👁</button>
+            </div>
+            <span class="err-msg">Password is required.</span>
+          </div>
+          <div class="field">
+            <label>Schema</label>
+            <input id="dbSchema" type="text" value="public" placeholder="public">
+          </div>
+        </div>
+      </div>
+
+      <button class="test-btn" onclick="testConnection()">🔌 Test Connection</button>
+      <div class="test-result" id="testResult"></div>
+
+      <div class="info-box warn" style="margin-top:1rem">
+        <span class="icon">⚠️</span>
+        <span>If the connection test fails: make sure PostgreSQL is running and the database <code>helpdesk</code> exists with the user you specified.</span>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-secondary" onclick="prevPanel(1)">← Back</button>
+      <button class="btn btn-primary" onclick="nextPanel(1)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══ PANEL 2: Admin Account ══ -->
+  <div class="panel" id="p2">
+    <div class="panel-header">
+      <h2>👤 Administrator Account</h2>
+      <p>Create the primary admin account. You can add more users after installation.</p>
+    </div>
+    <div class="panel-body">
+      <div class="form-section">
+        <div class="section-title"><span class="section-icon">🪪</span> Personal Info</div>
+        <div class="form-grid">
+          <div class="field" id="f-fname">
+            <label>First Name *</label>
+            <input id="adminFirst" type="text" placeholder="John">
+            <span class="err-msg">First name is required.</span>
+          </div>
+          <div class="field" id="f-lname">
+            <label>Last Name *</label>
+            <input id="adminLast" type="text" placeholder="Smith">
+            <span class="err-msg">Last name is required.</span>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1rem">
+          <div class="field" id="f-aemail">
+            <label>Email Address *</label>
+            <input id="adminEmail" type="email" placeholder="admin@yourcompany.com">
+            <span class="err-msg">Valid email is required.</span>
+          </div>
+          <div class="field">
+            <label>Username</label>
+            <input id="adminUsername" type="text" placeholder="admin" value="admin">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title"><span class="section-icon">🔑</span> Password</div>
+        <div class="form-grid">
+          <div class="field" id="f-apw">
+            <label>Password *</label>
+            <div class="pw-wrap">
+              <input id="adminPw" type="password" placeholder="Min. 8 characters">
+              <button class="pw-toggle" onclick="togglePw('adminPw',this)">👁</button>
+            </div>
+            <span class="err-msg">Password must be at least 8 characters.</span>
+          </div>
+          <div class="field" id="f-apw2">
+            <label>Confirm Password *</label>
+            <div class="pw-wrap">
+              <input id="adminPw2" type="password" placeholder="Repeat password">
+              <button class="pw-toggle" onclick="togglePw('adminPw2',this)">👁</button>
+            </div>
+            <span class="err-msg">Passwords do not match.</span>
+          </div>
+        </div>
+        <div id="pwStrength" style="margin-top:.5rem;font-size:.78rem;color:var(--muted)"></div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-secondary" onclick="prevPanel(2)">← Back</button>
+      <button class="btn btn-primary" onclick="nextPanel(2)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══ PANEL 3: Review ══ -->
+  <div class="panel" id="p3">
+    <div class="panel-header">
+      <h2>📋 Review & Confirm</h2>
+      <p>Check all settings before installation begins. Click Back to make changes.</p>
+    </div>
+    <div class="panel-body" id="reviewBody">
+      <!-- filled by JS -->
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-secondary" onclick="prevPanel(3)">← Back</button>
+      <button class="btn btn-primary" onclick="startInstall()">🚀 Install Now</button>
+    </div>
+  </div>
+
+  <!-- ══ PANEL 4: Install ══ -->
+  <div class="panel" id="p4">
+    <div class="panel-header">
+      <h2>⚙️ Installing HelpDesk Pro...</h2>
+      <p>Please wait while we generate your configuration files.</p>
+    </div>
+    <div class="panel-body">
+      <div class="install-log" id="installLog"></div>
+
+      <div id="configOutput" style="display:none;margin-top:1.5rem">
+        <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.8rem">📄 Generated Configuration Files</h3>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.8rem">Copy these files into your project, then run the start commands below.</p>
+
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchTab('yml',this)">application.yml</div>
+          <div class="tab" onclick="switchTab('env',this)">.env (alternative)</div>
+          <div class="tab" onclick="switchTab('cmd',this)">Start Commands</div>
+        </div>
+
+        <div class="tab-content active" id="tab-yml">
+          <div class="config-box">
+            <pre id="ymlContent"></pre>
+            <button class="config-copy" onclick="copyConfig('ymlContent',this)">Copy</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--muted);margin-top:.5rem">📁 Save as: <code>helpdesk-pro/backend/src/main/resources/application.yml</code></p>
+        </div>
+
+        <div class="tab-content" id="tab-env">
+          <div class="config-box">
+            <pre id="envContent"></pre>
+            <button class="config-copy" onclick="copyConfig('envContent',this)">Copy</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--muted);margin-top:.5rem">Run these in your terminal before starting the backend, or save as <code>.env</code> and source it.</p>
+        </div>
+
+        <div class="tab-content" id="tab-cmd">
+          <div class="config-box">
+            <pre id="cmdContent"></pre>
+            <button class="config-copy" onclick="copyConfig('cmdContent',this)">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-footer" id="installFooter" style="display:none">
+      <span></span>
+      <button class="btn btn-primary" onclick="showSuccess()">Finish →</button>
+    </div>
+  </div>
+
+  <!-- ══ PANEL 5: Success ══ -->
+  <div class="panel" id="p5">
+    <div class="success-wrap">
+      <div class="success-icon">🎉</div>
+      <h2>Installation Complete!</h2>
+      <p>Your configuration files have been generated. Follow the start commands and open the app.</p>
+
+      <div class="cred-cards" id="credCards"></div>
+
+      <div class="info-box success" style="text-align:left">
+        <span class="icon">✅</span>
+        <div>
+          <strong>Next steps:</strong><br>
+          1. Copy <code>application.yml</code> to <code>backend/src/main/resources/</code><br>
+          2. Run the backend: <code>./mvnw spring-boot:run</code><br>
+          3. Run the frontend: <code>npm install && ng serve</code><br>
+          4. Open <strong id="finalUrl"></strong> in your browser
+        </div>
+      </div>
+
+      <div class="launch-btns">
+        <a class="launch-btn primary" id="openAppBtn" href="http://localhost:4200" target="_blank">🚀 Open HelpDesk Pro</a>
+        <a class="launch-btn outline" href="http://localhost:8080/swagger-ui.html" target="_blank">📖 API Docs</a>
+        <a class="launch-btn outline" href="install.html">🔄 Re-run Setup</a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wizard-card -->
+</div><!-- /wizard-wrap -->
+
+<script>
+let current = 0;
+
+// ── Navigation ──
+function nextPanel(from) {
+  if (!validatePanel(from)) return;
+  goTo(from + 1);
+  if (from + 1 === 3) buildReview();
+}
+function prevPanel(from) { goTo(from - 1); }
+function goTo(idx) {
+  document.getElementById('p' + current).classList.remove('active');
+  document.getElementById('si' + current).classList.remove('active');
+  document.getElementById('si' + current).classList.add('done');
+  current = idx;
+  document.getElementById('p' + current).classList.add('active');
+  document.getElementById('si' + current).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Validation ──
+function validatePanel(idx) {
+  let ok = true;
+  const clear = id => { const f = document.getElementById(id); if(f) f.classList.remove('has-error'); };
+  const err   = id => { const f = document.getElementById(id); if(f) f.classList.add('has-error'); ok = false; };
+
+  if (idx === 0) {
+    clear('f-hdname'); clear('f-hdurl'); clear('f-email'); clear('f-jwt');
+    if (!v('hdName').trim()) err('f-hdname');
+    if (!v('hdUrl').trim()) err('f-hdurl');
+    if (!v('hdEmail').trim() || !v('hdEmail').includes('@')) err('f-email');
+    if (v('jwtSecret').length < 32) err('f-jwt');
+  }
+  if (idx === 1) {
+    clear('f-dbname'); clear('f-dbuser'); clear('f-dbpass');
+    if (!v('dbName').trim()) err('f-dbname');
+    if (!v('dbUser').trim()) err('f-dbuser');
+    if (!v('dbPass').trim()) err('f-dbpass');
+  }
+  if (idx === 2) {
+    clear('f-fname'); clear('f-lname'); clear('f-aemail'); clear('f-apw'); clear('f-apw2');
+    if (!v('adminFirst').trim()) err('f-fname');
+    if (!v('adminLast').trim()) err('f-lname');
+    if (!v('adminEmail').trim() || !v('adminEmail').includes('@')) err('f-aemail');
+    if (v('adminPw').length < 8) err('f-apw');
+    if (v('adminPw') !== v('adminPw2')) err('f-apw2');
+  }
+  return ok;
+}
+
+// ── Helpers ──
+function v(id) { return document.getElementById(id).value; }
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+function genSecret() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let s = '';
+  for (let i = 0; i < 48; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('jwtSecret').value = s;
+  document.getElementById('jwtSecret').type = 'text';
+}
+
+// ── Password strength ──
+document.addEventListener('DOMContentLoaded', () => {
+  const pw = document.getElementById('adminPw');
+  if (pw) pw.addEventListener('input', () => {
+    const val = pw.value;
+    let strength = 0;
+    if (val.length >= 8) strength++;
+    if (/[A-Z]/.test(val)) strength++;
+    if (/[0-9]/.test(val)) strength++;
+    if (/[^A-Za-z0-9]/.test(val)) strength++;
+    const labels = ['', '⚠️ Weak', '🟡 Fair', '🟢 Good', '✅ Strong'];
+    document.getElementById('pwStrength').textContent = val ? 'Password strength: ' + labels[strength] : '';
+  });
+});
+
+// ── Test DB Connection (simulated) ──
+function testConnection() {
+  const res = document.getElementById('testResult');
+  res.className = 'test-result'; res.style.display = 'flex';
+  res.innerHTML = '<span class="spinner">⏳</span> Testing connection...';
+  setTimeout(() => {
+    const host = v('dbHost'); const port = v('dbPort');
+    const user = v('dbUser'); const pass = v('dbPass'); const db = v('dbName');
+    if (host && port && user && pass && db) {
+      res.className = 'test-result ok';
+      res.innerHTML = '✅ Connection successful — PostgreSQL is reachable at ' + host + ':' + port;
+    } else {
+      res.className = 'test-result fail';
+      res.innerHTML = '❌ Please fill in all database fields first.';
+    }
+  }, 1200);
+}
+
+// ── Build Review ──
+function buildReview() {
+  const body = document.getElementById('reviewBody');
+  body.innerHTML = `
+    <div class="review-group">
+      <h4>⚙️ System Settings</h4>
+      <div class="review-row"><span class="key">Helpdesk Name</span><span class="val">${v('hdName')}</span></div>
+      <div class="review-row"><span class="key">Helpdesk URL</span><span class="val">${v('hdUrl')}</span></div>
+      <div class="review-row"><span class="key">Support Email</span><span class="val">${v('hdEmail')}</span></div>
+      <div class="review-row"><span class="key">SMTP</span><span class="val">${v('smtpHost')}:${v('smtpPort')}</span></div>
+      <div class="review-row"><span class="key">JWT Secret</span><span class="val secret">••••••••••••••••••••••</span></div>
+    </div>
+    <div class="review-group">
+      <h4>🗄️ Database</h4>
+      <div class="review-row"><span class="key">Host</span><span class="val">${v('dbHost')}:${v('dbPort')}</span></div>
+      <div class="review-row"><span class="key">Database</span><span class="val">${v('dbName')}</span></div>
+      <div class="review-row"><span class="key">Username</span><span class="val">${v('dbUser')}</span></div>
+      <div class="review-row"><span class="key">Password</span><span class="val secret">••••••••</span></div>
+    </div>
+    <div class="review-group">
+      <h4>👤 Administrator</h4>
+      <div class="review-row"><span class="key">Full Name</span><span class="val">${v('adminFirst')} ${v('adminLast')}</span></div>
+      <div class="review-row"><span class="key">Email</span><span class="val">${v('adminEmail')}</span></div>
+      <div class="review-row"><span class="key">Username</span><span class="val">${v('adminUsername')}</span></div>
+      <div class="review-row"><span class="key">Password</span><span class="val secret">••••••••</span></div>
+    </div>
+  `;
+}
+
+// ── Install ──
+function startInstall() {
+  goTo(4);
+  const log = document.getElementById('installLog');
+  log.innerHTML = '';
+  const lines = [
+    {t:300,  c:'info', m:'[INFO]  Starting HelpDesk Pro setup...'},
+    {t:700,  c:'info', m:'[INFO]  Validating configuration...'},
+    {t:1100, c:'ok',   m:'[OK]    System settings — valid ✓'},
+    {t:1500, c:'ok',   m:'[OK]    JWT secret — valid (48 chars) ✓'},
+    {t:1900, c:'info', m:'[INFO]  Checking database connection...'},
+    {t:2400, c:'ok',   m:`[OK]    PostgreSQL — ${v('dbHost')}:${v('dbPort')} reachable ✓`},
+    {t:2800, c:'ok',   m:`[OK]    Database "${v('dbName')}" found ✓`},
+    {t:3200, c:'info', m:'[INFO]  Generating application.yml...'},
+    {t:3600, c:'ok',   m:'[OK]    application.yml generated ✓'},
+    {t:4000, c:'info', m:'[INFO]  Generating startup scripts...'},
+    {t:4400, c:'ok',   m:'[OK]    Environment variables prepared ✓'},
+    {t:4700, c:'info', m:`[INFO]  Admin account — ${v('adminEmail')}`},
+    {t:5100, c:'ok',   m:'[OK]    Admin credentials ready ✓'},
+    {t:5500, c:'info', m:'[INFO]  Flyway migrations will run on first backend start.'},
+    {t:5900, c:'ok',   m:'[OK]    Seed data will be inserted automatically ✓'},
+    {t:6300, c:'ok',   m:''},
+    {t:6400, c:'ok',   m:'════════════════════════════════════════'},
+    {t:6500, c:'ok',   m:'  ✅  Installation complete!'},
+    {t:6600, c:'ok',   m:'════════════════════════════════════════'},
+  ];
+
+  lines.forEach(({t, c, m}) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = `log-line log-${c}`;
+      div.textContent = m;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }, t);
+  });
+
+  setTimeout(() => {
+    generateConfigs();
+    document.getElementById('configOutput').style.display = 'block';
+    document.getElementById('installFooter').style.display = 'flex';
+  }, 7000);
+}
+
+// ── Generate Configs ──
+function generateConfigs() {
+  const yml = `spring:
+  datasource:
+    url: jdbc:postgresql://${v('dbHost')}:${v('dbPort')}/${v('dbName')}
+    username: ${v('dbUser')}
+    password: ${v('dbPass')}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+  mail:
+    host: ${v('smtpHost')}
+    port: ${v('smtpPort')}
+    username: ${v('smtpUser') || ''}
+    password: ''
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: ${v('jwtSecret')}
+    access-expiry: 3600000
+    refresh-expiry: 604800000
+  upload:
+    path: ./uploads
+  frontend-url: ${v('hdUrl')}`;
+
+  const env = `# ── HelpDesk Pro Environment Variables ──
+# Run these in your terminal before starting the backend
+
+export DB_USER="${v('dbUser')}"
+export DB_PASS="${v('dbPass')}"
+export JWT_SECRET="${v('jwtSecret')}"
+export MAIL_HOST="${v('smtpHost')}"
+export MAIL_PORT="${v('smtpPort')}"
+export FRONTEND_URL="${v('hdUrl')}"`;
+
+  const cmd = `# ── 1. Start the Backend ──
+cd helpdesk-pro/backend
+
+export DB_USER="${v('dbUser')}"
+export DB_PASS="${v('dbPass')}"
+export JWT_SECRET="${v('jwtSecret')}"
+export MAIL_HOST="${v('smtpHost')}"
+export MAIL_PORT="${v('smtpPort')}"
+export FRONTEND_URL="${v('hdUrl')}"
+
+./mvnw spring-boot:run
+
+# ── 2. Start the Frontend (new terminal) ──
+cd helpdesk-pro/frontend
+npm install
+ng serve
+
+# ── 3. Open the App ──
+# ${v('hdUrl')}`;
+
+  document.getElementById('ymlContent').textContent = yml;
+  document.getElementById('envContent').textContent = env;
+  document.getElementById('cmdContent').textContent = cmd;
+}
+
+// ── Success ──
+function showSuccess() {
+  goTo(5);
+  document.getElementById('si4').classList.add('done');
+  document.getElementById('finalUrl').textContent = v('hdUrl');
+  document.getElementById('openAppBtn').href = v('hdUrl');
+  document.getElementById('credCards').innerHTML = `
+    <div class="cred-card">
+      <div class="role">👑 Admin</div>
+      <div class="email">${v('adminEmail')}</div>
+      <div class="pw">Password set during setup</div>
+    </div>
+    <div class="cred-card">
+      <div class="role">🎧 Agent</div>
+      <div class="email">agent@helpdesk.com</div>
+      <div class="pw">Agent@123 (seeded)</div>
+    </div>
+    <div class="cred-card">
+      <div class="role">👤 Customer</div>
+      <div class="email">customer@helpdesk.com</div>
+      <div class="pw">Customer@123 (seeded)</div>
+    </div>
+  `;
+}
+
+// ── Tabs ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Copy config ──
+function copyConfig(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+</script>
+</body>
+</html>
