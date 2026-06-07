@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HelpDesk Pro — Installation Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy: #0F172A;
+      --blue: #3B82F6;
+      --blue-dark: #2563EB;
+      --green: #22C55E;
+      --yellow: #EAB308;
+      --red: #EF4444;
+      --surface: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 24px rgba(0,0,0,.3);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: 700; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .os-tabs { display: flex; gap: 4px; }
+    .os-btn {
+      padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2);
+      background: transparent; color: rgba(255,255,255,.7); cursor: pointer;
+      font-size: .85rem; transition: all .2s;
+    }
+    .os-btn.active, .os-btn:hover { background: var(--blue); border-color: var(--blue); color: white; }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem; display: grid; grid-template-columns: 260px 1fr; gap: 2rem; }
+
+    /* ── Sidebar ── */
+    .sidebar { position: sticky; top: 80px; align-self: start; }
+    .sidebar-card { background: white; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+    .sidebar-title { padding: 1rem 1.2rem; font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: .7rem 1.2rem; cursor: pointer; font-size: .9rem;
+      color: var(--muted); transition: all .15s; border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: #F1F5F9; color: var(--text); }
+    .nav-item.active { background: #EFF6FF; color: var(--blue); border-left-color: var(--blue); font-weight: 600; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+    .nav-item.done .nav-dot { background: var(--green); }
+    .nav-item.active .nav-dot { background: var(--blue); }
+
+    .progress-wrap { padding: 1rem 1.2rem; border-top: 1px solid var(--border); }
+    .progress-label { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--blue); border-radius: 99px; transition: width .4s ease; }
+
+    /* ── Main content ── */
+    .main { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* ── Section cards ── */
+    .section {
+      background: white; border-radius: 16px; border: 1px solid var(--border);
+      overflow: hidden; scroll-margin-top: 80px;
+    }
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border);
+      cursor: pointer; user-select: none;
+    }
+    .section-header:hover { background: #FAFAFA; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85rem; flex-shrink: 0;
+      background: #EFF6FF; color: var(--blue); border: 2px solid #BFDBFE;
+      transition: all .2s;
+    }
+    .section.done .step-num { background: #F0FDF4; color: var(--green); border-color: #BBF7D0; }
+    .section.done .step-num::after { content: '✓'; }
+    .section.done .step-num span { display: none; }
+    .section-title { font-weight: 700; font-size: 1rem; flex: 1; }
+    .section-badge {
+      font-size: .72rem; padding: 3px 10px; border-radius: 99px; font-weight: 600;
+    }
+    .badge-required { background: #FEF2F2; color: #DC2626; }
+    .badge-optional { background: #F0FDF4; color: #16A34A; }
+    .badge-both { background: #EFF6FF; color: var(--blue); }
+    .chevron { color: var(--muted); transition: transform .2s; font-size: 1.1rem; }
+    .section.collapsed .chevron { transform: rotate(-90deg); }
+
+    .section-body { padding: 1.5rem; }
+    .section.collapsed .section-body { display: none; }
+
+    /* ── Step check ── */
+    .step-check {
+      display: flex; align-items: center; gap: 10px;
+      padding: .6rem 1rem; background: #F8FAFC; border-radius: 10px;
+      margin-bottom: 1rem; border: 1px solid var(--border);
+    }
+    .step-check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); cursor: pointer; }
+    .step-check label { font-size: .9rem; cursor: pointer; user-select: none; }
+
+    /* ── Description ── */
+    p.desc { color: var(--muted); font-size: .9rem; margin-bottom: 1rem; line-height: 1.7; }
+
+    /* ── OS switcher inside sections ── */
+    .os-switch { display: flex; gap: 6px; margin-bottom: 1rem; }
+    .os-switch-btn {
+      padding: 5px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: white; font-size: .82rem; cursor: pointer; color: var(--muted); transition: all .15s;
+    }
+    .os-switch-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+    /* ── Code blocks ── */
+    .code-block { position: relative; margin: .8rem 0; }
+    pre {
+      background: #0F172A; color: #E2E8F0; border-radius: 12px;
+      padding: 1.1rem 1.3rem; font-size: .82rem; overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.7; border: 1px solid #1E293B;
+    }
+    pre .comment { color: #64748B; }
+    pre .cmd { color: #7DD3FC; }
+    pre .string { color: #86EFAC; }
+    pre .flag { color: #FCD34D; }
+    .copy-btn {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      color: #94A3B8; border-radius: 7px; padding: 4px 10px;
+      font-size: .75rem; cursor: pointer; transition: all .15s;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,.2); color: white; }
+    .copy-btn.copied { background: rgba(34,197,94,.2); color: #86EFAC; border-color: rgba(34,197,94,.3); }
+
+    /* ── Info boxes ── */
+    .info-box {
+      border-radius: 10px; padding: .9rem 1.1rem;
+      font-size: .88rem; margin: .8rem 0; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .info-box.tip { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
+    .info-box.warn { background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; }
+    .info-box.info { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
+    .info-box .icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Verify buttons ── */
+    .verify-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 10px; border: none;
+      background: var(--blue); color: white; font-size: .88rem;
+      font-weight: 600; cursor: pointer; transition: all .2s; margin-top: .5rem;
+    }
+    .verify-btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .verify-result { display: none; margin-top: .8rem; }
+    .verify-result.show { display: block; }
+    .verify-ok { color: var(--green); font-size: .88rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .verify-fail { color: var(--red); font-size: .88rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .8rem 0; }
+    th { background: #F1F5F9; padding: .6rem .9rem; text-align: left; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    td { padding: .6rem .9rem; border-top: 1px solid var(--border); }
+    tr:hover td { background: #FAFAFA; }
+    td code { background: #F1F5F9; padding: 2px 7px; border-radius: 5px; font-size: .82rem; font-family: monospace; }
+
+    /* ── Launch panel ── */
+    .launch-panel {
+      background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%);
+      border-radius: 16px; padding: 2rem; color: white; text-align: center;
+    }
+    .launch-panel h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+    .launch-panel p { color: #94A3B8; margin-bottom: 1.5rem; font-size: .95rem; }
+    .launch-links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .launch-link {
+      display: flex; align-items: center; gap: 8px; padding: 10px 22px;
+      border-radius: 10px; font-weight: 600; font-size: .9rem;
+      text-decoration: none; transition: all .2s;
+    }
+    .launch-link.primary { background: var(--blue); color: white; }
+    .launch-link.primary:hover { background: var(--blue-dark); }
+    .launch-link.secondary { background: rgba(255,255,255,.1); color: white; border: 1px solid rgba(255,255,255,.2); }
+    .launch-link.secondary:hover { background: rgba(255,255,255,.2); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #86EFAC; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── OS content hiding ── */
+    .os-content { display: none; }
+    body.mac .os-content.mac { display: block; }
+    body.win .os-content.win { display: block; }
+    body.linux .os-content.linux { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .page { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+    }
+  </style>
+</head>
+<body class="mac">
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🎧</div>
+      HelpDesk Pro &mdash; Installation Guide
+    </div>
+    <div class="os-tabs">
+      <button class="os-btn active" onclick="setOS('mac', this)">🍎 macOS</button>
+      <button class="os-btn" onclick="setOS('win', this)">🪟 Windows</button>
+      <button class="os-btn" onclick="setOS('linux', this)">🐧 Linux</button>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">Installation Steps</div>
+      <a class="nav-item active" href="#step1" onclick="setActive(this)">
+        <span class="nav-dot"></span> 1. Install Java 21
+      </a>
+      <a class="nav-item" href="#step2" onclick="setActive(this)">
+        <span class="nav-dot"></span> 2. Install Node.js
+      </a>
+      <a class="nav-item" href="#step3" onclick="setActive(this)">
+        <span class="nav-dot"></span> 3. Install PostgreSQL
+      </a>
+      <a class="nav-item" href="#step4" onclick="setActive(this)">
+        <span class="nav-dot"></span> 4. Setup Database
+      </a>
+      <a class="nav-item" href="#step5" onclick="setActive(this)">
+        <span class="nav-dot"></span> 5. Install MailHog
+      </a>
+      <a class="nav-item" href="#step6" onclick="setActive(this)">
+        <span class="nav-dot"></span> 6. Run Backend
+      </a>
+      <a class="nav-item" href="#step7" onclick="setActive(this)">
+        <span class="nav-dot"></span> 7. Run Frontend
+      </a>
+      <a class="nav-item" href="#step8" onclick="setActive(this)">
+        <span class="nav-dot"></span> 8. Open the App
+      </a>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>Progress</span>
+          <span id="progress-text">0 / 8</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- STEP 1: Java -->
+    <div class="section" id="step1">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>1</span></div>
+        <div class="section-title">Install Java 21</div>
+        <span class="section-badge badge-required">Required — Backend</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk1" onchange="markDone('step1', this)">
+          <label for="chk1">I have Java 21 installed</label>
+        </div>
+        <p class="desc">The backend is built with Java 21. Download the free Temurin distribution from Adoptium.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('java','mac',this)">macOS</button>
+          <button class="os-switch-btn" onclick="localOS('java','win',this)">Windows</button>
+          <button class="os-switch-btn" onclick="localOS('java','linux',this)">Linux</button>
+        </div>
+
+        <div id="java-mac">
+          <p class="desc">Install via Homebrew (easiest):</p>
+          <div class="code-block">
+            <pre><span class="comment"># Install Homebrew if you don't have it</span>
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+<span class="comment"># Install Java 21</span>
+<span class="cmd">brew install --cask temurin@21</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="info-box tip">
+            <span class="icon">💡</span>
+            <span>Or download the <strong>.pkg</strong> installer directly from <a href="https://adoptium.net/temurin/releases/?version=21" target="_blank" style="color:inherit">adoptium.net</a></span>
+          </div>
+        </div>
+
+        <div id="java-win" style="display:none">
+          <p class="desc">Download the Windows installer (.msi):</p>
+          <div class="info-box info">
+            <span class="icon">🔗</span>
+            <span>Go to <a href="https://adoptium.net/temurin/releases/?version=21&os=windows&arch=x64&package=jdk" target="_blank" style="color:inherit"><strong>adoptium.net</strong></a> → Download <strong>JDK 21 — Windows x64 .msi</strong> → Run the installer → ✅ check "Set JAVA_HOME" during setup.</span>
+          </div>
+        </div>
+
+        <div id="java-linux" style="display:none">
+          <div class="code-block">
+            <pre><span class="comment"># Ubuntu / Debian</span>
+<span class="cmd">sudo apt update</span>
+<span class="cmd">sudo apt install -y wget apt-transport-https</span>
+<span class="cmd">wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc</span>
+<span class="cmd">echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list</span>
+<span class="cmd">sudo apt update && sudo apt install -y temurin-21-jdk</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <p class="desc" style="margin-top:1rem">Verify installation:</p>
+        <div class="code-block">
+          <pre><span class="cmd">java -version</span>
+<span class="comment"># Expected output: openjdk version "21.x.x" ...</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Node.js -->
+    <div class="section collapsed" id="step2">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>2</span></div>
+        <div class="section-title">Install Node.js 20+</div>
+        <span class="section-badge badge-required">Required — Frontend</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk2" onchange="markDone('step2', this)">
+          <label for="chk2">I have Node.js 20+ installed</label>
+        </div>
+        <p class="desc">The Angular frontend requires Node.js 20 or higher.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('node','mac',this)">macOS</button>
+          <button class="os-switch-btn" onclick="localOS('node','win',this)">Windows</button>
+          <button class="os-switch-btn" onclick="localOS('node','linux',this)">Linux</button>
+        </div>
+
+        <div id="node-mac">
+          <div class="code-block">
+            <pre><span class="cmd">brew install node@20</span>
+<span class="cmd">brew link node@20</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+        <div id="node-win" style="display:none">
+          <div class="info-box info">
+            <span class="icon">🔗</span>
+            <span>Download the <strong>LTS installer (.msi)</strong> from <a href="https://nodejs.org" target="_blank" style="color:inherit"><strong>nodejs.org</strong></a> and run it.</span>
+          </div>
+        </div>
+        <div id="node-linux" style="display:none">
+          <div class="code-block">
+            <pre><span class="cmd">curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -</span>
+<span class="cmd">sudo apt install -y nodejs</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <p class="desc" style="margin-top:1rem">Then install the Angular CLI:</p>
+        <div class="code-block">
+          <pre><span class="cmd">npm install -g @angular/cli</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <p class="desc">Verify:</p>
+        <div class="code-block">
+          <pre><span class="cmd">node -v</span>   <span class="comment"># v20.x.x</span>
+<span class="cmd">ng version</span> <span class="comment"># Angular CLI: 18.x.x</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: PostgreSQL -->
+    <div class="section collapsed" id="step3">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>3</span></div>
+        <div class="section-title">Install PostgreSQL 16</div>
+        <span class="section-badge badge-required">Required — Backend</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk3" onchange="markDone('step3', this)">
+          <label for="chk3">PostgreSQL is installed and running</label>
+        </div>
+        <p class="desc">The backend stores all data in PostgreSQL. Install it and make sure the service is running.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('pg','mac',this)">macOS</button>
+          <button class="os-switch-btn" onclick="localOS('pg','win',this)">Windows</button>
+          <button class="os-switch-btn" onclick="localOS('pg','linux',this)">Linux</button>
+        </div>
+
+        <div id="pg-mac">
+          <div class="code-block">
+            <pre><span class="cmd">brew install postgresql@16</span>
+<span class="cmd">brew services start postgresql@16</span>
+<span class="comment"># Add to PATH (add this line to ~/.zshrc or ~/.bashrc)</span>
+<span class="cmd">echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+        <div id="pg-win" style="display:none">
+          <div class="info-box info">
+            <span class="icon">🔗</span>
+            <span>Download the installer from <a href="https://www.postgresql.org/download/windows/" target="_blank" style="color:inherit"><strong>postgresql.org/download/windows</strong></a>. During setup: keep default port <strong>5432</strong>, set a password you'll remember, and install <strong>pgAdmin</strong> (check the box).</span>
+          </div>
+          <div class="info-box warn">
+            <span class="icon">⚠️</span>
+            <span>Remember the password you set for the <code>postgres</code> superuser — you'll need it in the next step.</span>
+          </div>
+        </div>
+        <div id="pg-linux" style="display:none">
+          <div class="code-block">
+            <pre><span class="cmd">sudo apt update</span>
+<span class="cmd">sudo apt install -y postgresql-16</span>
+<span class="cmd">sudo systemctl start postgresql</span>
+<span class="cmd">sudo systemctl enable postgresql</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <p class="desc" style="margin-top:1rem">Verify PostgreSQL is running:</p>
+        <div class="code-block">
+          <pre><span class="cmd">psql --version</span>
+<span class="comment"># psql (PostgreSQL) 16.x</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: Database setup -->
+    <div class="section collapsed" id="step4">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>4</span></div>
+        <div class="section-title">Create the Database</div>
+        <span class="section-badge badge-required">Required — Backend</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk4" onchange="markDone('step4', this)">
+          <label for="chk4">Database and user created</label>
+        </div>
+        <p class="desc">Create the <code>helpdesk</code> database and a dedicated user. The app will create all tables automatically on first run via Flyway.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('db','mac',this)">macOS / Linux</button>
+          <button class="os-switch-btn" onclick="localOS('db','win',this)">Windows (pgAdmin)</button>
+        </div>
+
+        <div id="db-mac">
+          <div class="code-block">
+            <pre><span class="comment"># Open the PostgreSQL shell</span>
+<span class="cmd">psql -U postgres</span>
+
+<span class="comment"># Run these commands inside psql:</span>
+<span class="string">CREATE DATABASE helpdesk;</span>
+<span class="string">CREATE USER helpdesk WITH PASSWORD 'helpdesk';</span>
+<span class="string">GRANT ALL PRIVILEGES ON DATABASE helpdesk TO helpdesk;</span>
+<span class="string">\q</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="info-box tip">
+            <span class="icon">💡</span>
+            <span>On macOS with Homebrew, the default superuser matches your Mac username. Try <code>psql -U $(whoami)</code> if <code>psql -U postgres</code> fails.</span>
+          </div>
+        </div>
+
+        <div id="db-win" style="display:none">
+          <p class="desc">Open <strong>pgAdmin 4</strong> (installed with PostgreSQL), connect to your server, then open the <strong>Query Tool</strong> and run:</p>
+          <div class="code-block">
+            <pre><span class="string">CREATE DATABASE helpdesk;</span>
+<span class="string">CREATE USER helpdesk WITH PASSWORD 'helpdesk';</span>
+<span class="string">GRANT ALL PRIVILEGES ON DATABASE helpdesk TO helpdesk;</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: MailHog -->
+    <div class="section collapsed" id="step5">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>5</span></div>
+        <div class="section-title">Install MailHog (Email Testing)</div>
+        <span class="section-badge badge-optional">Optional</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk5" onchange="markDone('step5', this)">
+          <label for="chk5">MailHog installed (or skipping email)</label>
+        </div>
+        <p class="desc">MailHog catches outgoing emails so you can view them in a browser without a real SMTP server. The app runs fine without it — email notifications just won't appear.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('mail','mac',this)">macOS</button>
+          <button class="os-switch-btn" onclick="localOS('mail','win',this)">Windows</button>
+          <button class="os-switch-btn" onclick="localOS('mail','linux',this)">Linux</button>
+        </div>
+
+        <div id="mail-mac">
+          <div class="code-block">
+            <pre><span class="cmd">brew install mailhog</span>
+<span class="cmd">mailhog &</span>
+<span class="comment"># MailHog web UI → http://localhost:8025</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+        <div id="mail-win" style="display:none">
+          <div class="info-box info">
+            <span class="icon">🔗</span>
+            <span>Download <strong>MailHog_windows_amd64.exe</strong> from <a href="https://github.com/mailhog/MailHog/releases" target="_blank" style="color:inherit">github.com/mailhog/MailHog/releases</a> and double-click to run it.</span>
+          </div>
+        </div>
+        <div id="mail-linux" style="display:none">
+          <div class="code-block">
+            <pre><span class="cmd">wget https://github.com/mailhog/MailHog/releases/download/v1.0.1/MailHog_linux_amd64</span>
+<span class="cmd">chmod +x MailHog_linux_amd64</span>
+<span class="cmd">./MailHog_linux_amd64 &</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <div class="info-box warn" style="margin-top:1rem">
+          <span class="icon">⚠️</span>
+          <span>Skipping MailHog? That's fine. The backend will log a connection warning but will still start and work normally.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6: Backend -->
+    <div class="section collapsed" id="step6">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>6</span></div>
+        <div class="section-title">Run the Backend</div>
+        <span class="section-badge badge-required">Required</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk6" onchange="markDone('step6', this)">
+          <label for="chk6">Backend is running on port 8080</label>
+        </div>
+        <p class="desc">Open a terminal in the project root and run the following. Keep this terminal open while using the app.</p>
+
+        <div class="os-switch">
+          <button class="os-switch-btn active" onclick="localOS('back','mac',this)">macOS / Linux</button>
+          <button class="os-switch-btn" onclick="localOS('back','win',this)">Windows</button>
+        </div>
+
+        <div id="back-mac">
+          <div class="code-block">
+            <pre><span class="comment"># Navigate to the backend folder</span>
+<span class="cmd">cd helpdesk-pro/backend</span>
+
+<span class="comment"># Set environment variables</span>
+<span class="cmd">export DB_USER=helpdesk</span>
+<span class="cmd">export DB_PASS=helpdesk</span>
+<span class="cmd">export JWT_SECRET=dev-secret-key-change-in-production-min-32-chars</span>
+<span class="cmd">export MAIL_HOST=localhost</span>
+<span class="cmd">export MAIL_PORT=1025</span>
+<span class="cmd">export FRONTEND_URL=http://localhost:4200</span>
+
+<span class="comment"># Start the backend</span>
+<span class="cmd">./mvnw spring-boot:run</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <div id="back-win" style="display:none">
+          <div class="code-block">
+            <pre><span class="comment">:: Navigate to the backend folder</span>
+<span class="cmd">cd helpdesk-pro\backend</span>
+
+<span class="comment">:: Set environment variables</span>
+<span class="cmd">set DB_USER=helpdesk</span>
+<span class="cmd">set DB_PASS=helpdesk</span>
+<span class="cmd">set JWT_SECRET=dev-secret-key-change-in-production-min-32-chars</span>
+<span class="cmd">set MAIL_HOST=localhost</span>
+<span class="cmd">set MAIL_PORT=1025</span>
+<span class="cmd">set FRONTEND_URL=http://localhost:4200</span>
+
+<span class="comment">:: Start the backend</span>
+<span class="cmd">mvnw.cmd spring-boot:run</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon">✅</span>
+          <span>Backend is ready when you see: <strong>Started HelpdeskApplication in X seconds</strong></span>
+        </div>
+        <div class="info-box info">
+          <span class="icon">ℹ️</span>
+          <span>First startup downloads Maven dependencies (~2 minutes). Subsequent starts are much faster.</span>
+        </div>
+
+        <p class="desc" style="margin-top:1rem">Verify the backend is running:</p>
+        <div class="code-block">
+          <pre><span class="cmd">curl http://localhost:8080/actuator/health</span>
+<span class="comment"># Expected: {"status":"UP"}</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+
+        <div class="info-box tip" style="margin-top:.5rem">
+          <span class="icon">📖</span>
+          <span>Full API documentation: <a href="http://localhost:8080/swagger-ui.html" target="_blank" style="color:inherit"><strong>http://localhost:8080/swagger-ui.html</strong></a></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7: Frontend -->
+    <div class="section collapsed" id="step7">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>7</span></div>
+        <div class="section-title">Run the Frontend</div>
+        <span class="section-badge badge-required">Required</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk7" onchange="markDone('step7', this)">
+          <label for="chk7">Frontend is running on port 4200</label>
+        </div>
+        <p class="desc">Open a <strong>second terminal</strong> (keep the backend terminal running) and run the following.</p>
+
+        <div class="code-block">
+          <pre><span class="comment"># Navigate to the frontend folder</span>
+<span class="cmd">cd helpdesk-pro/frontend</span>
+
+<span class="comment"># Install dependencies (first time only, ~1 minute)</span>
+<span class="cmd">npm install</span>
+
+<span class="comment"># Start the frontend dev server</span>
+<span class="cmd">ng serve</span></pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon">✅</span>
+          <span>Frontend is ready when you see: <strong>✔ Compiled successfully</strong> and <strong>Application bundle generation complete</strong></span>
+        </div>
+        <div class="info-box warn">
+          <span class="icon">⚠️</span>
+          <span>Make sure the backend (Step 6) is running first, otherwise API calls will fail in the browser.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 8: Open the app -->
+    <div class="section collapsed" id="step8">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num"><span>8</span></div>
+        <div class="section-title">Open the App</div>
+        <span class="section-badge badge-both">All Roles</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="step-check">
+          <input type="checkbox" id="chk8" onchange="markDone('step8', this)">
+          <label for="chk8">Successfully logged in 🎉</label>
+        </div>
+        <p class="desc">Open your browser and go to <strong>http://localhost:4200</strong>. Use the credentials below to log in.</p>
+
+        <table>
+          <thead>
+            <tr><th>Role</th><th>Email</th><th>Password</th><th>Access</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Admin</strong></td>
+              <td><code>admin@helpdesk.com</code></td>
+              <td><code>Admin@123</code></td>
+              <td>Full control — users, departments, SLA, all tickets</td>
+            </tr>
+            <tr>
+              <td><strong>Agent</strong></td>
+              <td><code>agent@helpdesk.com</code></td>
+              <td><code>Agent@123</code></td>
+              <td>Ticket queue, replies, internal notes, status updates</td>
+            </tr>
+            <tr>
+              <td><strong>Customer</strong></td>
+              <td><code>customer@helpdesk.com</code></td>
+              <td><code>Customer@123</code></td>
+              <td>Submit tickets, view own tickets, reply to threads</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style="margin-top:1rem">
+          <thead><tr><th>Service</th><th>URL</th></tr></thead>
+          <tbody>
+            <tr><td>🌐 App (Frontend)</td><td><a href="http://localhost:4200" target="_blank">http://localhost:4200</a></td></tr>
+            <tr><td>⚙️ API (Backend)</td><td><a href="http://localhost:8080" target="_blank">http://localhost:8080</a></td></tr>
+            <tr><td>📖 Swagger / API Docs</td><td><a href="http://localhost:8080/swagger-ui.html" target="_blank">http://localhost:8080/swagger-ui.html</a></td></tr>
+            <tr><td>📧 MailHog (emails)</td><td><a href="http://localhost:8025" target="_blank">http://localhost:8025</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Launch panel -->
+    <div class="launch-panel">
+      <h2>🚀 Ready to Launch?</h2>
+      <p>Once both terminals are running, open the app in your browser.</p>
+      <div class="launch-links">
+        <a class="launch-link primary" href="http://localhost:4200" target="_blank">
+          <span class="status-dot"></span> Open HelpDesk Pro
+        </a>
+        <a class="launch-link secondary" href="http://localhost:8080/swagger-ui.html" target="_blank">
+          📖 API Docs
+        </a>
+        <a class="launch-link secondary" href="http://localhost:8025" target="_blank">
+          📧 MailHog
+        </a>
+      </div>
+    </div>
+
+    <!-- Troubleshooting -->
+    <div class="section collapsed" id="troubleshoot">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="step-num" style="background:#FEF2F2;color:#DC2626;border-color:#FECACA"><span>⚠</span></div>
+        <div class="section-title">Troubleshooting</div>
+        <span class="section-badge badge-optional">If something fails</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <table>
+          <thead><tr><th>Error</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>./mvnw: Permission denied</code></td>
+              <td>Run <code>chmod +x mvnw</code> inside the backend folder</td>
+            </tr>
+            <tr>
+              <td><code>Connection refused</code> port 5432</td>
+              <td>PostgreSQL not running — run <code>brew services start postgresql@16</code> (Mac) or <code>sudo systemctl start postgresql</code> (Linux)</td>
+            </tr>
+            <tr>
+              <td><code>password authentication failed</code></td>
+              <td>DB credentials don't match — re-run Step 4 and make sure <code>DB_USER</code>/<code>DB_PASS</code> env vars are set</td>
+            </tr>
+            <tr>
+              <td><code>Port 8080 already in use</code></td>
+              <td>Mac/Linux: <code>lsof -ti:8080 | xargs kill</code> &nbsp; Windows: <code>netstat -ano | findstr :8080</code> then <code>taskkill /PID &lt;pid&gt; /F</code></td>
+            </tr>
+            <tr>
+              <td><code>ng: command not found</code></td>
+              <td>Run <code>npm install -g @angular/cli</code> then try again</td>
+            </tr>
+            <tr>
+              <td>Flyway migration error on startup</td>
+              <td>Drop and recreate the DB: <code>DROP DATABASE helpdesk; CREATE DATABASE helpdesk;</code> then grant privileges again</td>
+            </tr>
+            <tr>
+              <td>Login fails (401) in the browser</td>
+              <td>Make sure backend started successfully and is still running in the other terminal</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // OS toggle
+  function setOS(os, btn) {
+    document.body.className = os;
+    document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Section toggle
+  function toggleSection(header) {
+    header.parentElement.classList.toggle('collapsed');
+  }
+
+  // Local OS switcher inside sections
+  function localOS(group, os, btn) {
+    const ids = { java: ['mac','win','linux'], node: ['mac','win','linux'], pg: ['mac','win','linux'], db: ['mac','win'], mail: ['mac','win','linux'], back: ['mac','win'] };
+    (ids[group] || []).forEach(o => {
+      const el = document.getElementById(`${group}-${o}`);
+      if (el) el.style.display = o === os ? 'block' : 'none';
+    });
+    btn.closest('.os-switch').querySelectorAll('.os-switch-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Copy code
+  function copyCode(btn) {
+    const pre = btn.previousElementSibling;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // Mark step done + progress
+  function markDone(sectionId, checkbox) {
+    const section = document.getElementById(sectionId);
+    if (checkbox.checked) {
+      section.classList.add('done');
+    } else {
+      section.classList.remove('done');
+    }
+    updateProgress();
+    updateNav(sectionId, checkbox.checked);
+  }
+
+  function updateProgress() {
+    const total = 8;
+    const done = document.querySelectorAll('.section.done').length;
+    document.getElementById('progress-fill').style.width = (done / total * 100) + '%';
+    document.getElementById('progress-text').textContent = `${done} / ${total}`;
+  }
+
+  function updateNav(sectionId, done) {
+    const stepMap = { step1:0, step2:1, step3:2, step4:3, step5:4, step6:5, step7:6, step8:7 };
+    const navItems = document.querySelectorAll('.nav-item');
+    const idx = stepMap[sectionId];
+    if (idx !== undefined) {
+      navItems[idx].classList.toggle('done', done);
+    }
+  }
+
+  // Active nav on click
+  function setActive(el) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    // Expand the section
+    const target = document.querySelector(el.getAttribute('href'));
+    if (target) target.classList.remove('collapsed');
+  }
+
+  // Highlight nav on scroll
+  window.addEventListener('scroll', () => {
+    const sections = ['step1','step2','step3','step4','step5','step6','step7','step8'];
+    const navItems = document.querySelectorAll('.nav-item');
+    let current = 0;
+    sections.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top < 120) current = i;
+    });
+    navItems.forEach((item, i) => {
+      item.classList.toggle('active', i === current);
+    });
+  });
+</script>
+</body>
+</html>
