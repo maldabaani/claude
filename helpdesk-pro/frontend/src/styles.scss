@@ -30,42 +30,20 @@
   --header-height: 64px;
 }
 
-// Custom Angular Material Theme
-$helpdesk-primary: mat.define-palette(mat.$blue-palette, 600);
-$helpdesk-accent: mat.define-palette(mat.$indigo-palette, A200);
-$helpdesk-warn: mat.define-palette(mat.$red-palette);
-
-$helpdesk-theme: mat.define-light-theme((
-  color: (
-    primary: $helpdesk-primary,
-    accent: $helpdesk-accent,
-    warn: $helpdesk-warn,
-  ),
-  typography: mat.define-typography-config(
-    $font-family: 'Inter, sans-serif',
-  ),
-  density: 0,
-));
-
-@include mat.all-component-themes($helpdesk-theme);
-
-// Dark mode theme
-.dark {
-  --color-surface: #1E293B;
-  --color-surface-2: #0F172A;
-  --color-border: #334155;
-  --color-text-primary: #F1F5F9;
-  --color-text-muted: #94A3B8;
-
-  $helpdesk-dark: mat.define-dark-theme((
+// Angular Material 18 M3 theme
+html {
+  @include mat.theme((
     color: (
-      primary: $helpdesk-primary,
-      accent: $helpdesk-accent,
-      warn: $helpdesk-warn,
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
     ),
+    typography: (
+      plain-family: 'Inter, sans-serif',
+      brand-family: 'Sora, sans-serif',
+    ),
+    density: 0,
   ));
-
-  @include mat.all-component-colors($helpdesk-dark);
 }
 
 // Base styles

@@ -69,7 +69,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           </p>
         </div>
 
-        <p class="text-center text-slate-500 text-xs mt-6">Demo: admin@helpdesk.com / Admin@123</p>
+        <p class="text-center text-slate-500 text-xs mt-6">Demo: admin&#64;helpdesk.com / Admin&#64;123</p>
       </div>
     </div>
   `,

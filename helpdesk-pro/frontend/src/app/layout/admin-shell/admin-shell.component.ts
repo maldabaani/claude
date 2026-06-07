@@ -31,7 +31,7 @@ import { AuthService } from '../../core/auth/auth.service';
           </a>
         </nav>
 
-        <button (click)="collapsed.update(v => !v)"
+        <button (click)="toggleCollapsed()"
                 class="flex items-center justify-center h-12 border-t border-white/10 text-slate-400 hover:text-white">
           <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
         </button>
@@ -70,4 +70,6 @@ export class AdminShellComponent {
   ];
 
   constructor(public auth: AuthService) {}
+
+  toggleCollapsed() { this.collapsed.update(v => !v); }
 }

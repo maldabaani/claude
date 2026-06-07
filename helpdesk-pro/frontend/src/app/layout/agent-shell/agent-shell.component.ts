@@ -37,7 +37,7 @@ import { WebSocketService } from '../../core/services/websocket.service';
         </nav>
 
         <!-- Collapse toggle -->
-        <button (click)="collapsed.update(v => !v)"
+        <button (click)="toggleCollapsed()"
                 class="flex items-center justify-center h-12 border-t border-white/10 text-slate-400 hover:text-white transition-colors">
           <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
         </button>
@@ -100,6 +100,8 @@ export class AgentShellComponent implements OnInit {
     this.notifService.refreshCount();
     this.ws.notification$.subscribe(() => this.notifService.refreshCount());
   }
+
+  toggleCollapsed() { this.collapsed.update(v => !v); }
 
   initials() {
     const name = this.auth.currentUser()?.fullName || this.auth.currentUser()?.email || '?';

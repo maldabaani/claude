@@ -10,12 +10,16 @@ import { TicketStatus } from '../../../core/models';
     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
           [ngClass]="badgeClass">
       <span class="w-1.5 h-1.5 rounded-full" [ngClass]="dotClass"></span>
-      {{ status | titlecase | replace:'_':' ' }}
+      {{ label }}
     </span>
   `,
 })
 export class StatusBadgeComponent {
   @Input() status!: TicketStatus;
+
+  get label() {
+    return this.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
 
   get badgeClass() {
     return `badge-${this.status.toLowerCase().replace('_', '-')}`;
