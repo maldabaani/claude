@@ -67,7 +67,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
             <!-- User info -->
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                {{ user.fullName?.charAt(0) || '?' }}
+                {{ user.fullName.charAt(0) || '?' }}
               </div>
               <div class="min-w-0">
                 <p class="font-medium text-gray-900 text-sm truncate">{{ user.fullName }}</p>

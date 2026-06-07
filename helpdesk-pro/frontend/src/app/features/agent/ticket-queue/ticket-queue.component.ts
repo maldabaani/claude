@@ -90,7 +90,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
             <div class="flex items-center gap-2 min-w-0">
               <div *ngIf="ticket.assignedAgent"
                    class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
-                {{ ticket.assignedAgent.fullName?.charAt(0) }}
+                {{ ticket.assignedAgent.fullName.charAt(0) }}
               </div>
               <span class="text-xs text-gray-500 truncate">{{ ticket.assignedAgent?.fullName || 'Unassigned' }}</span>
             </div>

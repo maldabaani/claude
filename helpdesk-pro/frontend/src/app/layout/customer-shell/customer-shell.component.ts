@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +9,7 @@ import { AuthService } from '../../core/auth/auth.service';
 @Component({
   selector: 'app-customer-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatButtonModule, MatIconModule, MatMenuModule],
   template: `
     <div class="min-h-screen flex flex-col" style="background:#F1F5F9">
       <!-- Top nav -->
