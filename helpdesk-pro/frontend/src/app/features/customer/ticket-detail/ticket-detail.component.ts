@@ -1,9 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { TextareaModule } from 'primeng/textarea';
+import { ButtonModule } from 'primeng/button';
 import { TicketService } from '../../../core/services/ticket.service';
+import { CsatService } from '../../../core/services/csat.service';
 import { Ticket, Comment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -13,8 +16,8 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    TextareaModule,
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink,
+    TextareaModule, ButtonModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -125,6 +128,38 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           </div>
         </div>
       </div>
+
+      <!-- CSAT Rating -->
+      <div *ngIf="showCsatForm()" class="bg-white rounded-2xl border border-gray-100 p-6" style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+        <div *ngIf="!csatSubmitted()">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <i class="pi pi-star-fill text-amber-400" style="font-size:20px"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-gray-900">How was your support experience?</h3>
+              <p class="text-sm text-slate-400">Your feedback helps us improve</p>
+            </div>
+          </div>
+          <!-- Stars -->
+          <div class="flex gap-2 mb-4">
+            <i *ngFor="let star of stars"
+               [class]="csatRating() >= star ? 'pi pi-star-fill text-amber-400 cursor-pointer' : 'pi pi-star text-gray-300 cursor-pointer'"
+               style="font-size:28px"
+               (click)="setCsatRating(star)"></i>
+          </div>
+          <textarea pTextarea [(ngModel)]="csatComment" rows="3" class="w-full mb-4"
+                    placeholder="Optional comment..."></textarea>
+          <button pButton label="Submit Rating" icon="pi pi-send" (click)="submitCsat()"
+                  [disabled]="csatRating() === 0 || csatSubmitting()"></button>
+        </div>
+        <div *ngIf="csatSubmitted()" class="text-center py-4">
+          <i class="pi pi-check-circle text-green-500" style="font-size:40px;display:block;margin-bottom:12px"></i>
+          <p class="font-bold text-gray-900">Thank you for your feedback!</p>
+          <p class="text-sm text-slate-400 mt-1">Your rating helps us serve you better.</p>
+        </div>
+      </div>
+
     </div>
   `,
 })
@@ -135,12 +170,43 @@ export class TicketDetailComponent implements OnInit {
   submitting = false;
   replyControl = new FormControl('', Validators.required);
 
-  constructor(private route: ActivatedRoute, private ticketService: TicketService) {}
+  csatRating = signal(0);
+  csatComment = '';
+  csatSubmitted = signal(false);
+  csatSubmitting = signal(false);
+  existingRating = signal<any>(null);
+  stars = [1, 2, 3, 4, 5];
+
+  constructor(
+    private route: ActivatedRoute,
+    private ticketService: TicketService,
+    private csatService: CsatService
+  ) {}
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.ticketService.getTicket(id).subscribe(t => { this.ticket.set(t); this.loading.set(false); });
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
+    this.csatService.getRating(id).subscribe({ next: r => this.existingRating.set(r), error: () => {} });
+  }
+
+  showCsatForm(): boolean {
+    const t = this.ticket();
+    if (!t) return false;
+    if (t.status !== 'RESOLVED' && t.status !== 'CLOSED') return false;
+    if (this.existingRating()) return false;
+    return true;
+  }
+
+  setCsatRating(n: number) { this.csatRating.set(n); }
+
+  submitCsat() {
+    if (!this.csatRating()) return;
+    this.csatSubmitting.set(true);
+    this.csatService.submitRating(this.ticket()!.id, this.csatRating(), this.csatComment).subscribe({
+      next: () => { this.csatSubmitted.set(true); this.csatSubmitting.set(false); },
+      error: () => this.csatSubmitting.set(false)
+    });
   }
 
   sendReply() {

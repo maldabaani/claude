@@ -1,7 +1,8 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { StatsService } from '../../../core/services/stats.service';
 import { TicketService } from '../../../core/services/ticket.service';
+import { CsatService } from '../../../core/services/csat.service';
 import { DashboardStats, Ticket } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -11,7 +12,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [CommonModule,
+  imports: [CommonModule, DecimalPipe,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <div class="space-y-6">
@@ -32,6 +33,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
       <!-- KPI stat cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div *ngFor="let kpi of kpis()" class="stat-card p-5">
+
           <div class="stat-card-accent" [ngClass]="kpi.accentColor"></div>
           <div class="flex items-start justify-between mb-4 pl-2">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center" [ngClass]="kpi.bg">
@@ -44,6 +46,23 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
             <p class="text-xs font-medium text-slate-400 mt-1.5">{{ kpi.label }}</p>
           </div>
         </div>
+
+        <!-- CSAT card -->
+        <div *ngIf="csatStats()" class="stat-card p-5">
+          <div class="stat-card-accent bg-amber-400"></div>
+          <div class="flex items-start justify-between mb-4 pl-2">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <i class="pi pi-star-fill text-amber-500" style="font-size:20px"></i>
+            </div>
+          </div>
+          <div class="pl-2">
+            <p class="text-3xl font-black text-gray-900 leading-none" style="letter-spacing:-0.04em">
+              {{ csatStats().avgRating | number:'1.1-1' }}
+            </p>
+            <p class="text-xs font-medium text-slate-400 mt-1.5">Avg CSAT ({{ csatStats().totalRatings }} ratings)</p>
+          </div>
+        </div>
+
       </div>
 
       <!-- Bottom row: status breakdown + recent activity -->
@@ -110,8 +129,13 @@ export class OverviewComponent implements OnInit {
   statusBreakdown = signal<any[]>([]);
   recentTickets = signal<Ticket[]>([]);
   loadingTickets = signal(true);
+  csatStats = signal<any>(null);
 
-  constructor(private statsService: StatsService, private ticketService: TicketService) {}
+  constructor(
+    private statsService: StatsService,
+    private ticketService: TicketService,
+    private csatService: CsatService
+  ) {}
 
   ngOnInit() {
     this.statsService.getDashboard().subscribe(s => {
@@ -138,5 +162,7 @@ export class OverviewComponent implements OnInit {
       next: (p) => { this.recentTickets.set(p.content); this.loadingTickets.set(false); },
       error: () => this.loadingTickets.set(false),
     });
+
+    this.csatService.getStats().subscribe({ next: s => this.csatStats.set(s), error: () => {} });
   }
 }

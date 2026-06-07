@@ -145,6 +145,7 @@ export class AdminShellComponent {
     { path: '/admin/departments', icon: 'pi-building', label: 'Departments', exact: false },
     { path: '/admin/sla', icon: 'pi-stopwatch', label: 'SLA Policies', exact: false },
     { path: '/admin/canned', icon: 'pi-bookmark', label: 'Canned Responses', exact: false },
+    { path: '/admin/analytics', icon: 'pi-chart-line', label: 'Analytics', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 

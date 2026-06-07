@@ -46,6 +46,7 @@ export const routes: Routes = [
       { path: 'sla', loadComponent: () => import('./features/admin/sla/sla.component').then(m => m.SlaComponent) },
       { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) },
       { path: 'canned', loadComponent: () => import('./features/admin/canned-responses/canned-responses.component').then(m => m.CannedResponsesComponent) },
+      { path: 'analytics', loadComponent: () => import('./features/admin/analytics/analytics.component').then(m => m.AnalyticsComponent) },
     ],
   },
   { path: '**', redirectTo: '/login' },

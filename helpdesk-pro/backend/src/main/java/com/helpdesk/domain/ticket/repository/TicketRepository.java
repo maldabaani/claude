@@ -36,4 +36,13 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
 
     @Query("SELECT t.assignedAgentId, COUNT(t) FROM Ticket t WHERE t.deletedAt IS NULL AND t.departmentId = :departmentId AND t.status NOT IN ('RESOLVED','CLOSED') GROUP BY t.assignedAgentId ORDER BY COUNT(t)")
     List<Object[]> findAgentLoadByDepartment(@Param("departmentId") UUID departmentId);
+
+    @Query(value = "SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as cnt FROM tickets WHERE deleted_at IS NULL AND created_at >= :since GROUP BY DATE_TRUNC('day', created_at) ORDER BY day", nativeQuery = true)
+    List<Object[]> countByDay(@Param("since") Instant since);
+
+    @Query(value = "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/3600.0), 0) FROM tickets WHERE deleted_at IS NULL AND resolved_at IS NOT NULL AND created_at >= :since", nativeQuery = true)
+    Double avgResolutionHours(@Param("since") Instant since);
+
+    @Query(value = "SELECT assigned_agent_id, COUNT(*) as total, SUM(CASE WHEN status IN ('RESOLVED','CLOSED') THEN 1 ELSE 0 END) as resolved FROM tickets WHERE deleted_at IS NULL AND assigned_agent_id IS NOT NULL GROUP BY assigned_agent_id ORDER BY total DESC", nativeQuery = true)
+    List<Object[]> agentStats();
 }
