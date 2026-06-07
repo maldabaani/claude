@@ -86,7 +86,6 @@ import { Department } from '../../../core/models';
               <mat-form-field class="w-full" appearance="outline">
                 <mat-label>Inbound Email</mat-label>
                 <input matInput formControlName="inboundEmail" type="email">
-                <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">alternate_email</mat-icon>
               </mat-form-field>
               <div class="flex gap-2 pt-1">
                 <button mat-stroked-button type="button" (click)="reset()" class="!rounded-lg !flex-1" *ngIf="editing()">Cancel</button>

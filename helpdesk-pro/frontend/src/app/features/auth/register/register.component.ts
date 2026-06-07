@@ -70,14 +70,12 @@ import { AuthService } from '../../../core/auth/auth.service';
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Full name</mat-label>
               <input matInput formControlName="fullName" autocomplete="name">
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">person_outline</mat-icon>
               <mat-error>Full name is required</mat-error>
             </mat-form-field>
 
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Email address</mat-label>
               <input matInput type="email" formControlName="email" autocomplete="email">
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">alternate_email</mat-icon>
               <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
               <mat-error *ngIf="form.get('email')?.hasError('email')">Invalid email format</mat-error>
             </mat-form-field>
@@ -85,7 +83,6 @@ import { AuthService } from '../../../core/auth/auth.service';
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Password</mat-label>
               <input matInput type="password" formControlName="password" autocomplete="new-password">
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">lock_outline</mat-icon>
               <mat-hint>At least 8 characters</mat-hint>
               <mat-error>Password must be at least 8 characters</mat-error>
             </mat-form-field>

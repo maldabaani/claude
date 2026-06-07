@@ -66,7 +66,6 @@ import { AuthService } from '../../../core/auth/auth.service';
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Email address</mat-label>
               <input matInput type="email" formControlName="email" autocomplete="email">
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">alternate_email</mat-icon>
               <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
               <mat-error *ngIf="form.get('email')?.hasError('email')">Invalid email format</mat-error>
             </mat-form-field>
@@ -74,7 +73,6 @@ import { AuthService } from '../../../core/auth/auth.service';
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Password</mat-label>
               <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="current-password">
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">lock_outline</mat-icon>
               <button type="button" matSuffix mat-icon-button (click)="showPassword = !showPassword" class="!text-slate-400">
                 <mat-icon style="font-size:18px">{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
               </button>

@@ -31,12 +31,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
                 <mat-form-field class="w-full" appearance="outline">
                   <mat-label>Company Name</mat-label>
                   <input matInput value="HelpDesk Pro">
-                  <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">business</mat-icon>
                 </mat-form-field>
                 <mat-form-field class="w-full" appearance="outline">
                   <mat-label>Support Email</mat-label>
                   <input matInput value="support&#64;helpdesk.com">
-                  <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">alternate_email</mat-icon>
                 </mat-form-field>
               </div>
               <button mat-raised-button color="primary" class="!rounded-lg !font-semibold !px-6">

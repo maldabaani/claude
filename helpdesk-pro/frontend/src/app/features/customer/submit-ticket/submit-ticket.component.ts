@@ -45,7 +45,6 @@ import { Department } from '../../../core/models';
           <mat-form-field class="w-full" appearance="outline">
             <mat-label>Subject</mat-label>
             <input matInput formControlName="title" placeholder="Brief description of your issue">
-            <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">title</mat-icon>
             <mat-error>Subject is required</mat-error>
           </mat-form-field>
 
@@ -56,7 +55,6 @@ import { Department } from '../../../core/models';
                 <mat-option [value]="null">No preference</mat-option>
                 <mat-option *ngFor="let d of departments()" [value]="d.id">{{ d.name }}</mat-option>
               </mat-select>
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">business</mat-icon>
             </mat-form-field>
 
             <mat-form-field class="w-full" appearance="outline">
@@ -67,14 +65,13 @@ import { Department } from '../../../core/models';
                 <mat-option value="HIGH">High</mat-option>
                 <mat-option value="CRITICAL">Critical</mat-option>
               </mat-select>
-              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">flag</mat-icon>
             </mat-form-field>
           </div>
 
           <mat-form-field class="w-full" appearance="outline">
             <mat-label>Description</mat-label>
             <textarea matInput formControlName="description" rows="6"
-                      placeholder="Please provide as much detail as possible — steps to reproduce, expected vs actual behavior, any error messages..."></textarea>
+                      placeholder="Please provide as much detail as possible..."></textarea>
             <mat-error>Description is required</mat-error>
             <mat-hint>Be as specific as possible to help us resolve your issue faster</mat-hint>
           </mat-form-field>
