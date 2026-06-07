@@ -22,6 +22,7 @@ export const routes: Routes = [
       { path: 'submit', loadComponent: () => import('./features/customer/submit-ticket/submit-ticket.component').then(m => m.SubmitTicketComponent) },
       { path: 'tickets', loadComponent: () => import('./features/customer/my-tickets/my-tickets.component').then(m => m.MyTicketsComponent) },
       { path: 'tickets/:id', loadComponent: () => import('./features/customer/ticket-detail/ticket-detail.component').then(m => m.TicketDetailComponent) },
+      { path: 'kb', loadComponent: () => import('./features/customer/knowledge-base/knowledge-base.component').then(m => m.KnowledgeBaseComponent) },
     ],
   },
   {
@@ -47,6 +48,7 @@ export const routes: Routes = [
       { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) },
       { path: 'canned', loadComponent: () => import('./features/admin/canned-responses/canned-responses.component').then(m => m.CannedResponsesComponent) },
       { path: 'analytics', loadComponent: () => import('./features/admin/analytics/analytics.component').then(m => m.AnalyticsComponent) },
+      { path: 'kb', loadComponent: () => import('./features/admin/knowledge-base/knowledge-base.component').then(m => m.AdminKbComponent) },
     ],
   },
   { path: '**', redirectTo: '/login' },
