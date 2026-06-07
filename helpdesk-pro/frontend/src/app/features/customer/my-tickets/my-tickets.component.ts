@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { TicketService } from '../../../core/services/ticket.service';
 import { Ticket, TicketStatus } from '../../../core/models';
@@ -19,73 +18,83 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   selector: 'app-my-tickets',
   standalone: true,
   imports: [CommonModule, RouterLink, ReactiveFormsModule,
-    MatButtonModule, MatInputModule, MatSelectModule, MatIconModule, MatCardModule, MatPaginatorModule,
+    MatButtonModule, MatInputModule, MatSelectModule, MatIconModule, MatPaginatorModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-5">
+
       <!-- Page header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="font-heading text-2xl font-bold text-gray-900">My Tickets</h1>
-          <p class="text-sm text-gray-500 mt-0.5">Track and manage your support requests</p>
+          <h1 class="text-2xl font-black text-gray-900" style="letter-spacing:-0.03em">My Tickets</h1>
+          <p class="text-sm text-slate-400 mt-0.5">Track and manage your support requests</p>
         </div>
-        <a routerLink="/customer/submit" mat-raised-button color="primary" class="!rounded-lg">
-          <mat-icon style="font-size:18px;width:18px;height:18px">add</mat-icon>
-          <span class="ml-1">New Ticket</span>
+        <a routerLink="/customer/submit"
+           class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+           style="background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 2px 8px rgba(37,99,235,0.3)">
+          <mat-icon style="font-size:16px;width:16px;height:16px">add</mat-icon>
+          New Ticket
         </a>
       </div>
 
-      <!-- Filters bar -->
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
-        <mat-icon class="text-gray-400 shrink-0" style="font-size:18px;width:18px;height:18px">filter_list</mat-icon>
-        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter:</span>
-        <mat-form-field appearance="outline" class="!text-sm" style="width:180px;margin-bottom:-1.25em">
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <mat-icon class="text-slate-400 shrink-0" style="font-size:16px;width:16px;height:16px">filter_list</mat-icon>
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filter:</span>
+        <mat-form-field appearance="outline" style="width:180px;margin-bottom:-1.25em">
           <mat-label>Status</mat-label>
           <mat-select [formControl]="statusFilter" (selectionChange)="loadTickets()">
             <mat-option value="">All statuses</mat-option>
-            <mat-option *ngFor="let s of statuses" [value]="s">{{ s }}</mat-option>
+            <mat-option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</mat-option>
           </mat-select>
         </mat-form-field>
+        <span class="ml-auto text-xs text-slate-400 font-medium">{{ totalElements() }} tickets</span>
       </div>
 
-      <!-- Ticket list -->
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <!-- Table -->
+      <div class="bg-white rounded-xl border border-gray-100 overflow-hidden"
+           style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+
         <!-- Table header -->
-        <div class="grid gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100"
-             style="grid-template-columns:1fr auto auto auto">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ticket</span>
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</span>
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</span>
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</span>
+        <div class="grid gap-4 px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
+             style="grid-template-columns:1fr 90px 110px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
+          <span>Ticket</span>
+          <span>Priority</span>
+          <span>Status</span>
+          <span>Age</span>
         </div>
 
         <app-skeleton-loader *ngIf="loading()" type="table" [count]="5" class="block px-5 py-2" />
 
         <div *ngIf="!loading()">
           <div *ngFor="let ticket of tickets(); let last = last"
-               class="grid gap-4 items-center px-5 py-4 hover:bg-gray-50/80 cursor-pointer transition-colors"
-               style="grid-template-columns:1fr auto auto auto"
-               [class.border-b]="!last" [class.border-gray-100]="!last"
+               class="grid gap-4 items-center px-5 py-4 hover:bg-slate-50/70 cursor-pointer transition-colors"
+               style="grid-template-columns:1fr 90px 110px 80px"
+               [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'"
                [routerLink]="['/customer/tickets', ticket.id]">
             <div class="min-w-0">
-              <p class="font-medium text-gray-900 truncate text-sm">{{ ticket.title }}</p>
-              <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ ticket.ticketNumber }}</p>
+              <p class="font-semibold text-gray-900 truncate text-sm">{{ ticket.title }}</p>
+              <p class="text-xs text-slate-400 mt-0.5 font-mono">{{ ticket.ticketNumber }}</p>
             </div>
             <app-priority-badge [priority]="ticket.priority" />
             <app-status-badge [status]="ticket.status" />
-            <span class="text-xs text-gray-400 whitespace-nowrap">{{ ticket.createdAt | timeAgo }}</span>
+            <span class="text-xs text-slate-400 font-medium">{{ ticket.createdAt | timeAgo }}</span>
           </div>
 
           <div *ngIf="tickets().length === 0" class="py-16 text-center">
-            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">inbox</mat-icon>
-            <p class="text-sm font-medium text-gray-400">No tickets found</p>
-            <p class="text-xs text-gray-300 mt-1">Try adjusting your filters</p>
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                 style="background:#F8FAFC;border:2px dashed #E2E8F0">
+              <mat-icon style="font-size:28px;width:28px;height:28px;color:#CBD5E1">search_off</mat-icon>
+            </div>
+            <p class="text-sm font-semibold text-slate-400">No tickets found</p>
+            <p class="text-xs text-slate-300 mt-1">Try adjusting your filter</p>
           </div>
         </div>
       </div>
 
       <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)"
-                     class="bg-white rounded-xl border border-gray-100 shadow-sm" />
+                     class="bg-white rounded-xl border border-gray-100"
+                     style="box-shadow:0 1px 3px rgba(0,0,0,0.04)" />
     </div>
   `,
 })
@@ -113,4 +122,8 @@ export class MyTicketsComponent implements OnInit {
   }
 
   onPage(e: PageEvent) { this.currentPage = e.pageIndex; this.loadTickets(); }
+
+  statusLabel(status: string): string {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+  }
 }

@@ -17,18 +17,22 @@ import { TicketStatus } from '../../../core/models';
 export class StatusBadgeComponent {
   @Input() status!: TicketStatus;
 
-  get label() {
-    return this.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  get label(): string {
+    return this.status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
   }
 
-  get badgeClass() {
+  get badgeClass(): string {
     return `badge-${this.status.toLowerCase().replace('_', '-')}`;
   }
 
-  get dotClass() {
+  get dotClass(): string {
     const map: Record<TicketStatus, string> = {
-      NEW: 'bg-blue-500', OPEN: 'bg-indigo-500', PENDING: 'bg-yellow-500',
-      ON_HOLD: 'bg-slate-400', RESOLVED: 'bg-green-500', CLOSED: 'bg-slate-500'
+      NEW: 'bg-blue-500',
+      OPEN: 'bg-indigo-500',
+      PENDING: 'bg-amber-500',
+      ON_HOLD: 'bg-slate-400',
+      RESOLVED: 'bg-green-500',
+      CLOSED: 'bg-slate-400',
     };
     return map[this.status] || 'bg-gray-400';
   }

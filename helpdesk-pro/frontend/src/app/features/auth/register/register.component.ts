@@ -14,93 +14,134 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatButtonModule, MatInputModule, MatIconModule],
   template: `
     <div class="min-h-screen flex">
-      <!-- Left panel: branding -->
-      <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#0F172A] via-[#1E3A5F] to-[#0F172A] flex-col items-center justify-center p-16 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-5">
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-white"></div>
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-white"></div>
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full border border-white"></div>
-        </div>
-        <div class="relative text-center">
-          <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-blue-600 mb-8 shadow-2xl shadow-blue-600/40">
-            <mat-icon class="text-white" style="font-size:40px;width:40px;height:40px">support_agent</mat-icon>
+
+      <!-- ── Left: branding panel ── -->
+      <div class="hidden lg:flex lg:w-[52%] flex-col relative overflow-hidden"
+           style="background:linear-gradient(160deg,#070E1A 0%,#0D1B36 40%,#0F172A 100%)">
+
+        <!-- Mesh grid -->
+        <div class="absolute inset-0"
+             style="background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);background-size:48px 48px"></div>
+
+        <!-- Glow orbs -->
+        <div class="absolute" style="top:15%;right:20%;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.2) 0%,transparent 70%);filter:blur(40px)"></div>
+        <div class="absolute" style="bottom:20%;left:10%;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,0.18) 0%,transparent 70%);filter:blur(40px)"></div>
+
+        <!-- Content -->
+        <div class="relative z-10 flex flex-col h-full px-14 py-12">
+
+          <!-- Logo -->
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                 style="background:linear-gradient(135deg,#2563EB,#4F46E5);box-shadow:0 0 20px rgba(37,99,235,0.5)">
+              <mat-icon class="text-white" style="font-size:20px;width:20px;height:20px">support_agent</mat-icon>
+            </div>
+            <span class="font-bold text-white text-lg" style="letter-spacing:-0.02em">HelpDesk Pro</span>
           </div>
-          <h1 class="font-heading text-4xl font-bold text-white mb-4">HelpDesk Pro</h1>
-          <p class="text-slate-400 text-lg leading-relaxed max-w-xs">Join thousands of teams delivering exceptional customer support.</p>
-          <div class="mt-12 space-y-4">
-            <div class="flex items-center gap-3 text-left">
-              <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <mat-icon class="text-blue-400" style="font-size:18px">check</mat-icon>
+
+          <!-- Main copy -->
+          <div class="mt-auto mb-auto pt-16">
+            <h1 class="text-4xl font-black text-white leading-tight mb-4" style="letter-spacing:-0.04em">
+              Join thousands of<br>
+              <span style="background:linear-gradient(90deg,#818CF8,#60A5FA);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">support teams</span>
+            </h1>
+            <p class="text-slate-400 text-base leading-relaxed max-w-sm mb-10">
+              Get started in minutes. No credit card required. Cancel anytime.
+            </p>
+
+            <!-- Feature list -->
+            <div class="space-y-4">
+              <div *ngFor="let f of features" class="flex items-center gap-3">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                     style="background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.3)">
+                  <mat-icon class="text-blue-400" style="font-size:15px;width:15px;height:15px">check</mat-icon>
+                </div>
+                <p class="text-slate-300 text-sm">{{ f }}</p>
               </div>
-              <p class="text-slate-300 text-sm">Real-time ticket tracking</p>
             </div>
-            <div class="flex items-center gap-3 text-left">
-              <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <mat-icon class="text-blue-400" style="font-size:18px">check</mat-icon>
-              </div>
-              <p class="text-slate-300 text-sm">Email & in-app notifications</p>
+          </div>
+
+          <!-- Bottom badge -->
+          <div class="mt-auto flex items-center gap-3 px-4 py-3 rounded-xl" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            <div class="flex -space-x-1.5">
+              <div class="w-7 h-7 rounded-full border-2 border-slate-900 flex items-center justify-center text-white text-xs font-bold" style="background:#2563EB">A</div>
+              <div class="w-7 h-7 rounded-full border-2 border-slate-900 flex items-center justify-center text-white text-xs font-bold" style="background:#7C3AED">M</div>
+              <div class="w-7 h-7 rounded-full border-2 border-slate-900 flex items-center justify-center text-white text-xs font-bold" style="background:#059669">J</div>
             </div>
-            <div class="flex items-center gap-3 text-left">
-              <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <mat-icon class="text-blue-400" style="font-size:18px">check</mat-icon>
-              </div>
-              <p class="text-slate-300 text-sm">SLA compliance monitoring</p>
-            </div>
+            <p class="text-slate-400 text-xs">Join <span class="text-white font-semibold">2,400+</span> teams already using HelpDesk Pro</p>
           </div>
         </div>
       </div>
 
-      <!-- Right panel: form -->
-      <div class="flex-1 flex items-center justify-center px-6 py-12 bg-slate-50">
-        <div class="w-full max-w-sm">
+      <!-- ── Right: form panel ── -->
+      <div class="flex-1 flex items-center justify-center px-8 py-12" style="background:#F8FAFC">
+        <div class="w-full max-w-[400px]">
+
           <!-- Mobile logo -->
           <div class="flex lg:hidden items-center justify-center gap-3 mb-10">
-            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                 style="background:linear-gradient(135deg,#2563EB,#4F46E5)">
               <mat-icon class="text-white">support_agent</mat-icon>
             </div>
-            <span class="font-heading text-xl font-bold text-gray-900">HelpDesk Pro</span>
+            <span class="text-xl font-bold text-gray-900" style="letter-spacing:-0.03em">HelpDesk Pro</span>
           </div>
 
+          <!-- Heading -->
           <div class="mb-8">
-            <h2 class="font-heading text-3xl font-bold text-gray-900">Create account</h2>
-            <p class="text-gray-500 mt-2">Start getting support in minutes</p>
+            <h2 class="text-3xl font-black text-gray-900 mb-2" style="letter-spacing:-0.04em">Create your account</h2>
+            <p class="text-slate-500 text-sm">Start delivering exceptional support today</p>
           </div>
 
-          <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
-            <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Full name</mat-label>
-              <input matInput formControlName="fullName" autocomplete="name">
-              <mat-error>Full name is required</mat-error>
-            </mat-form-field>
+          <!-- Form card -->
+          <div class="bg-white rounded-2xl border border-gray-200 p-8" style="box-shadow:0 1px 3px rgba(0,0,0,0.07),0 8px 24px rgba(0,0,0,0.04)">
+            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
 
-            <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Email address</mat-label>
-              <input matInput type="email" formControlName="email" autocomplete="email">
-              <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
-              <mat-error *ngIf="form.get('email')?.hasError('email')">Invalid email format</mat-error>
-            </mat-form-field>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>
+                <mat-form-field class="w-full" appearance="outline">
+                  <input matInput formControlName="fullName" autocomplete="name" placeholder="John Smith">
+                  <mat-error>Full name is required</mat-error>
+                </mat-form-field>
+              </div>
 
-            <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Password</mat-label>
-              <input matInput type="password" formControlName="password" autocomplete="new-password">
-              <mat-hint>At least 8 characters</mat-hint>
-              <mat-error>Password must be at least 8 characters</mat-error>
-            </mat-form-field>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email address</label>
+                <mat-form-field class="w-full" appearance="outline">
+                  <input matInput type="email" formControlName="email" autocomplete="email" placeholder="you&#64;company.com">
+                  <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
+                  <mat-error *ngIf="form.get('email')?.hasError('email')">Enter a valid email</mat-error>
+                </mat-form-field>
+              </div>
 
-            <div *ngIf="error" class="flex items-center gap-2.5 p-3.5 bg-red-50 rounded-xl border border-red-200">
-              <mat-icon class="text-red-500 shrink-0" style="font-size:18px">error_outline</mat-icon>
-              <span class="text-red-700 text-sm font-medium">{{ error }}</span>
-            </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+                <mat-form-field class="w-full" appearance="outline">
+                  <input matInput type="password" formControlName="password" autocomplete="new-password" placeholder="Min. 8 characters">
+                  <mat-hint>At least 8 characters</mat-hint>
+                  <mat-error>Password must be at least 8 characters</mat-error>
+                </mat-form-field>
+              </div>
 
-            <button mat-raised-button color="primary" type="submit"
-                    class="w-full !h-12 !text-base !font-semibold !rounded-xl !tracking-wide" [disabled]="loading || form.invalid">
-              {{ loading ? 'Creating account...' : 'Create account' }}
-            </button>
-          </form>
+              <!-- Error alert -->
+              <div *ngIf="error"
+                   class="flex items-center gap-3 p-3.5 rounded-xl"
+                   style="background:#FEF2F2;border:1px solid #FECACA">
+                <mat-icon class="shrink-0" style="font-size:16px;width:16px;height:16px;color:#EF4444">error_outline</mat-icon>
+                <span class="text-sm font-medium" style="color:#B91C1C">{{ error }}</span>
+              </div>
 
+              <button mat-raised-button color="primary" type="submit"
+                      class="w-full !h-12 !text-sm !font-semibold !rounded-xl !mt-2"
+                      [disabled]="loading || form.invalid">
+                {{ loading ? 'Creating account...' : 'Create free account' }}
+              </button>
+            </form>
+          </div>
+
+          <!-- Footer -->
           <p class="text-center text-sm text-gray-500 mt-6">
             Already have an account?
-            <a routerLink="/login" class="text-blue-600 font-semibold hover:text-blue-700">Sign in</a>
+            <a routerLink="/login" class="font-semibold" style="color:#2563EB">Sign in →</a>
           </p>
         </div>
       </div>
@@ -116,6 +157,14 @@ export class RegisterComponent {
   loading = false;
   error = '';
 
+  features = [
+    'Real-time ticket tracking & notifications',
+    'Smart auto-assignment & routing',
+    'SLA monitoring and breach alerts',
+    'Team collaboration & internal notes',
+    'Detailed analytics & reporting',
+  ];
+
   constructor(private fb: FormBuilder, private auth: AuthService) {}
 
   submit() {
@@ -124,7 +173,7 @@ export class RegisterComponent {
     const { fullName, email, password } = this.form.value;
     this.auth.register(fullName!, email!, password!).subscribe({
       next: () => this.auth.redirectAfterLogin(),
-      error: (err) => { this.error = err.error?.message || 'Registration failed'; this.loading = false; },
+      error: (err) => { this.error = err.error?.message || 'Registration failed. Please try again.'; this.loading = false; },
     });
   }
 }

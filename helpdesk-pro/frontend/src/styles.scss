@@ -1,10 +1,10 @@
 @use '@angular/material' as mat;
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-// Design Tokens
+// ─── Design Tokens ─────────────────────────────────────────────────────────────
 :root {
   --color-primary: #2563EB;
   --color-primary-dark: #1D4ED8;
@@ -14,8 +14,11 @@
   --color-surface-2: #F8FAFC;
   --color-border: #E2E8F0;
   --color-text-primary: #0F172A;
-  --color-text-muted: #64748B;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
   --color-sidebar: #0F172A;
+  --color-sidebar-hover: rgba(255,255,255,0.07);
+  --color-sidebar-active: rgba(37,99,235,0.18);
 
   --priority-critical: #DC2626;
   --priority-high: #EA580C;
@@ -33,19 +36,21 @@
   --sidebar-collapsed-width: 64px;
   --header-height: 64px;
 
+  --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
 
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
-  --shadow-lg: 0 10px 25px -3px rgb(0 0 0 / 0.12), 0 4px 10px -4px rgb(0 0 0 / 0.08);
-  --shadow-xl: 0 20px 40px -8px rgb(0 0 0 / 0.15);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 25px -3px rgb(0 0 0 / 0.1), 0 4px 10px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 20px 40px -8px rgb(0 0 0 / 0.14);
+  --shadow-blue: 0 4px 14px 0 rgb(37 99 235 / 0.3);
 }
 
-// Angular Material theme
+// ─── Angular Material M2 Theme ─────────────────────────────────────────────────
 @include mat.core();
 
 $_primary: mat.m2-define-palette(mat.$m2-blue-palette, 600);
@@ -60,7 +65,7 @@ $_theme: mat.m2-define-light-theme((
 
 @include mat.all-component-themes($_theme);
 
-// Base styles
+// ─── Base ──────────────────────────────────────────────────────────────────────
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
@@ -80,11 +85,13 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', sans-serif;
-  line-height: 1.3;
+  line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.025em;
+  margin: 0;
 }
 
+a { text-decoration: none; color: inherit; }
 a, button { transition: all 0.15s ease; }
 
 *:focus-visible {
@@ -93,81 +100,51 @@ a, button { transition: all 0.15s ease; }
   border-radius: 4px;
 }
 
-// Skeleton loader animation
+// ─── Skeleton loader animation ─────────────────────────────────────────────────
 @keyframes skeleton-shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
-  background-size: 800px 100%;
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 1200px 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
   border-radius: 6px;
 }
 
-// ─── Status badge colors ───────────────────────────────────────────────────────
+// ─── Status badges ─────────────────────────────────────────────────────────────
 .badge-new {
-  background: #EFF6FF;
-  color: #1D4ED8;
-  border: 1px solid #BFDBFE;
-  font-weight: 600;
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; font-weight: 600;
 }
 .badge-open {
-  background: #EEF2FF;
-  color: #3730A3;
-  border: 1px solid #C7D2FE;
-  font-weight: 600;
+  background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; font-weight: 600;
 }
 .badge-pending {
-  background: #FFFBEB;
-  color: #92400E;
-  border: 1px solid #FDE68A;
-  font-weight: 600;
+  background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; font-weight: 600;
 }
 .badge-on-hold {
-  background: #F8FAFC;
-  color: #475569;
-  border: 1px solid #CBD5E1;
-  font-weight: 600;
+  background: #F8FAFC; color: #475569; border: 1px solid #CBD5E1; font-weight: 600;
 }
 .badge-resolved {
-  background: #F0FDF4;
-  color: #166534;
-  border: 1px solid #BBF7D0;
-  font-weight: 600;
+  background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; font-weight: 600;
 }
 .badge-closed {
-  background: #F1F5F9;
-  color: #475569;
-  border: 1px solid #CBD5E1;
-  font-weight: 600;
+  background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; font-weight: 600;
 }
 
-// ─── Priority badge colors ─────────────────────────────────────────────────────
+// ─── Priority badges ───────────────────────────────────────────────────────────
 .badge-critical {
-  background: #FEF2F2;
-  color: #991B1B;
-  border: 1px solid #FECACA;
-  font-weight: 700;
+  background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; font-weight: 700;
 }
 .badge-high {
-  background: #FFF7ED;
-  color: #9A3412;
-  border: 1px solid #FED7AA;
-  font-weight: 700;
+  background: #FFF7ED; color: #9A3412; border: 1px solid #FED7AA; font-weight: 700;
 }
 .badge-medium {
-  background: #EFF6FF;
-  color: #1E40AF;
-  border: 1px solid #BFDBFE;
-  font-weight: 700;
+  background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; font-weight: 700;
 }
 .badge-low {
-  background: #F8FAFC;
-  color: #475569;
-  border: 1px solid #E2E8F0;
-  font-weight: 700;
+  background: #F8FAFC; color: #475569; border: 1px solid #E2E8F0; font-weight: 700;
 }
 
 // ─── Custom scrollbar ──────────────────────────────────────────────────────────
@@ -176,14 +153,98 @@ a, button { transition: all 0.15s ease; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
+// ─── Stat card accent ──────────────────────────────────────────────────────────
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  &:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+}
+
+.stat-card-accent {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+
+// ─── Table styles ──────────────────────────────────────────────────────────────
+.data-table {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.data-table-header {
+  display: grid;
+  padding: 12px 24px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.data-table-row {
+  display: grid;
+  padding: 14px 24px;
+  align-items: center;
+  border-bottom: 1px solid #F1F5F9;
+  transition: background 0.12s ease;
+  cursor: pointer;
+  &:hover { background: #F8FAFC; }
+  &:last-child { border-bottom: none; }
+}
+
+// ─── Filter bar ────────────────────────────────────────────────────────────────
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+// ─── Page header ──────────────────────────────────────────────────────────────
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.03em;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: #94A3B8;
+    margin-top: 3px;
+    font-weight: 400;
+  }
+}
+
 // ─── Material overrides ────────────────────────────────────────────────────────
 .mat-mdc-card {
   border-radius: var(--radius-lg) !important;
   border: 1px solid var(--color-border) !important;
   box-shadow: var(--shadow-xs) !important;
-}
-.mat-mdc-card:hover {
-  box-shadow: var(--shadow-sm) !important;
+  &:hover { box-shadow: var(--shadow-sm) !important; }
 }
 
 .mat-mdc-button,
@@ -197,14 +258,12 @@ a, button { transition: all 0.15s ease; }
 
 .mat-mdc-raised-button.mat-primary {
   background: var(--color-primary) !important;
-  box-shadow: 0 1px 3px rgb(37 99 235 / 0.3), 0 0 0 1px rgb(37 99 235 / 0.1) !important;
-}
-.mat-mdc-raised-button.mat-primary:hover {
-  background: var(--color-primary-dark) !important;
-  box-shadow: 0 4px 12px rgb(37 99 235 / 0.35) !important;
+  box-shadow: var(--shadow-blue) !important;
+  &:hover { background: var(--color-primary-dark) !important; }
+  &:disabled { background: #CBD5E1 !important; box-shadow: none !important; }
 }
 
-// Form field styling
+// Form field
 .mat-mdc-form-field.mat-form-field-appearance-outline {
   .mdc-notched-outline__leading,
   .mdc-notched-outline__notch,
@@ -236,7 +295,7 @@ a, button { transition: all 0.15s ease; }
   font-family: 'Inter', sans-serif !important;
 }
 
-// Menu panel
+// Menu
 .mat-mdc-menu-panel {
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--color-border) !important;
@@ -250,14 +309,9 @@ a, button { transition: all 0.15s ease; }
   font-weight: 700 !important;
 }
 
-// Tab group
+// Tab
 .mat-mdc-tab-header {
   border-bottom: 1px solid #E2E8F0 !important;
-}
-
-// Slide toggle
-.mat-mdc-slide-toggle .mdc-switch:enabled .mdc-switch__track::after {
-  background: var(--color-primary) !important;
 }
 
 // Checkbox
@@ -266,7 +320,7 @@ a, button { transition: all 0.15s ease; }
   border-radius: 4px !important;
 }
 
-// Select
+// Select panel
 .mat-mdc-select-panel {
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--color-border) !important;
@@ -280,8 +334,45 @@ a, button { transition: all 0.15s ease; }
   border-radius: 6px !important;
 }
 
-// Button toggle group
+// Button toggle
 .mat-button-toggle-group {
   border-radius: var(--radius-sm) !important;
   border-color: var(--color-border) !important;
+}
+
+// Slide toggle
+.mat-mdc-slide-toggle .mdc-switch:enabled .mdc-switch__track::after {
+  background: var(--color-primary) !important;
+}
+
+// ─── Sidebar nav ──────────────────────────────────────────────────────────────
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 2px 8px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(148, 163, 184, 1);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  border: 1px solid transparent;
+
+  &:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  &.active, &.active-nav-item {
+    color: #93C5FD !important;
+    background: rgba(37, 99, 235, 0.18) !important;
+    border-color: rgba(37, 99, 235, 0.3) !important;
+
+    mat-icon { color: #60A5FA !important; }
+  }
 }
