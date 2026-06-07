@@ -8,8 +8,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatChipsModule } from '@angular/material/chips';
 import { TicketService } from '../../../core/services/ticket.service';
-import { Ticket, Comment, TicketStatus } from '../../../core/models';
+import { UserService } from '../../../core/services/user.service';
+import { DepartmentService } from '../../../core/services/department.service';
+import { Ticket, Comment, TicketStatus, User, Department } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
@@ -21,7 +24,7 @@ import { DatePipe } from '@angular/common';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink,
     MatButtonModule, MatButtonToggleModule,
-    MatIconModule, MatInputModule, MatSelectModule, MatTooltipModule,
+    MatIconModule, MatInputModule, MatSelectModule, MatTooltipModule, MatChipsModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent, DatePipe],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -193,10 +196,60 @@ import { DatePipe } from '@angular/common';
                 </div>
               </div>
 
+              <!-- Assigned Agent -->
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned To</label>
+                <mat-select [(value)]="currentAgentId" (selectionChange)="assignAgent()"
+                            class="w-full" style="font-size:13px">
+                  <mat-option [value]="null">Unassigned</mat-option>
+                  <mat-option *ngFor="let agent of agents()" [value]="agent.id">
+                    {{ agent.fullName }}
+                  </mat-option>
+                </mat-select>
+              </div>
+
               <!-- Department -->
               <div *ngIf="ticket()!.departmentId">
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Department</label>
-                <p class="text-sm font-semibold text-gray-700">{{ ticket()!.departmentId }}</p>
+                <p class="text-sm font-semibold text-gray-700">{{ departmentName() }}</p>
+              </div>
+
+              <!-- First Response -->
+              <div *ngIf="ticket()!.firstResponseAt">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">First Response</label>
+                <p class="text-sm font-semibold text-green-600">{{ ticket()!.firstResponseAt | date:'MMM d, h:mm a' }}</p>
+              </div>
+              <div *ngIf="!ticket()!.firstResponseAt">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">First Response</label>
+                <p class="text-xs font-medium text-amber-500">Awaiting first reply</p>
+              </div>
+
+              <!-- Tags -->
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</label>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span *ngFor="let tag of ticket()!.tags"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">
+                    {{ tag }}
+                    <button (click)="removeTag(tag)" class="hover:text-red-500 transition-colors leading-none">
+                      <mat-icon style="font-size:11px;width:11px;height:11px">close</mat-icon>
+                    </button>
+                  </span>
+                  <span *ngIf="ticket()!.tags.length === 0" class="text-xs text-slate-300 italic">No tags</span>
+                </div>
+                <div class="flex gap-1.5">
+                  <input #tagInput
+                         class="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                         placeholder="Add tag..."
+                         (keydown.enter)="addTag(tagInput.value); tagInput.value = ''"
+                         style="font-family:inherit">
+                  <button (click)="addTag(tagInput.value); tagInput.value = ''"
+                          class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white"
+                          style="background:#2563EB">
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -208,23 +261,34 @@ import { DatePipe } from '@angular/common';
 export class AgentTicketDetailComponent implements OnInit {
   ticket = signal<Ticket | null>(null);
   comments = signal<Comment[]>([]);
+  agents = signal<User[]>([]);
+  departments = signal<Department[]>([]);
   loading = signal(true);
   submitting = false;
   replyControl = new FormControl('', Validators.required);
   noteMode = new FormControl<'public' | 'internal'>('public');
   currentStatus: TicketStatus = 'NEW';
+  currentAgentId: string | null = null;
   statuses: TicketStatus[] = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 
-  constructor(private route: ActivatedRoute, private ticketService: TicketService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private ticketService: TicketService,
+    private userService: UserService,
+    private departmentService: DepartmentService,
+  ) {}
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.ticketService.getTicket(id).subscribe(t => {
       this.ticket.set(t);
       this.currentStatus = t.status;
+      this.currentAgentId = t.assignedAgent?.id ?? null;
       this.loading.set(false);
     });
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
+    this.userService.getUsers('AGENT', 0, 100).subscribe(p => this.agents.set(p.content));
+    this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
   }
 
   sendReply() {
@@ -241,6 +305,33 @@ export class AgentTicketDetailComponent implements OnInit {
   updateStatus() {
     const id = this.ticket()!.id;
     this.ticketService.changeStatus(id, this.currentStatus).subscribe(t => this.ticket.set(t));
+  }
+
+  assignAgent() {
+    if (!this.currentAgentId) return;
+    const id = this.ticket()!.id;
+    this.ticketService.assignTicket(id, this.currentAgentId).subscribe(t => this.ticket.set(t));
+  }
+
+  departmentName(): string {
+    const deptId = this.ticket()?.departmentId;
+    if (!deptId) return '';
+    return this.departments().find(d => d.id === deptId)?.name ?? deptId;
+  }
+
+  addTag(value: string) {
+    const tag = value.trim();
+    if (!tag) return;
+    const ticket = this.ticket()!;
+    if (ticket.tags.includes(tag)) return;
+    const newTags = [...ticket.tags, tag];
+    this.ticketService.updateTicket(ticket.id, { tags: newTags }).subscribe(t => this.ticket.set(t));
+  }
+
+  removeTag(tag: string) {
+    const ticket = this.ticket()!;
+    const newTags = ticket.tags.filter(t => t !== tag);
+    this.ticketService.updateTicket(ticket.id, { tags: newTags }).subscribe(t => this.ticket.set(t));
   }
 
   topBarClass(): string {
