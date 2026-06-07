@@ -2,9 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
+import { TextareaModule } from 'primeng/textarea';
 import { TicketService } from '../../../core/services/ticket.service';
 import { Ticket, Comment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -16,7 +14,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
   selector: 'app-ticket-detail',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    MatButtonModule, MatInputModule, MatIconModule,
+    TextareaModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -26,7 +24,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
       <!-- Back link -->
       <a routerLink="/customer/tickets"
          class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
-        <mat-icon style="font-size:16px;width:16px;height:16px">arrow_back</mat-icon>
+        <i class="pi pi-arrow-left" style="font-size:16px"></i>
         Back to tickets
       </a>
 
@@ -56,15 +54,15 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 
           <div class="flex items-center gap-5 mt-4 text-xs text-slate-400 font-medium">
             <div class="flex items-center gap-1.5">
-              <mat-icon style="font-size:13px;width:13px;height:13px">schedule</mat-icon>
+              <i class="pi pi-clock" style="font-size:13px"></i>
               Submitted {{ ticket()!.createdAt | timeAgo }}
             </div>
             <div *ngIf="ticket()!.assignedAgent" class="flex items-center gap-1.5">
-              <mat-icon style="font-size:13px;width:13px;height:13px">person</mat-icon>
+              <i class="pi pi-user" style="font-size:13px"></i>
               Handled by {{ ticket()!.assignedAgent!.fullName }}
             </div>
             <div *ngIf="!ticket()!.assignedAgent" class="flex items-center gap-1.5">
-              <mat-icon style="font-size:13px;width:13px;height:13px">hourglass_empty</mat-icon>
+              <i class="pi pi-hourglass" style="font-size:13px"></i>
               Awaiting assignment
             </div>
           </div>
@@ -76,7 +74,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
            style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 
         <div class="flex items-center gap-2.5 px-6 py-4" style="border-bottom:1px solid #F1F5F9">
-          <mat-icon class="text-slate-400" style="font-size:16px;width:16px;height:16px">forum</mat-icon>
+          <i class="pi pi-comments text-slate-400" style="font-size:16px"></i>
           <h2 class="font-bold text-gray-900 text-sm">Conversation</h2>
           <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-bold"
                 style="background:#F1F5F9;color:#64748B">{{ comments().length }}</span>
@@ -85,7 +83,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div class="p-6">
           <!-- Empty state -->
           <div *ngIf="comments().length === 0" class="text-center py-8">
-            <mat-icon style="font-size:36px;width:36px;height:36px;color:#E2E8F0;display:block;margin:0 auto 8px">chat_bubble_outline</mat-icon>
+            <i class="pi pi-comments" style="font-size:36px;color:#E2E8F0;display:block;margin:0 auto 8px"></i>
             <p class="text-sm font-medium text-slate-400">No replies yet</p>
             <p class="text-xs text-slate-300 mt-1">Add a reply below to start the conversation</p>
           </div>
@@ -113,16 +111,14 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           <!-- Reply box -->
           <div class="mt-6 pt-6" style="border-top:1px solid #F1F5F9">
             <h3 class="font-bold text-gray-900 text-sm mb-3">Add a Reply</h3>
-            <mat-form-field class="w-full" appearance="outline">
-              <textarea matInput [formControl]="replyControl" rows="4"
-                        placeholder="Type your message here..."></textarea>
-            </mat-form-field>
-            <div class="flex justify-end mt-2">
+            <textarea pTextarea [formControl]="replyControl" rows="4" class="w-full"
+                      placeholder="Type your message here..."></textarea>
+            <div class="flex justify-end mt-3">
               <button (click)="sendReply()"
                       [disabled]="replyControl.invalid || submitting"
                       class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       style="background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 2px 8px rgba(37,99,235,0.3)">
-                <mat-icon style="font-size:16px;width:16px;height:16px">send</mat-icon>
+                <i class="pi pi-send" style="font-size:16px"></i>
                 {{ submitting ? 'Sending...' : 'Send Reply' }}
               </button>
             </div>

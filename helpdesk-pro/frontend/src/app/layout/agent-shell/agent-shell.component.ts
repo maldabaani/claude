@@ -1,11 +1,11 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { MatBadgeModule } from '@angular/material/badge';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { BadgeModule } from 'primeng/badge';
+import { TooltipModule } from 'primeng/tooltip';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { WebSocketService } from '../../core/services/websocket.service';
@@ -14,7 +14,7 @@ import { WebSocketService } from '../../core/services/websocket.service';
   selector: 'app-agent-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
-    MatIconModule, MatBadgeModule, MatMenuModule, MatButtonModule, MatTooltipModule],
+    ButtonModule, MenuModule, BadgeModule, TooltipModule],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -29,7 +29,7 @@ import { WebSocketService } from '../../core/services/websocket.service';
              [class.justify-center]="collapsed()">
           <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
                style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
-            <mat-icon class="text-white" style="font-size:17px;width:17px;height:17px">support_agent</mat-icon>
+            <i class="pi pi-headphones text-white" style="font-size:17px"></i>
           </div>
           <div *ngIf="!collapsed()" class="ml-2.5 overflow-hidden">
             <p class="text-white font-bold text-sm whitespace-nowrap" style="letter-spacing:-0.02em">HelpDesk Pro</p>
@@ -50,16 +50,16 @@ import { WebSocketService } from '../../core/services/websocket.service';
              [routerLinkActiveOptions]="{exact: item.exact}"
              class="sidebar-nav-item"
              [class.justify-center]="collapsed()"
-             [matTooltip]="collapsed() ? item.label : ''"
-             matTooltipPosition="right">
-            <mat-icon class="shrink-0" style="font-size:18px;width:18px;height:18px">{{ item.icon }}</mat-icon>
+             [pTooltip]="collapsed() ? item.label : ''"
+             tooltipPosition="right">
+            <i [class]="'pi ' + item.icon + ' shrink-0'" style="font-size:18px"></i>
             <span *ngIf="!collapsed()" class="truncate">{{ item.label }}</span>
           </a>
         </nav>
 
         <!-- User area -->
         <div style="border-top:1px solid rgba(255,255,255,0.07)" class="p-3">
-          <button [matMenuTriggerFor]="sideUserMenu" class="w-full flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-white/5"
+          <button (click)="sideUserMenu.toggle($event)" class="w-full flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-white/5"
                   [class.justify-center]="collapsed()">
             <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
                  style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -69,23 +69,16 @@ import { WebSocketService } from '../../core/services/websocket.service';
               <p class="text-white text-xs font-semibold truncate">{{ displayName() }}</p>
               <p class="text-slate-500 text-xs">Agent</p>
             </div>
-            <mat-icon *ngIf="!collapsed()" class="text-slate-600 shrink-0" style="font-size:14px;width:14px;height:14px">unfold_more</mat-icon>
+            <i *ngIf="!collapsed()" class="pi pi-sort-alt text-slate-600 shrink-0" style="font-size:14px"></i>
           </button>
-          <mat-menu #sideUserMenu="matMenu">
-            <button mat-menu-item (click)="auth.logout()">
-              <mat-icon>logout</mat-icon>
-              <span>Sign out</span>
-            </button>
-          </mat-menu>
+          <p-menu #sideUserMenu [model]="sideMenuItems" [popup]="true" />
         </div>
 
         <!-- Collapse toggle -->
         <button (click)="toggleCollapsed()"
                 class="flex items-center justify-center h-9 transition-colors hover:bg-white/5"
                 style="border-top:1px solid rgba(255,255,255,0.07);color:#475569">
-          <mat-icon style="font-size:16px;width:16px;height:16px">
-            {{ collapsed() ? 'chevron_right' : 'chevron_left' }}
-          </mat-icon>
+          <i [class]="'pi ' + (collapsed() ? 'pi-chevron-right' : 'pi-chevron-left')" style="font-size:16px"></i>
         </button>
       </aside>
 
@@ -102,45 +95,27 @@ import { WebSocketService } from '../../core/services/websocket.service';
 
           <div class="flex items-center gap-1">
             <!-- Notification bell -->
-            <button mat-icon-button [matMenuTriggerFor]="notifMenu"
-                    [matBadge]="notifService.unreadCount() > 0 ? notifService.unreadCount() : null"
-                    matBadgeColor="warn" matBadgeSize="small" class="!text-gray-500">
-              <mat-icon style="font-size:20px">notifications_none</mat-icon>
+            <button (click)="notifMenu.toggle($event)"
+                    class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
+              <i class="pi pi-bell" style="font-size:20px"></i>
+              <span *ngIf="notifService.unreadCount() > 0"
+                    class="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold"
+                    style="font-size:9px">{{ notifService.unreadCount() }}</span>
             </button>
-            <mat-menu #notifMenu="matMenu">
-              <div class="px-4 py-3" style="border-bottom:1px solid #F1F5F9;min-width:280px">
-                <p class="font-bold text-sm text-gray-900">Notifications</p>
-              </div>
-              <div class="px-4 py-10 text-center">
-                <mat-icon style="font-size:36px;width:36px;height:36px;color:#CBD5E1;display:block;margin:0 auto 8px">notifications_none</mat-icon>
-                <p class="text-sm font-medium text-gray-400">You're all caught up!</p>
-                <p class="text-xs text-gray-300 mt-1">No new notifications</p>
-              </div>
-            </mat-menu>
+            <p-menu #notifMenu [model]="notifMenuItems" [popup]="true" />
 
             <div class="w-px h-5 mx-1" style="background:#E2E8F0"></div>
 
             <!-- User menu -->
-            <button mat-button [matMenuTriggerFor]="headerUserMenu" class="!rounded-lg !px-2.5">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                     style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
-                  {{ initials() }}
-                </div>
-                <span class="text-sm font-semibold text-gray-700">{{ displayName() }}</span>
-                <mat-icon class="text-gray-400 !text-sm">expand_more</mat-icon>
+            <button (click)="headerUserMenu.toggle($event)" class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
+              <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                   style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
+                {{ initials() }}
               </div>
+              <span class="text-sm font-semibold text-gray-700">{{ displayName() }}</span>
+              <i class="pi pi-chevron-down text-gray-400" style="font-size:12px"></i>
             </button>
-            <mat-menu #headerUserMenu="matMenu">
-              <div class="px-4 py-3" style="border-bottom:1px solid #F1F5F9">
-                <p class="text-xs text-gray-400 font-medium">Signed in as</p>
-                <p class="text-sm font-bold text-gray-900 mt-0.5">{{ displayName() }}</p>
-              </div>
-              <button mat-menu-item (click)="auth.logout()">
-                <mat-icon class="text-gray-500">logout</mat-icon>
-                <span>Sign out</span>
-              </button>
-            </mat-menu>
+            <p-menu #headerUserMenu [model]="headerMenuItems" [popup]="true" />
           </div>
         </header>
 
@@ -184,9 +159,19 @@ export class AgentShellComponent implements OnInit {
   collapsed = signal(false);
 
   navItems = [
-    { path: '/agent', icon: 'grid_view', label: 'Dashboard', exact: true },
-    { path: '/agent/queue', icon: 'inbox', label: 'Ticket Queue', exact: false },
+    { path: '/agent', icon: 'pi-th-large', label: 'Dashboard', exact: true },
+    { path: '/agent/queue', icon: 'pi-inbox', label: 'Ticket Queue', exact: false },
   ];
+
+  sideMenuItems: MenuItem[] = [
+    { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
+  ];
+
+  notifMenuItems: MenuItem[] = [
+    { label: "You're all caught up!", disabled: true }
+  ];
+
+  headerMenuItems: MenuItem[] = [];
 
   constructor(
     public auth: AuthService,
@@ -198,6 +183,11 @@ export class AgentShellComponent implements OnInit {
     this.ws.connect();
     this.notifService.refreshCount();
     this.ws.notification$.subscribe(() => this.notifService.refreshCount());
+    this.headerMenuItems = [
+      { label: this.displayName(), disabled: true, styleClass: 'font-semibold' },
+      { separator: true },
+      { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
+    ];
   }
 
   toggleCollapsed() { this.collapsed.update(v => !v); }

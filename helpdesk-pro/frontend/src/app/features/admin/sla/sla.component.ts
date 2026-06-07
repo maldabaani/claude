@@ -2,21 +2,20 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { MenuModule } from 'primeng/menu';
+import { MenuItem } from 'primeng/api';
+import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
 import { SlaPolicy } from '../../../core/models';
 
 @Component({
   selector: 'app-sla',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule,
-    MatButtonModule, MatCardModule, MatIconModule, MatInputModule, MatMenuModule, MatSelectModule, MatSlideToggleModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule,
+    ButtonModule, InputTextModule, SelectModule, MenuModule],
   template: `
     <div class="space-y-6">
       <div>
@@ -35,32 +34,25 @@ import { SlaPolicy } from '../../../core/models';
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1.5"
                       [ngClass]="priorityClass(sla.priority)">{{ sla.priority }}</span>
               </div>
-              <button mat-icon-button [matMenuTriggerFor]="menu" class="!text-gray-400">
-                <mat-icon style="font-size:18px;width:18px;height:18px">more_vert</mat-icon>
+              <button (click)="setSlaMenuItems(sla); slaMenu.toggle($event)"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <i class="pi pi-ellipsis-v" style="font-size:18px"></i>
               </button>
-              <mat-menu #menu="matMenu">
-                <button mat-menu-item (click)="edit(sla)">
-                  <mat-icon class="text-gray-500">edit_outline</mat-icon> Edit
-                </button>
-                <button mat-menu-item (click)="delete(sla)" style="color:#DC2626">
-                  <mat-icon style="color:#DC2626">delete_outline</mat-icon> Delete
-                </button>
-              </mat-menu>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
               <div class="bg-gray-50 rounded-lg p-3 text-center">
-                <mat-icon class="text-blue-500 mb-1" style="font-size:18px;width:18px;height:18px">timer</mat-icon>
+                <i class="pi pi-stopwatch text-blue-500 mb-1" style="font-size:18px;display:block"></i>
                 <p class="text-xs text-gray-500 mb-0.5">First Response</p>
                 <p class="text-lg font-heading font-bold text-gray-900">{{ sla.responseTimeHours }}<span class="text-xs font-normal text-gray-400">h</span></p>
               </div>
               <div class="bg-gray-50 rounded-lg p-3 text-center">
-                <mat-icon class="text-green-500 mb-1" style="font-size:18px;width:18px;height:18px">check_circle_outline</mat-icon>
+                <i class="pi pi-check-circle text-green-500 mb-1" style="font-size:18px;display:block"></i>
                 <p class="text-xs text-gray-500 mb-0.5">Resolution</p>
                 <p class="text-lg font-heading font-bold text-gray-900">{{ sla.resolutionTimeHours }}<span class="text-xs font-normal text-gray-400">h</span></p>
               </div>
               <div class="bg-gray-50 rounded-lg p-3 text-center">
-                <mat-icon class="text-purple-500 mb-1" style="font-size:18px;width:18px;height:18px">schedule</mat-icon>
+                <i class="pi pi-clock text-purple-500 mb-1" style="font-size:18px;display:block"></i>
                 <p class="text-xs text-gray-500 mb-0.5">Schedule</p>
                 <p class="text-xs font-semibold text-gray-700 mt-1">{{ sla.businessHoursOnly ? 'Biz hours' : '24/7' }}</p>
               </div>
@@ -68,7 +60,7 @@ import { SlaPolicy } from '../../../core/models';
           </div>
 
           <div *ngIf="policies().length === 0" class="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center">
-            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">timer</mat-icon>
+            <i class="pi pi-stopwatch text-gray-200 mb-3" style="font-size:48px;display:block;margin:0 auto 12px"></i>
             <p class="text-sm font-medium text-gray-400">No SLA policies configured</p>
             <p class="text-xs text-gray-300 mt-1">Create your first policy using the form</p>
           </div>
@@ -79,55 +71,60 @@ import { SlaPolicy } from '../../../core/models';
           <div class="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
             <div class="flex items-center gap-2">
               <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <mat-icon class="text-indigo-600" style="font-size:14px;width:14px;height:14px">{{ editing() ? 'edit' : 'add' }}</mat-icon>
+                <i [class]="'pi ' + (editing() ? 'pi-pencil' : 'pi-plus') + ' text-indigo-600'" style="font-size:14px"></i>
               </div>
               <h2 class="font-semibold text-gray-900 text-sm">{{ editing() ? 'Edit SLA Policy' : 'New SLA Policy' }}</h2>
             </div>
           </div>
           <div class="p-5">
             <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
-              <mat-form-field class="w-full" appearance="outline">
-                <mat-label>Policy name</mat-label>
-                <input matInput formControlName="name">
-                <mat-error>Name is required</mat-error>
-              </mat-form-field>
-              <mat-form-field class="w-full" appearance="outline">
-                <mat-label>Priority</mat-label>
-                <mat-select formControlName="priority">
-                  <mat-option value="LOW">Low</mat-option>
-                  <mat-option value="MEDIUM">Medium</mat-option>
-                  <mat-option value="HIGH">High</mat-option>
-                  <mat-option value="CRITICAL">Critical</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Policy name</label>
+                <input pInputText formControlName="name" class="w-full" placeholder="Policy name" />
+                <div *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="text-xs text-red-500 mt-1">Name is required</div>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Priority</label>
+                <p-select [options]="priorityOptions" formControlName="priority"
+                          optionLabel="label" optionValue="value" class="w-full" />
+              </div>
               <div class="grid grid-cols-2 gap-3">
-                <mat-form-field class="w-full" appearance="outline">
-                  <mat-label>Response (h)</mat-label>
-                  <input matInput type="number" formControlName="responseTimeHours">
-                  <mat-error>Required</mat-error>
-                </mat-form-field>
-                <mat-form-field class="w-full" appearance="outline">
-                  <mat-label>Resolution (h)</mat-label>
-                  <input matInput type="number" formControlName="resolutionTimeHours">
-                  <mat-error>Required</mat-error>
-                </mat-form-field>
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1.5">Response (h)</label>
+                  <input pInputText type="number" formControlName="responseTimeHours" class="w-full" />
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1.5">Resolution (h)</label>
+                  <input pInputText type="number" formControlName="resolutionTimeHours" class="w-full" />
+                </div>
               </div>
               <div class="flex gap-2 pt-1">
-                <button mat-stroked-button type="button" (click)="reset()" class="!rounded-lg !flex-1" *ngIf="editing()">Cancel</button>
-                <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid" class="!rounded-lg !flex-1 !font-semibold">
-                  {{ editing() ? 'Save changes' : 'Create' }}
-                </button>
+                <button *ngIf="editing()" pButton type="button" (click)="reset()" label="Cancel"
+                        variant="outlined" class="flex-1"></button>
+                <button pButton type="submit" [disabled]="form.invalid"
+                        [label]="editing() ? 'Save changes' : 'Create'"
+                        class="flex-1"></button>
               </div>
             </form>
           </div>
         </div>
       </div>
+
+      <p-menu #slaMenu [model]="slaMenuItems" [popup]="true" />
     </div>
   `,
 })
 export class SlaComponent implements OnInit {
   policies = signal<SlaPolicy[]>([]);
   editing = signal<SlaPolicy | null>(null);
+  slaMenuItems: MenuItem[] = [];
+
+  priorityOptions = [
+    { label: 'Low', value: 'LOW' },
+    { label: 'Medium', value: 'MEDIUM' },
+    { label: 'High', value: 'HIGH' },
+    { label: 'Critical', value: 'CRITICAL' },
+  ];
 
   form = this.fb.group({
     name: ['', Validators.required],
@@ -143,6 +140,13 @@ export class SlaComponent implements OnInit {
 
   load() {
     this.http.get<any>(`${environment.apiUrl}/sla`).subscribe(r => this.policies.set(r.data?.content || []));
+  }
+
+  setSlaMenuItems(sla: SlaPolicy) {
+    this.slaMenuItems = [
+      { label: 'Edit', icon: 'pi pi-pencil', command: () => this.edit(sla) },
+      { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-600', command: () => this.delete(sla) }
+    ];
   }
 
   edit(sla: SlaPolicy) {

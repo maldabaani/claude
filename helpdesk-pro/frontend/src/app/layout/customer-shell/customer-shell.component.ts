@@ -1,16 +1,16 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-customer-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
-    MatButtonModule, MatIconModule, MatMenuModule],
+    ButtonModule, MenuModule],
   template: `
     <div class="min-h-screen flex flex-col" style="background:#F8FAFC">
 
@@ -22,7 +22,7 @@ import { AuthService } from '../../core/auth/auth.service';
           <a routerLink="/customer" class="flex items-center gap-2.5 no-underline">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center"
                  style="background:linear-gradient(135deg,#2563EB,#4F46E5)">
-              <mat-icon class="text-white" style="font-size:17px;width:17px;height:17px">support_agent</mat-icon>
+              <i class="pi pi-headphones text-white" style="font-size:17px"></i>
             </div>
             <span class="font-bold text-gray-900 text-base" style="letter-spacing:-0.02em">HelpDesk Pro</span>
           </a>
@@ -33,13 +33,13 @@ import { AuthService } from '../../core/auth/auth.service';
                routerLinkActive="nav-active"
                [routerLinkActiveOptions]="{exact:true}"
                class="cust-nav-link flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium">
-              <mat-icon style="font-size:16px;width:16px;height:16px">home</mat-icon>
+              <i class="pi pi-home" style="font-size:16px"></i>
               <span class="hidden sm:inline">Home</span>
             </a>
             <a routerLink="/customer/tickets"
                routerLinkActive="nav-active"
                class="cust-nav-link flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium">
-              <mat-icon style="font-size:16px;width:16px;height:16px">confirmation_number</mat-icon>
+              <i class="pi pi-ticket" style="font-size:16px"></i>
               <span class="hidden sm:inline">My Tickets</span>
             </a>
 
@@ -48,25 +48,16 @@ import { AuthService } from '../../core/auth/auth.service';
             <a routerLink="/customer/submit"
                class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
                style="background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 1px 3px rgba(37,99,235,0.35)">
-              <mat-icon style="font-size:16px;width:16px;height:16px">add</mat-icon>
+              <i class="pi pi-plus" style="font-size:16px"></i>
               <span class="hidden sm:inline">New Ticket</span>
             </a>
 
-            <button [matMenuTriggerFor]="userMenu"
+            <button (click)="userMenu.toggle($event)"
                     class="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold transition-opacity hover:opacity-80"
                     style="background:linear-gradient(135deg,#2563EB,#4F46E5)">
               {{ initials() }}
             </button>
-            <mat-menu #userMenu="matMenu">
-              <div class="px-4 py-3" style="border-bottom:1px solid #F1F5F9;min-width:200px">
-                <p class="text-xs text-gray-400 font-medium">Signed in as</p>
-                <p class="text-sm font-bold text-gray-900 mt-0.5">{{ displayName() }}</p>
-              </div>
-              <button mat-menu-item (click)="auth.logout()">
-                <mat-icon class="text-gray-500">logout</mat-icon>
-                <span>Sign out</span>
-              </button>
-            </mat-menu>
+            <p-menu #userMenu [model]="menuItems" [popup]="true" />
           </nav>
         </div>
       </header>
@@ -96,7 +87,16 @@ import { AuthService } from '../../core/auth/auth.service';
   `],
 })
 export class CustomerShellComponent {
-  constructor(public auth: AuthService) {}
+  menuItems: MenuItem[] = [];
+
+  constructor(public auth: AuthService) {
+    this.menuItems = [
+      { label: 'Signed in as', disabled: true },
+      { label: this.displayName(), disabled: true, styleClass: 'font-bold text-gray-900' },
+      { separator: true },
+      { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
+    ];
+  }
 
   displayName(): string {
     const user = this.auth.currentUser();

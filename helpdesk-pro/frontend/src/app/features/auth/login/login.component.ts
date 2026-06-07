@@ -2,17 +2,17 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { FloatLabelModule } from 'primeng/floatlabel';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    MatButtonModule, MatInputModule, MatIconModule, MatProgressSpinnerModule],
+    ButtonModule, InputTextModule, FloatLabelModule, ProgressSpinnerModule],
   template: `
     <div class="min-h-screen flex">
 
@@ -35,7 +35,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl flex items-center justify-center"
                  style="background:linear-gradient(135deg,#2563EB,#4F46E5);box-shadow:0 0 20px rgba(37,99,235,0.5)">
-              <mat-icon class="text-white" style="font-size:20px;width:20px;height:20px">support_agent</mat-icon>
+              <i class="pi pi-headphones text-white" style="font-size:20px"></i>
             </div>
             <span class="font-bold text-white text-lg" style="letter-spacing:-0.02em">HelpDesk Pro</span>
           </div>
@@ -77,11 +77,11 @@ import { AuthService } from '../../../core/auth/auth.service';
           <!-- Testimonial -->
           <div class="rounded-2xl p-5 mt-auto" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
             <div class="flex gap-0.5 mb-3">
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#F59E0B">star</mat-icon>
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#F59E0B">star</mat-icon>
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#F59E0B">star</mat-icon>
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#F59E0B">star</mat-icon>
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#F59E0B">star</mat-icon>
+              <i class="pi pi-star-fill" style="font-size:14px;color:#F59E0B"></i>
+              <i class="pi pi-star-fill" style="font-size:14px;color:#F59E0B"></i>
+              <i class="pi pi-star-fill" style="font-size:14px;color:#F59E0B"></i>
+              <i class="pi pi-star-fill" style="font-size:14px;color:#F59E0B"></i>
+              <i class="pi pi-star-fill" style="font-size:14px;color:#F59E0B"></i>
             </div>
             <p class="text-slate-300 text-sm leading-relaxed">"HelpDesk Pro cut our response time by 60% in the first month. The SLA tracking alone is worth it."</p>
             <div class="flex items-center gap-3 mt-3">
@@ -104,7 +104,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <div class="flex lg:hidden items-center justify-center gap-3 mb-10">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center"
                  style="background:linear-gradient(135deg,#2563EB,#4F46E5)">
-              <mat-icon class="text-white">support_agent</mat-icon>
+              <i class="pi pi-headphones text-white" style="font-size:20px"></i>
             </div>
             <span class="text-xl font-bold text-gray-900" style="letter-spacing:-0.03em">HelpDesk Pro</span>
           </div>
@@ -117,48 +117,48 @@ import { AuthService } from '../../../core/auth/auth.service';
 
           <!-- Form card -->
           <div class="bg-white rounded-2xl border border-gray-200 p-8" style="box-shadow:0 1px 3px rgba(0,0,0,0.07),0 8px 24px rgba(0,0,0,0.04)">
-            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email address</label>
-                <mat-form-field class="w-full" appearance="outline">
-                  <input matInput type="email" formControlName="email" autocomplete="email" placeholder="you&#64;company.com">
-                  <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
-                  <mat-error *ngIf="form.get('email')?.hasError('email')">Enter a valid email</mat-error>
-                </mat-form-field>
+                <input pInputText type="email" formControlName="email" autocomplete="email"
+                       placeholder="you&#64;company.com" class="w-full" />
+                <div *ngIf="form.get('email')?.invalid && form.get('email')?.touched" class="text-xs text-red-500 mt-1">
+                  <span *ngIf="form.get('email')?.hasError('required')">Email is required</span>
+                  <span *ngIf="form.get('email')?.hasError('email')">Enter a valid email</span>
+                </div>
               </div>
 
               <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <label class="block text-sm font-semibold text-gray-700">Password</label>
-                </div>
-                <mat-form-field class="w-full" appearance="outline">
-                  <input matInput [type]="showPassword ? 'text' : 'password'"
-                         formControlName="password" autocomplete="current-password" placeholder="••••••••">
-                  <button type="button" matSuffix mat-icon-button (click)="togglePassword()"
-                          class="!text-slate-400 hover:!text-slate-600">
-                    <mat-icon style="font-size:18px;width:18px;height:18px">
-                      {{ showPassword ? 'visibility_off' : 'visibility' }}
-                    </mat-icon>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+                <div class="relative">
+                  <input pInputText [type]="showPassword ? 'text' : 'password'"
+                         formControlName="password" autocomplete="current-password"
+                         placeholder="••••••••" class="w-full pr-10" />
+                  <button type="button" (click)="togglePassword()"
+                          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <i [class]="'pi ' + (showPassword ? 'pi-eye-slash' : 'pi-eye')" style="font-size:18px"></i>
                   </button>
-                  <mat-error>Password is required</mat-error>
-                </mat-form-field>
+                </div>
+                <div *ngIf="form.get('password')?.invalid && form.get('password')?.touched" class="text-xs text-red-500 mt-1">
+                  Password is required
+                </div>
               </div>
 
               <!-- Error alert -->
               <div *ngIf="error"
                    class="flex items-center gap-3 p-3.5 rounded-xl"
                    style="background:#FEF2F2;border:1px solid #FECACA">
-                <mat-icon class="shrink-0" style="font-size:16px;width:16px;height:16px;color:#EF4444">error_outline</mat-icon>
+                <i class="pi pi-exclamation-circle shrink-0" style="font-size:16px;color:#EF4444"></i>
                 <span class="text-sm font-medium" style="color:#B91C1C">{{ error }}</span>
               </div>
 
               <!-- Submit -->
-              <button mat-raised-button color="primary" type="submit"
-                      class="w-full !h-12 !text-sm !font-semibold !rounded-xl !mt-2"
+              <button pButton type="submit"
+                      class="w-full"
+                      style="height:48px;font-size:14px;font-weight:600;border-radius:12px;margin-top:8px"
                       [disabled]="loading || form.invalid">
-                <mat-spinner *ngIf="loading" diameter="18" class="!inline-block !mr-2"
-                             style="display:inline-block;vertical-align:middle"></mat-spinner>
+                <p-progress-spinner *ngIf="loading" styleClass="!w-4 !h-4 mr-2" strokeWidth="4" />
                 <span>{{ loading ? 'Signing in...' : 'Sign in' }}</span>
               </button>
             </form>
@@ -173,7 +173,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <!-- Demo credentials -->
           <div class="mt-6 rounded-xl p-4" style="background:#EFF6FF;border:1px solid #BFDBFE">
             <div class="flex items-center gap-2 mb-2">
-              <mat-icon style="font-size:14px;width:14px;height:14px;color:#2563EB">info</mat-icon>
+              <i class="pi pi-info-circle" style="font-size:14px;color:#2563EB"></i>
               <p class="text-xs font-bold" style="color:#1D4ED8">Demo credentials</p>
             </div>
             <div class="space-y-0.5">

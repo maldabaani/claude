@@ -1,6 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
 import { StatsService } from '../../../core/services/stats.service';
 import { TicketService } from '../../../core/services/ticket.service';
 import { DashboardStats, Ticket } from '../../../core/models';
@@ -12,7 +11,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [CommonModule, MatIconModule,
+  imports: [CommonModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <div class="space-y-6">
@@ -36,7 +35,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           <div class="stat-card-accent" [ngClass]="kpi.accentColor"></div>
           <div class="flex items-start justify-between mb-4 pl-2">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center" [ngClass]="kpi.bg">
-              <mat-icon [ngClass]="kpi.color" style="font-size:20px;width:20px;height:20px">{{ kpi.icon }}</mat-icon>
+              <i [class]="'pi ' + kpi.icon" [ngClass]="kpi.color" style="font-size:20px"></i>
             </div>
           </div>
           <div class="pl-2">
@@ -54,7 +53,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div class="bg-white rounded-xl border border-gray-100 overflow-hidden" style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
           <div class="flex items-center gap-2.5 px-6 py-4" style="border-bottom:1px solid #F1F5F9">
             <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <mat-icon class="text-slate-500" style="font-size:16px;width:16px;height:16px">donut_large</mat-icon>
+              <i class="pi pi-chart-pie text-slate-500" style="font-size:16px"></i>
             </div>
             <h2 class="font-bold text-gray-900 text-sm">Tickets by Status</h2>
           </div>
@@ -74,7 +73,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div class="bg-white rounded-xl border border-gray-100 overflow-hidden" style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
           <div class="flex items-center gap-2.5 px-6 py-4" style="border-bottom:1px solid #F1F5F9">
             <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <mat-icon class="text-slate-500" style="font-size:16px;width:16px;height:16px">history</mat-icon>
+              <i class="pi pi-history text-slate-500" style="font-size:16px"></i>
             </div>
             <h2 class="font-bold text-gray-900 text-sm">Recent Tickets</h2>
           </div>
@@ -87,7 +86,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
                  [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'">
               <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                    style="background:#EFF6FF;border:1px solid #DBEAFE">
-                <mat-icon style="font-size:13px;width:13px;height:13px;color:#2563EB">confirmation_number</mat-icon>
+                <i class="pi pi-ticket" style="font-size:13px;color:#2563EB"></i>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-semibold text-gray-900 truncate">{{ t.title }}</p>
@@ -96,7 +95,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
               <app-status-badge [status]="t.status" />
             </div>
             <div *ngIf="recentTickets().length === 0" class="py-14 text-center">
-              <mat-icon style="font-size:40px;width:40px;height:40px;color:#E2E8F0;display:block;margin:0 auto 8px">inbox</mat-icon>
+              <i class="pi pi-inbox" style="font-size:40px;color:#E2E8F0;display:block;margin:0 auto 8px"></i>
               <p class="text-sm text-slate-400 font-medium">No recent activity</p>
             </div>
           </div>
@@ -120,10 +119,10 @@ export class OverviewComponent implements OnInit {
       const total = (s.openTickets + s.pendingTickets + s.newTickets + s.onHold + s.resolvedToday) || 1;
 
       this.kpis.set([
-        { label: 'New Tickets', value: s.newTickets, icon: 'fiber_new', bg: 'bg-blue-50', color: 'text-blue-600', accentColor: 'bg-blue-500' },
-        { label: 'Open', value: s.openTickets, icon: 'inbox', bg: 'bg-indigo-50', color: 'text-indigo-600', accentColor: 'bg-indigo-500' },
-        { label: 'Pending', value: s.pendingTickets, icon: 'schedule', bg: 'bg-amber-50', color: 'text-amber-600', accentColor: 'bg-amber-500' },
-        { label: 'SLA Breached', value: s.slaBreached, icon: 'warning', bg: 'bg-red-50', color: 'text-red-600', accentColor: 'bg-red-500', valueColor: s.slaBreached > 0 ? 'text-red-600' : 'text-gray-900' },
+        { label: 'New Tickets', value: s.newTickets, icon: 'pi-star', bg: 'bg-blue-50', color: 'text-blue-600', accentColor: 'bg-blue-500' },
+        { label: 'Open', value: s.openTickets, icon: 'pi-inbox', bg: 'bg-indigo-50', color: 'text-indigo-600', accentColor: 'bg-indigo-500' },
+        { label: 'Pending', value: s.pendingTickets, icon: 'pi-clock', bg: 'bg-amber-50', color: 'text-amber-600', accentColor: 'bg-amber-500' },
+        { label: 'SLA Breached', value: s.slaBreached, icon: 'pi-exclamation-triangle', bg: 'bg-red-50', color: 'text-red-600', accentColor: 'bg-red-500', valueColor: s.slaBreached > 0 ? 'text-red-600' : 'text-gray-900' },
       ]);
 
       this.statusBreakdown.set([

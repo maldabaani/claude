@@ -2,10 +2,10 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { TextareaModule } from 'primeng/textarea';
 import { TicketService } from '../../../core/services/ticket.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { Department } from '../../../core/models';
@@ -14,7 +14,7 @@ import { Department } from '../../../core/models';
   selector: 'app-submit-ticket',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    MatButtonModule, MatInputModule, MatSelectModule, MatIconModule],
+    ButtonModule, InputTextModule, SelectModule, TextareaModule],
   template: `
     <div class="max-w-2xl mx-auto">
 
@@ -32,7 +32,7 @@ import { Department } from '../../../core/models';
         <div class="px-8 py-5 flex items-center gap-3" style="border-bottom:1px solid #F1F5F9;background:#FAFAFA">
           <div class="w-9 h-9 rounded-xl flex items-center justify-center"
                style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:1px solid #BFDBFE">
-            <mat-icon class="text-blue-600" style="font-size:18px;width:18px;height:18px">edit_note</mat-icon>
+            <i class="pi pi-file-edit text-blue-600" style="font-size:18px"></i>
           </div>
           <div>
             <p class="font-bold text-gray-900 text-sm">New Support Request</p>
@@ -56,49 +56,25 @@ import { Department } from '../../../core/models';
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">
               Subject <span class="text-red-400">*</span>
             </label>
-            <mat-form-field class="w-full" appearance="outline">
-              <input matInput formControlName="title" placeholder="Brief description of your issue">
-              <mat-error>Subject is required</mat-error>
-            </mat-form-field>
+            <input pInputText formControlName="title" class="w-full"
+                   placeholder="Brief description of your issue" />
+            <div *ngIf="form.get('title')?.invalid && form.get('title')?.touched" class="text-xs text-red-500 mt-1">
+              Subject is required
+            </div>
           </div>
 
           <!-- Department + Priority row -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1.5">Department</label>
-              <mat-form-field class="w-full" appearance="outline">
-                <mat-select formControlName="departmentId">
-                  <mat-option [value]="null">No preference</mat-option>
-                  <mat-option *ngFor="let d of departments()" [value]="d.id">{{ d.name }}</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <p-select [options]="departmentOptions" formControlName="departmentId"
+                        optionLabel="label" optionValue="value" placeholder="No preference"
+                        class="w-full" />
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1.5">Priority</label>
-              <mat-form-field class="w-full" appearance="outline">
-                <mat-select formControlName="priority">
-                  <mat-option value="LOW">
-                    <span class="flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full bg-slate-400"></span> Low
-                    </span>
-                  </mat-option>
-                  <mat-option value="MEDIUM">
-                    <span class="flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full bg-blue-500"></span> Medium
-                    </span>
-                  </mat-option>
-                  <mat-option value="HIGH">
-                    <span class="flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full bg-orange-500"></span> High
-                    </span>
-                  </mat-option>
-                  <mat-option value="CRITICAL">
-                    <span class="flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full bg-red-500"></span> Critical
-                    </span>
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
+              <p-select [options]="priorityOptions" formControlName="priority"
+                        optionLabel="label" optionValue="value" class="w-full" />
             </div>
           </div>
 
@@ -107,19 +83,19 @@ import { Department } from '../../../core/models';
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">
               Description <span class="text-red-400">*</span>
             </label>
-            <mat-form-field class="w-full" appearance="outline">
-              <textarea matInput formControlName="description" rows="6"
-                        placeholder="Please describe your issue in detail — include any error messages, steps to reproduce, or screenshots if applicable."></textarea>
-              <mat-error>Description is required</mat-error>
-              <mat-hint>The more detail you provide, the faster we can help</mat-hint>
-            </mat-form-field>
+            <textarea pTextarea formControlName="description" rows="6" class="w-full"
+                      placeholder="Please describe your issue in detail — include any error messages, steps to reproduce, or screenshots if applicable."></textarea>
+            <p class="text-xs text-slate-400 mt-1">The more detail you provide, the faster we can help</p>
+            <div *ngIf="form.get('description')?.invalid && form.get('description')?.touched" class="text-xs text-red-500 mt-1">
+              Description is required
+            </div>
           </div>
 
           <!-- Error state -->
           <div *ngIf="error"
                class="flex items-start gap-3 p-4 rounded-xl"
                style="background:#FEF2F2;border:1px solid #FECACA">
-            <mat-icon class="shrink-0 mt-0.5" style="font-size:16px;width:16px;height:16px;color:#EF4444">error_outline</mat-icon>
+            <i class="pi pi-exclamation-circle shrink-0 mt-0.5" style="font-size:16px;color:#EF4444"></i>
             <span class="text-sm text-red-700">{{ error }}</span>
           </div>
 
@@ -127,7 +103,7 @@ import { Department } from '../../../core/models';
           <div *ngIf="success()"
                class="flex items-start gap-3 p-4 rounded-xl"
                style="background:#F0FDF4;border:1px solid #BBF7D0">
-            <mat-icon class="shrink-0 mt-0.5" style="font-size:16px;width:16px;height:16px;color:#22C55E">check_circle_outline</mat-icon>
+            <i class="pi pi-check-circle shrink-0 mt-0.5" style="font-size:16px;color:#22C55E"></i>
             <span class="text-sm font-semibold text-green-700">Ticket submitted successfully! Redirecting you now...</span>
           </div>
 
@@ -141,8 +117,8 @@ import { Department } from '../../../core/models';
                     class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 2px 8px rgba(37,99,235,0.3)"
                     [disabled]="loading || form.invalid">
-              <mat-icon *ngIf="!loading" style="font-size:16px;width:16px;height:16px">send</mat-icon>
-              <span class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" *ngIf="loading"></span>
+              <i *ngIf="!loading" class="pi pi-send" style="font-size:16px"></i>
+              <span *ngIf="loading" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
               {{ loading ? 'Submitting...' : 'Submit Ticket' }}
             </button>
           </div>
@@ -165,6 +141,15 @@ export class SubmitTicketComponent implements OnInit {
   error = '';
   success = signal(false);
 
+  departmentOptions: { label: string; value: string | null }[] = [{ label: 'No preference', value: null }];
+
+  priorityOptions = [
+    { label: 'Low', value: 'LOW' },
+    { label: 'Medium', value: 'MEDIUM' },
+    { label: 'High', value: 'HIGH' },
+    { label: 'Critical', value: 'CRITICAL' },
+  ];
+
   constructor(
     private fb: FormBuilder,
     private ticketService: TicketService,
@@ -173,7 +158,13 @@ export class SubmitTicketComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.departmentService.getDepartments().subscribe(page => this.departments.set(page.content));
+    this.departmentService.getDepartments().subscribe(page => {
+      this.departments.set(page.content);
+      this.departmentOptions = [
+        { label: 'No preference', value: null },
+        ...page.content.map((d: Department) => ({ label: d.name, value: d.id }))
+      ];
+    });
   }
 
   submit() {

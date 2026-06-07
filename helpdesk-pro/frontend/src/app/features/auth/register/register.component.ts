@@ -2,16 +2,15 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    MatButtonModule, MatInputModule, MatIconModule],
+    ButtonModule, InputTextModule],
   template: `
     <div class="min-h-screen flex">
 
@@ -34,7 +33,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl flex items-center justify-center"
                  style="background:linear-gradient(135deg,#2563EB,#4F46E5);box-shadow:0 0 20px rgba(37,99,235,0.5)">
-              <mat-icon class="text-white" style="font-size:20px;width:20px;height:20px">support_agent</mat-icon>
+              <i class="pi pi-headphones text-white" style="font-size:20px"></i>
             </div>
             <span class="font-bold text-white text-lg" style="letter-spacing:-0.02em">HelpDesk Pro</span>
           </div>
@@ -54,7 +53,7 @@ import { AuthService } from '../../../core/auth/auth.service';
               <div *ngFor="let f of features" class="flex items-center gap-3">
                 <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                      style="background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.3)">
-                  <mat-icon class="text-blue-400" style="font-size:15px;width:15px;height:15px">check</mat-icon>
+                  <i class="pi pi-check text-blue-400" style="font-size:15px"></i>
                 </div>
                 <p class="text-slate-300 text-sm">{{ f }}</p>
               </div>
@@ -81,7 +80,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <div class="flex lg:hidden items-center justify-center gap-3 mb-10">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center"
                  style="background:linear-gradient(135deg,#2563EB,#4F46E5)">
-              <mat-icon class="text-white">support_agent</mat-icon>
+              <i class="pi pi-headphones text-white" style="font-size:20px"></i>
             </div>
             <span class="text-xl font-bold text-gray-900" style="letter-spacing:-0.03em">HelpDesk Pro</span>
           </div>
@@ -98,40 +97,44 @@ import { AuthService } from '../../../core/auth/auth.service';
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>
-                <mat-form-field class="w-full" appearance="outline">
-                  <input matInput formControlName="fullName" autocomplete="name" placeholder="John Smith">
-                  <mat-error>Full name is required</mat-error>
-                </mat-form-field>
+                <input pInputText formControlName="fullName" autocomplete="name"
+                       placeholder="John Smith" class="w-full" />
+                <div *ngIf="form.get('fullName')?.invalid && form.get('fullName')?.touched" class="text-xs text-red-500 mt-1">
+                  Full name is required
+                </div>
               </div>
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email address</label>
-                <mat-form-field class="w-full" appearance="outline">
-                  <input matInput type="email" formControlName="email" autocomplete="email" placeholder="you&#64;company.com">
-                  <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
-                  <mat-error *ngIf="form.get('email')?.hasError('email')">Enter a valid email</mat-error>
-                </mat-form-field>
+                <input pInputText type="email" formControlName="email" autocomplete="email"
+                       placeholder="you&#64;company.com" class="w-full" />
+                <div *ngIf="form.get('email')?.invalid && form.get('email')?.touched" class="text-xs text-red-500 mt-1">
+                  <span *ngIf="form.get('email')?.hasError('required')">Email is required</span>
+                  <span *ngIf="form.get('email')?.hasError('email')">Enter a valid email</span>
+                </div>
               </div>
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-                <mat-form-field class="w-full" appearance="outline">
-                  <input matInput type="password" formControlName="password" autocomplete="new-password" placeholder="Min. 8 characters">
-                  <mat-hint>At least 8 characters</mat-hint>
-                  <mat-error>Password must be at least 8 characters</mat-error>
-                </mat-form-field>
+                <input pInputText type="password" formControlName="password" autocomplete="new-password"
+                       placeholder="Min. 8 characters" class="w-full" />
+                <p class="text-xs text-slate-400 mt-1">At least 8 characters</p>
+                <div *ngIf="form.get('password')?.invalid && form.get('password')?.touched" class="text-xs text-red-500 mt-1">
+                  Password must be at least 8 characters
+                </div>
               </div>
 
               <!-- Error alert -->
               <div *ngIf="error"
                    class="flex items-center gap-3 p-3.5 rounded-xl"
                    style="background:#FEF2F2;border:1px solid #FECACA">
-                <mat-icon class="shrink-0" style="font-size:16px;width:16px;height:16px;color:#EF4444">error_outline</mat-icon>
+                <i class="pi pi-exclamation-circle shrink-0" style="font-size:16px;color:#EF4444"></i>
                 <span class="text-sm font-medium" style="color:#B91C1C">{{ error }}</span>
               </div>
 
-              <button mat-raised-button color="primary" type="submit"
-                      class="w-full !h-12 !text-sm !font-semibold !rounded-xl !mt-2"
+              <button pButton type="submit"
+                      class="w-full"
+                      style="height:48px;font-size:14px;font-weight:600;border-radius:12px;margin-top:8px"
                       [disabled]="loading || form.invalid">
                 {{ loading ? 'Creating account...' : 'Create free account' }}
               </button>

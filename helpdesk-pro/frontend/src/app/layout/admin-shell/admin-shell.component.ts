@@ -1,17 +1,17 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { TooltipModule } from 'primeng/tooltip';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-admin-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
-    MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
+    ButtonModule, MenuModule, TooltipModule],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -26,7 +26,7 @@ import { AuthService } from '../../core/auth/auth.service';
              [class.justify-center]="collapsed()">
           <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
                style="background:linear-gradient(135deg,#6366F1,#4F46E5)">
-            <mat-icon class="text-white" style="font-size:17px;width:17px;height:17px">admin_panel_settings</mat-icon>
+            <i class="pi pi-cog text-white" style="font-size:17px"></i>
           </div>
           <div *ngIf="!collapsed()" class="ml-2.5 overflow-hidden">
             <p class="text-white font-bold text-sm whitespace-nowrap" style="letter-spacing:-0.02em">Admin Panel</p>
@@ -47,16 +47,16 @@ import { AuthService } from '../../core/auth/auth.service';
              [routerLinkActiveOptions]="{exact: item.exact}"
              class="sidebar-nav-item"
              [class.justify-center]="collapsed()"
-             [matTooltip]="collapsed() ? item.label : ''"
-             matTooltipPosition="right">
-            <mat-icon class="shrink-0" style="font-size:18px;width:18px;height:18px">{{ item.icon }}</mat-icon>
+             [pTooltip]="collapsed() ? item.label : ''"
+             tooltipPosition="right">
+            <i [class]="'pi ' + item.icon + ' shrink-0'" style="font-size:18px"></i>
             <span *ngIf="!collapsed()" class="truncate">{{ item.label }}</span>
           </a>
         </nav>
 
         <!-- User area -->
         <div style="border-top:1px solid rgba(255,255,255,0.07)" class="p-3">
-          <button [matMenuTriggerFor]="userMenu" class="w-full flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-white/5"
+          <button (click)="sideMenu.toggle($event)" class="w-full flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-white/5"
                   [class.justify-center]="collapsed()">
             <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
                  style="background:linear-gradient(135deg,#6366F1,#4F46E5)">A</div>
@@ -64,23 +64,16 @@ import { AuthService } from '../../core/auth/auth.service';
               <p class="text-white text-xs font-semibold truncate">Administrator</p>
               <p class="text-slate-500 text-xs truncate">admin&#64;helpdesk.com</p>
             </div>
-            <mat-icon *ngIf="!collapsed()" class="text-slate-600 shrink-0" style="font-size:14px;width:14px;height:14px">unfold_more</mat-icon>
+            <i *ngIf="!collapsed()" class="pi pi-sort-alt text-slate-600 shrink-0" style="font-size:14px"></i>
           </button>
-          <mat-menu #userMenu="matMenu">
-            <button mat-menu-item (click)="auth.logout()">
-              <mat-icon>logout</mat-icon>
-              <span>Sign out</span>
-            </button>
-          </mat-menu>
+          <p-menu #sideMenu [model]="sideMenuItems" [popup]="true" />
         </div>
 
         <!-- Collapse toggle -->
         <button (click)="toggleCollapsed()"
                 class="flex items-center justify-center h-9 transition-colors hover:bg-white/5"
                 style="border-top:1px solid rgba(255,255,255,0.07);color:#475569">
-          <mat-icon style="font-size:16px;width:16px;height:16px">
-            {{ collapsed() ? 'chevron_right' : 'chevron_left' }}
-          </mat-icon>
+          <i [class]="'pi ' + (collapsed() ? 'pi-chevron-right' : 'pi-chevron-left')" style="font-size:16px"></i>
         </button>
       </aside>
 
@@ -96,24 +89,13 @@ import { AuthService } from '../../core/auth/auth.service';
           </div>
 
           <div class="flex items-center gap-2">
-            <button mat-button [matMenuTriggerFor]="topUserMenu" class="!rounded-lg !px-3">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                     style="background:linear-gradient(135deg,#6366F1,#4F46E5)">A</div>
-                <span class="text-sm font-semibold text-gray-700">Admin</span>
-                <mat-icon class="text-gray-400 !text-sm">expand_more</mat-icon>
-              </div>
+            <button (click)="topMenu.toggle($event)" class="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
+              <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                   style="background:linear-gradient(135deg,#6366F1,#4F46E5)">A</div>
+              <span class="text-sm font-semibold text-gray-700">Admin</span>
+              <i class="pi pi-chevron-down text-gray-400" style="font-size:12px"></i>
             </button>
-            <mat-menu #topUserMenu="matMenu">
-              <div class="px-4 py-3" style="border-bottom:1px solid #F1F5F9">
-                <p class="text-xs text-gray-400 font-medium">Signed in as</p>
-                <p class="text-sm font-semibold text-gray-900 mt-0.5">Administrator</p>
-              </div>
-              <button mat-menu-item (click)="auth.logout()">
-                <mat-icon class="text-gray-500">logout</mat-icon>
-                <span>Sign out</span>
-              </button>
-            </mat-menu>
+            <p-menu #topMenu [model]="topMenuItems" [popup]="true" />
           </div>
         </header>
 
@@ -157,12 +139,22 @@ export class AdminShellComponent {
   collapsed = signal(false);
 
   navItems = [
-    { path: '/admin', icon: 'grid_view', label: 'Overview', exact: true },
-    { path: '/admin/tickets', icon: 'confirmation_number', label: 'Tickets', exact: false },
-    { path: '/admin/users', icon: 'group', label: 'Users', exact: false },
-    { path: '/admin/departments', icon: 'business', label: 'Departments', exact: false },
-    { path: '/admin/sla', icon: 'timer', label: 'SLA Policies', exact: false },
-    { path: '/admin/settings', icon: 'settings', label: 'Settings', exact: false },
+    { path: '/admin', icon: 'pi-th-large', label: 'Overview', exact: true },
+    { path: '/admin/tickets', icon: 'pi-ticket', label: 'Tickets', exact: false },
+    { path: '/admin/users', icon: 'pi-users', label: 'Users', exact: false },
+    { path: '/admin/departments', icon: 'pi-building', label: 'Departments', exact: false },
+    { path: '/admin/sla', icon: 'pi-stopwatch', label: 'SLA Policies', exact: false },
+    { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
+  ];
+
+  sideMenuItems: MenuItem[] = [
+    { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
+  ];
+
+  topMenuItems: MenuItem[] = [
+    { label: 'Administrator', disabled: true, styleClass: 'font-semibold text-gray-900' },
+    { separator: true },
+    { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
   ];
 
   constructor(public auth: AuthService) {}

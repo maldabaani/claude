@@ -1,18 +1,18 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { TabsModule } from 'primeng/tabs';
+import { InputTextModule } from 'primeng/inputtext';
+import { ButtonModule } from 'primeng/button';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/services/settings.service';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatIconModule, MatTabsModule,
-    MatInputModule, MatButtonModule, MatSlideToggleModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule,
+    TabsModule, InputTextModule, ButtonModule, ToggleSwitchModule],
   template: `
     <div class="space-y-6">
       <div>
@@ -21,80 +21,85 @@ import { SettingsService } from '../../../core/services/settings.service';
       </div>
 
       <div class="bg-white rounded-xl border border-gray-100 overflow-hidden" style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-        <mat-tab-group>
+        <p-tabs value="0">
+          <p-tablist>
+            <p-tab value="0">General</p-tab>
+            <p-tab value="1">Email Notifications</p-tab>
+          </p-tablist>
+          <p-tabpanels>
 
-          <!-- General tab -->
-          <mat-tab label="General">
-            <form [formGroup]="generalForm" (ngSubmit)="saveGeneral()" class="p-8 max-w-lg space-y-6">
-              <div>
-                <h3 class="font-bold text-gray-900 mb-1">System Identity</h3>
-                <p class="text-sm text-slate-400">Configure your helpdesk name and contact info.</p>
-              </div>
-              <div class="space-y-4">
-                <mat-form-field class="w-full" appearance="outline">
-                  <mat-label>Company Name</mat-label>
-                  <input matInput formControlName="companyName">
-                </mat-form-field>
-                <mat-form-field class="w-full" appearance="outline">
-                  <mat-label>Support Email</mat-label>
-                  <input matInput formControlName="supportEmail" type="email">
-                </mat-form-field>
-              </div>
-
-              <div *ngIf="generalSaved()"
-                   class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
-                   style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
-                <mat-icon style="font-size:16px;width:16px;height:16px">check_circle</mat-icon>
-                Settings saved successfully
-              </div>
-
-              <button mat-raised-button color="primary" type="submit"
-                      class="!rounded-lg !font-semibold !px-6"
-                      [disabled]="saving()">
-                <mat-icon style="font-size:18px;width:18px;height:18px">save</mat-icon>
-                {{ saving() ? 'Saving...' : 'Save Changes' }}
-              </button>
-            </form>
-          </mat-tab>
-
-          <!-- Email Notifications tab -->
-          <mat-tab label="Email Notifications">
-            <div class="p-8">
-              <div class="mb-6">
-                <h3 class="font-bold text-gray-900 mb-1">Email Notifications</h3>
-                <p class="text-sm text-slate-400">Control which automated emails are sent to users.</p>
-              </div>
-
-              <div class="space-y-3 max-w-2xl">
-                <div *ngFor="let tpl of emailTemplates()"
-                     class="flex items-center justify-between p-4 rounded-xl border transition-colors"
-                     style="background:#F8FAFC;border-color:#F1F5F9">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                      <mat-icon class="text-slate-400" style="font-size:17px;width:17px;height:17px">mail_outline</mat-icon>
-                    </div>
-                    <div>
-                      <p class="font-semibold text-gray-900 text-sm">{{ tpl.name }}</p>
-                      <p class="text-xs text-slate-400 mt-0.5">{{ tpl.trigger }}</p>
-                    </div>
+            <!-- General tab -->
+            <p-tabpanel value="0">
+              <form [formGroup]="generalForm" (ngSubmit)="saveGeneral()" class="p-8 max-w-lg space-y-6">
+                <div>
+                  <h3 class="font-bold text-gray-900 mb-1">System Identity</h3>
+                  <p class="text-sm text-slate-400">Configure your helpdesk name and contact info.</p>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Company Name</label>
+                    <input pInputText formControlName="companyName" class="w-full" placeholder="Company Name" />
                   </div>
-                  <mat-slide-toggle
-                    [checked]="tpl.enabled"
-                    (change)="toggleNotification(tpl.key, $event.checked)"
-                    color="primary" />
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Support Email</label>
+                    <input pInputText formControlName="supportEmail" type="email" class="w-full" placeholder="support@company.com" />
+                  </div>
+                </div>
+
+                <div *ngIf="generalSaved()"
+                     class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
+                     style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
+                  <i class="pi pi-check-circle" style="font-size:16px"></i>
+                  Settings saved successfully
+                </div>
+
+                <button pButton type="submit"
+                        [disabled]="saving()"
+                        styleClass="!rounded-lg !font-semibold !px-6">
+                  <i class="pi pi-save mr-2" style="font-size:18px"></i>
+                  {{ saving() ? 'Saving...' : 'Save Changes' }}
+                </button>
+              </form>
+            </p-tabpanel>
+
+            <!-- Email Notifications tab -->
+            <p-tabpanel value="1">
+              <div class="p-8">
+                <div class="mb-6">
+                  <h3 class="font-bold text-gray-900 mb-1">Email Notifications</h3>
+                  <p class="text-sm text-slate-400">Control which automated emails are sent to users.</p>
+                </div>
+
+                <div class="space-y-3 max-w-2xl">
+                  <div *ngFor="let tpl of emailTemplates()"
+                       class="flex items-center justify-between p-4 rounded-xl border transition-colors"
+                       style="background:#F8FAFC;border-color:#F1F5F9">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                        <i class="pi pi-envelope text-slate-400" style="font-size:17px"></i>
+                      </div>
+                      <div>
+                        <p class="font-semibold text-gray-900 text-sm">{{ tpl.name }}</p>
+                        <p class="text-xs text-slate-400 mt-0.5">{{ tpl.trigger }}</p>
+                      </div>
+                    </div>
+                    <p-toggle-switch
+                      [(ngModel)]="tpl.enabled"
+                      (onChange)="toggleNotification(tpl.key, $event.checked)" />
+                  </div>
+                </div>
+
+                <div *ngIf="notifSaved()"
+                     class="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium max-w-2xl"
+                     style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
+                  <i class="pi pi-check-circle" style="font-size:16px"></i>
+                  Notification preferences saved
                 </div>
               </div>
+            </p-tabpanel>
 
-              <div *ngIf="notifSaved()"
-                   class="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium max-w-2xl"
-                   style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
-                <mat-icon style="font-size:16px;width:16px;height:16px">check_circle</mat-icon>
-                Notification preferences saved
-              </div>
-            </div>
-          </mat-tab>
-
-        </mat-tab-group>
+          </p-tabpanels>
+        </p-tabs>
       </div>
     </div>
   `,

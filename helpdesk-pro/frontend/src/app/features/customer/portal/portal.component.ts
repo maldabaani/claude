@@ -1,8 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { TicketService } from '../../../core/services/ticket.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -10,7 +8,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule, SkeletonLoaderComponent],
+  imports: [CommonModule, RouterLink, SkeletonLoaderComponent],
   template: `
     <div class="space-y-6">
 
@@ -37,13 +35,13 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
             <a routerLink="/customer/submit"
                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:shadow-lg"
                style="background:white;color:#1D4ED8;box-shadow:0 2px 10px rgba(0,0,0,0.15)">
-              <mat-icon style="font-size:18px;width:18px;height:18px">add_circle_outline</mat-icon>
+              <i class="pi pi-plus-circle" style="font-size:18px"></i>
               Submit New Ticket
             </a>
           </div>
           <div class="hidden sm:flex items-center justify-center w-24 h-24 rounded-full opacity-20"
                style="background:rgba(255,255,255,0.15)">
-            <mat-icon style="font-size:52px;width:52px;height:52px">support_agent</mat-icon>
+            <i class="pi pi-headphones" style="font-size:52px"></i>
           </div>
         </div>
       </div>
@@ -54,7 +52,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
              class="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4"
              style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" [ngClass]="stat.bg">
-            <mat-icon [ngClass]="stat.color" style="font-size:20px;width:20px;height:20px">{{ stat.icon }}</mat-icon>
+            <i [class]="'pi ' + stat.icon" [ngClass]="stat.color" style="font-size:20px"></i>
           </div>
           <div>
             <p class="text-2xl font-black text-gray-900 leading-none" style="letter-spacing:-0.03em">{{ stat.value }}</p>
@@ -71,7 +69,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
              class="flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition-opacity"
              style="color:#2563EB">
             View all
-            <mat-icon style="font-size:14px;width:14px;height:14px">chevron_right</mat-icon>
+            <i class="pi pi-chevron-right" style="font-size:14px"></i>
           </a>
         </div>
 
@@ -87,7 +85,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 
             <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                  style="background:#EFF6FF;border:1px solid #DBEAFE">
-              <mat-icon style="font-size:15px;width:15px;height:15px;color:#2563EB">confirmation_number</mat-icon>
+              <i class="pi pi-ticket" style="font-size:15px;color:#2563EB"></i>
             </div>
 
             <div class="flex-1 min-w-0">
@@ -100,20 +98,20 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
               {{ statusLabel(ticket.status) }}
             </span>
 
-            <mat-icon class="shrink-0 text-slate-300" style="font-size:16px;width:16px;height:16px">chevron_right</mat-icon>
+            <i class="pi pi-chevron-right shrink-0 text-slate-300" style="font-size:16px"></i>
           </div>
 
           <div *ngIf="recentTickets().length === 0" class="py-16 text-center">
             <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
                  style="background:#F8FAFC;border:2px dashed #E2E8F0">
-              <mat-icon style="font-size:28px;width:28px;height:28px;color:#CBD5E1">inbox</mat-icon>
+              <i class="pi pi-inbox" style="font-size:28px;color:#CBD5E1"></i>
             </div>
             <p class="text-sm font-semibold text-slate-400">No tickets yet</p>
             <p class="text-xs text-slate-300 mt-1 mb-4">Submit your first ticket to get started</p>
             <a routerLink="/customer/submit"
                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white"
                style="background:#2563EB">
-              <mat-icon style="font-size:14px;width:14px;height:14px">add</mat-icon>
+              <i class="pi pi-plus" style="font-size:14px"></i>
               Submit a Ticket
             </a>
           </div>
@@ -125,7 +123,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div class="bg-white rounded-xl border border-gray-100 p-5 flex items-start gap-4"
              style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <mat-icon class="text-blue-600" style="font-size:18px;width:18px;height:18px">menu_book</mat-icon>
+            <i class="pi pi-book text-blue-600" style="font-size:18px"></i>
           </div>
           <div>
             <p class="font-bold text-gray-900 text-sm mb-1">Knowledge Base</p>
@@ -135,7 +133,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div class="bg-white rounded-xl border border-gray-100 p-5 flex items-start gap-4"
              style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-            <mat-icon class="text-green-600" style="font-size:18px;width:18px;height:18px">chat_bubble_outline</mat-icon>
+            <i class="pi pi-comments text-green-600" style="font-size:18px"></i>
           </div>
           <div>
             <p class="font-bold text-gray-900 text-sm mb-1">Live Chat</p>
@@ -161,17 +159,17 @@ export class PortalComponent implements OnInit {
           {
             label: 'Open Tickets',
             value: page.content.filter((t: any) => t.status === 'OPEN' || t.status === 'NEW').length,
-            icon: 'inbox', bg: 'bg-blue-50', color: 'text-blue-600',
+            icon: 'pi-inbox', bg: 'bg-blue-50', color: 'text-blue-600',
           },
           {
             label: 'Pending Reply',
             value: page.content.filter((t: any) => t.status === 'PENDING').length,
-            icon: 'schedule', bg: 'bg-amber-50', color: 'text-amber-600',
+            icon: 'pi-clock', bg: 'bg-amber-50', color: 'text-amber-600',
           },
           {
             label: 'Resolved',
             value: page.content.filter((t: any) => t.status === 'RESOLVED').length,
-            icon: 'check_circle', bg: 'bg-green-50', color: 'text-green-600',
+            icon: 'pi-check-circle', bg: 'bg-green-50', color: 'text-green-600',
           },
         ];
         this.loading.set(false);

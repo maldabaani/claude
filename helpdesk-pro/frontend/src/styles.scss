@@ -1,4 +1,4 @@
-@use '@angular/material' as mat;
+@import "primeicons/primeicons.css";
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
 @tailwind base;
 @tailwind components;
@@ -49,21 +49,6 @@
   --shadow-xl: 0 20px 40px -8px rgb(0 0 0 / 0.14);
   --shadow-blue: 0 4px 14px 0 rgb(37 99 235 / 0.3);
 }
-
-// ─── Angular Material M2 Theme ─────────────────────────────────────────────────
-@include mat.core();
-
-$_primary: mat.m2-define-palette(mat.$m2-blue-palette, 600);
-$_accent:  mat.m2-define-palette(mat.$m2-indigo-palette, A200);
-$_warn:    mat.m2-define-palette(mat.$m2-red-palette);
-
-$_theme: mat.m2-define-light-theme((
-  color: (primary: $_primary, accent: $_accent, warn: $_warn),
-  typography: mat.m2-define-typography-config($font-family: 'Inter, sans-serif'),
-  density: 0,
-));
-
-@include mat.all-component-themes($_theme);
 
 // ─── Base ──────────────────────────────────────────────────────────────────────
 *, *::before, *::after { box-sizing: border-box; }
@@ -239,112 +224,6 @@ a, button { transition: all 0.15s ease; }
   }
 }
 
-// ─── Material overrides ────────────────────────────────────────────────────────
-.mat-mdc-card {
-  border-radius: var(--radius-lg) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: var(--shadow-xs) !important;
-  &:hover { box-shadow: var(--shadow-sm) !important; }
-}
-
-.mat-mdc-button,
-.mat-mdc-raised-button,
-.mat-mdc-outlined-button,
-.mat-mdc-unelevated-button {
-  border-radius: var(--radius-sm) !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em !important;
-}
-
-.mat-mdc-raised-button.mat-primary {
-  background: var(--color-primary) !important;
-  box-shadow: var(--shadow-blue) !important;
-  &:hover { background: var(--color-primary-dark) !important; }
-  &:disabled { background: #CBD5E1 !important; box-shadow: none !important; }
-}
-
-// Form field
-.mat-mdc-form-field.mat-form-field-appearance-outline {
-  .mdc-notched-outline__leading,
-  .mdc-notched-outline__notch,
-  .mdc-notched-outline__trailing {
-    border-color: var(--color-border) !important;
-    border-radius: var(--radius-sm) !important;
-  }
-  &:hover .mdc-notched-outline__leading,
-  &:hover .mdc-notched-outline__notch,
-  &:hover .mdc-notched-outline__trailing {
-    border-color: #94A3B8 !important;
-  }
-  &.mat-focused .mdc-notched-outline__leading,
-  &.mat-focused .mdc-notched-outline__notch,
-  &.mat-focused .mdc-notched-outline__trailing {
-    border-color: var(--color-primary) !important;
-    border-width: 2px !important;
-  }
-  .mat-mdc-form-field-infix {
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-  }
-}
-
-// Paginator
-.mat-mdc-paginator {
-  background: transparent !important;
-  border-radius: var(--radius-md) !important;
-  font-family: 'Inter', sans-serif !important;
-}
-
-// Menu
-.mat-mdc-menu-panel {
-  border-radius: var(--radius-md) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: var(--shadow-lg) !important;
-  min-width: 200px !important;
-}
-
-// Badge
-.mat-badge-content {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-}
-
-// Tab
-.mat-mdc-tab-header {
-  border-bottom: 1px solid #E2E8F0 !important;
-}
-
-// Checkbox
-.mat-mdc-checkbox .mdc-checkbox__background {
-  border-color: var(--color-border) !important;
-  border-radius: 4px !important;
-}
-
-// Select panel
-.mat-mdc-select-panel {
-  border-radius: var(--radius-md) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: var(--shadow-lg) !important;
-}
-
-// Tooltip
-.mat-mdc-tooltip {
-  font-size: 12px !important;
-  font-family: 'Inter', sans-serif !important;
-  border-radius: 6px !important;
-}
-
-// Button toggle
-.mat-button-toggle-group {
-  border-radius: var(--radius-sm) !important;
-  border-color: var(--color-border) !important;
-}
-
-// Slide toggle
-.mat-mdc-slide-toggle .mdc-switch:enabled .mdc-switch__track::after {
-  background: var(--color-primary) !important;
-}
-
 // ─── Sidebar nav ──────────────────────────────────────────────────────────────
 .sidebar-nav-item {
   display: flex;
@@ -372,7 +251,5 @@ a, button { transition: all 0.15s ease; }
     color: #93C5FD !important;
     background: rgba(37, 99, 235, 0.18) !important;
     border-color: rgba(37, 99, 235, 0.3) !important;
-
-    mat-icon { color: #60A5FA !important; }
   }
 }

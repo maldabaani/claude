@@ -1,12 +1,9 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
+import { PaginatorModule, PaginatorState } from 'primeng/paginator';
 import { TicketService } from '../../../core/services/ticket.service';
 import { Ticket, TicketStatus, Priority } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -17,8 +14,8 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 @Component({
   selector: 'app-ticket-queue',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule,
-    MatButtonModule, MatIconModule, MatSelectModule, MatInputModule, MatPaginatorModule,
+  imports: [CommonModule, RouterLink, FormsModule,
+    SelectModule, PaginatorModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-5">
@@ -33,28 +30,20 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
       <!-- Filter bar -->
       <div class="filter-bar">
-        <mat-icon class="text-slate-400 shrink-0" style="font-size:16px;width:16px;height:16px">filter_list</mat-icon>
+        <i class="pi pi-filter text-slate-400 shrink-0" style="font-size:16px"></i>
         <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filter by:</span>
 
-        <mat-form-field appearance="outline" style="width:160px;margin-bottom:-1.25em">
-          <mat-label>Status</mat-label>
-          <mat-select [formControl]="filters.controls['status']" (selectionChange)="load()">
-            <mat-option value="">All statuses</mat-option>
-            <mat-option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <p-select [options]="statusOptions" [(ngModel)]="selectedStatus" (onChange)="load()"
+                  optionLabel="label" optionValue="value" placeholder="All statuses"
+                  [style]="{'width':'160px'}" />
 
-        <mat-form-field appearance="outline" style="width:160px;margin-bottom:-1.25em">
-          <mat-label>Priority</mat-label>
-          <mat-select [formControl]="filters.controls['priority']" (selectionChange)="load()">
-            <mat-option value="">All priorities</mat-option>
-            <mat-option *ngFor="let p of priorities" [value]="p">{{ p }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <p-select [options]="priorityOptions" [(ngModel)]="selectedPriority" (onChange)="load()"
+                  optionLabel="label" optionValue="value" placeholder="All priorities"
+                  [style]="{'width':'160px'}" />
 
         <button (click)="resetFilters()"
                 class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors border border-gray-200">
-          <mat-icon style="font-size:14px;width:14px;height:14px">refresh</mat-icon>
+          <i class="pi pi-refresh" style="font-size:14px"></i>
           Reset
         </button>
       </div>
@@ -101,7 +90,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
               <div *ngIf="!ticket.assignedAgent"
                    class="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                    style="background:#F1F5F9;border:1px dashed #CBD5E1">
-                <mat-icon style="font-size:11px;width:11px;height:11px;color:#94A3B8">person</mat-icon>
+                <i class="pi pi-user" style="font-size:11px;color:#94A3B8"></i>
               </div>
               <span class="text-xs text-slate-500 truncate font-medium">
                 {{ ticket.assignedAgent?.fullName || 'Unassigned' }}
@@ -114,7 +103,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <div *ngIf="tickets().length === 0" class="py-16 text-center">
             <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
                  style="background:#F8FAFC;border:2px dashed #E2E8F0">
-              <mat-icon style="font-size:28px;width:28px;height:28px;color:#CBD5E1">search_off</mat-icon>
+              <i class="pi pi-search" style="font-size:28px;color:#CBD5E1"></i>
             </div>
             <p class="text-sm font-semibold text-slate-400">No tickets match your filters</p>
             <p class="text-xs text-slate-300 mt-1">Try adjusting or resetting your filters</p>
@@ -122,9 +111,9 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         </div>
       </div>
 
-      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)"
-                     class="bg-white rounded-xl border border-gray-100"
-                     style="box-shadow:0 1px 3px rgba(0,0,0,0.04)" />
+      <p-paginator [totalRecords]="totalElements()" [rows]="pageSize" (onPageChange)="onPage($event)"
+                   styleClass="bg-white rounded-xl border border-gray-100"
+                   [style]="{'box-shadow':'0 1px 3px rgba(0,0,0,0.04)'}" />
     </div>
   `,
 })
@@ -135,31 +124,37 @@ export class TicketQueueComponent implements OnInit {
   pageSize = 15;
   currentPage = 0;
 
-  statuses: TicketStatus[] = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
-  priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  selectedStatus = '';
+  selectedPriority = '';
 
-  filters = this.fb.group({ status: [''], priority: [''] });
+  statusOptions = [
+    { label: 'All statuses', value: '' },
+    ...(['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'] as TicketStatus[]).map(s => ({
+      label: s.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      value: s
+    }))
+  ];
 
-  constructor(private ticketService: TicketService, private fb: FormBuilder) {}
+  priorityOptions = [
+    { label: 'All priorities', value: '' },
+    ...(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Priority[]).map(p => ({ label: p, value: p }))
+  ];
+
+  constructor(private ticketService: TicketService) {}
 
   ngOnInit() { this.load(); }
 
   load() {
     this.loading.set(true);
-    const f = this.filters.value;
     const params: any = { page: this.currentPage, size: this.pageSize };
-    if (f.status) params.status = f.status;
-    if (f.priority) params.priority = f.priority;
+    if (this.selectedStatus) params.status = this.selectedStatus;
+    if (this.selectedPriority) params.priority = this.selectedPriority;
     this.ticketService.getTickets(params).subscribe({
       next: (page) => { this.tickets.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }
 
-  resetFilters() { this.filters.reset({ status: '', priority: '' }); this.load(); }
-  onPage(e: PageEvent) { this.currentPage = e.pageIndex; this.load(); }
-
-  statusLabel(status: string): string {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-  }
+  resetFilters() { this.selectedStatus = ''; this.selectedPriority = ''; this.load(); }
+  onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
 }

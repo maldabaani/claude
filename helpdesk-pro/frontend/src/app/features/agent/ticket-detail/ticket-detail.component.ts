@@ -1,14 +1,13 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { TooltipModule } from 'primeng/tooltip';
+import { TextareaModule } from 'primeng/textarea';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -17,15 +16,13 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
-import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-agent-ticket-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink,
-    MatButtonModule, MatButtonToggleModule,
-    MatIconModule, MatInputModule, MatSelectModule, MatTooltipModule, MatChipsModule,
-    StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent, DatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
+    ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
+    StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
 
@@ -34,7 +31,7 @@ import { DatePipe } from '@angular/common';
       <!-- Back nav -->
       <a routerLink="/agent/queue"
          class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
-        <mat-icon style="font-size:16px;width:16px;height:16px">arrow_back</mat-icon>
+        <i class="pi pi-arrow-left" style="font-size:16px"></i>
         Back to queue
       </a>
 
@@ -102,39 +99,29 @@ import { DatePipe } from '@angular/common';
             <div class="p-5">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-gray-900 text-sm">Reply</h3>
-                <mat-button-toggle-group [formControl]="noteMode" class="!h-8">
-                  <mat-button-toggle value="public" class="!text-xs !px-3">
-                    <mat-icon style="font-size:13px;width:13px;height:13px;margin-right:4px">public</mat-icon>
-                    Public
-                  </mat-button-toggle>
-                  <mat-button-toggle value="internal" class="!text-xs !px-3">
-                    <mat-icon style="font-size:13px;width:13px;height:13px;margin-right:4px">lock</mat-icon>
-                    Internal
-                  </mat-button-toggle>
-                </mat-button-toggle-group>
+                <p-selectbutton [options]="noteModeOptions" [(ngModel)]="noteMode"
+                                optionLabel="label" optionValue="value" />
               </div>
 
-              <div *ngIf="noteMode.value === 'internal'"
+              <div *ngIf="noteMode === 'internal'"
                    class="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-3 text-xs font-medium"
                    style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E">
-                <mat-icon style="font-size:14px;width:14px;height:14px">lock</mat-icon>
+                <i class="pi pi-lock" style="font-size:14px"></i>
                 Internal note — only agents can see this
               </div>
 
-              <mat-form-field class="w-full" appearance="outline">
-                <textarea matInput [formControl]="replyControl" rows="4"
-                          [placeholder]="noteMode.value === 'internal'
-                            ? 'Add an internal note visible only to your team...'
-                            : 'Type a reply to the customer...'"></textarea>
-              </mat-form-field>
-              <div class="flex justify-end mt-1">
+              <textarea pTextarea [formControl]="replyControl" rows="4" class="w-full"
+                        [placeholder]="noteMode === 'internal'
+                          ? 'Add an internal note visible only to your team...'
+                          : 'Type a reply to the customer...'"></textarea>
+              <div class="flex justify-end mt-3">
                 <button (click)="sendReply()"
                         [disabled]="replyControl.invalid || submitting"
                         class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        [style.background]="noteMode.value === 'internal' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : 'linear-gradient(135deg,#2563EB,#1D4ED8)'"
+                        [style.background]="noteMode === 'internal' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : 'linear-gradient(135deg,#2563EB,#1D4ED8)'"
                         style="box-shadow:0 2px 8px rgba(0,0,0,0.15)">
-                  <mat-icon style="font-size:16px;width:16px;height:16px">send</mat-icon>
-                  {{ submitting ? 'Sending...' : (noteMode.value === 'internal' ? 'Add Note' : 'Send Reply') }}
+                  <i class="pi pi-send" style="font-size:16px"></i>
+                  {{ submitting ? 'Sending...' : (noteMode === 'internal' ? 'Add Note' : 'Send Reply') }}
                 </button>
               </div>
             </div>
@@ -155,10 +142,8 @@ import { DatePipe } from '@angular/common';
               <!-- Status -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
-                <mat-select [(value)]="currentStatus" (selectionChange)="updateStatus()"
-                            class="w-full" style="font-size:13px">
-                  <mat-option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</mat-option>
-                </mat-select>
+                <p-select [options]="statusOptions" [(ngModel)]="currentStatus" (onChange)="updateStatus()"
+                          optionLabel="label" optionValue="value" class="w-full" />
               </div>
 
               <!-- Priority -->
@@ -171,8 +156,7 @@ import { DatePipe } from '@angular/common';
               <div *ngIf="ticket()!.dueDate">
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">SLA Due</label>
                 <div class="flex items-center gap-2" [ngClass]="ticket()!.slaBreached ? 'text-red-600' : 'text-gray-700'">
-                  <mat-icon *ngIf="ticket()!.slaBreached"
-                            style="font-size:14px;width:14px;height:14px" class="text-red-500">warning</mat-icon>
+                  <i *ngIf="ticket()!.slaBreached" class="pi pi-exclamation-triangle text-red-500" style="font-size:14px"></i>
                   <span class="text-sm font-semibold">{{ ticket()!.dueDate | date:'MMM d, h:mm a' }}</span>
                 </div>
                 <p *ngIf="ticket()!.slaBreached" class="text-xs text-red-500 font-medium mt-1">SLA Breached</p>
@@ -199,13 +183,9 @@ import { DatePipe } from '@angular/common';
               <!-- Assigned Agent -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned To</label>
-                <mat-select [(value)]="currentAgentId" (selectionChange)="assignAgent()"
-                            class="w-full" style="font-size:13px">
-                  <mat-option [value]="null">Unassigned</mat-option>
-                  <mat-option *ngFor="let agent of agents()" [value]="agent.id">
-                    {{ agent.fullName }}
-                  </mat-option>
-                </mat-select>
+                <p-select [options]="agentOptions" [(ngModel)]="currentAgentId" (onChange)="assignAgent()"
+                          optionLabel="label" optionValue="value" class="w-full"
+                          placeholder="Unassigned" />
               </div>
 
               <!-- Department -->
@@ -233,7 +213,7 @@ import { DatePipe } from '@angular/common';
                         style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">
                     {{ tag }}
                     <button (click)="removeTag(tag)" class="hover:text-red-500 transition-colors leading-none">
-                      <mat-icon style="font-size:11px;width:11px;height:11px">close</mat-icon>
+                      <i class="pi pi-times" style="font-size:11px"></i>
                     </button>
                   </span>
                   <span *ngIf="ticket()!.tags.length === 0" class="text-xs text-slate-300 italic">No tags</span>
@@ -266,10 +246,21 @@ export class AgentTicketDetailComponent implements OnInit {
   loading = signal(true);
   submitting = false;
   replyControl = new FormControl('', Validators.required);
-  noteMode = new FormControl<'public' | 'internal'>('public');
+  noteMode: 'public' | 'internal' = 'public';
   currentStatus: TicketStatus = 'NEW';
   currentAgentId: string | null = null;
-  statuses: TicketStatus[] = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
+
+  noteModeOptions = [
+    { label: 'Public', value: 'public' },
+    { label: 'Internal', value: 'internal' },
+  ];
+
+  statusOptions = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'].map(s => ({
+    label: s.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    value: s as TicketStatus
+  }));
+
+  agentOptions: { label: string; value: string | null }[] = [{ label: 'Unassigned', value: null }];
 
   constructor(
     private route: ActivatedRoute,
@@ -287,7 +278,13 @@ export class AgentTicketDetailComponent implements OnInit {
       this.loading.set(false);
     });
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
-    this.userService.getUsers('AGENT', 0, 100).subscribe(p => this.agents.set(p.content));
+    this.userService.getUsers('AGENT', 0, 100).subscribe(p => {
+      this.agents.set(p.content);
+      this.agentOptions = [
+        { label: 'Unassigned', value: null },
+        ...p.content.map((a: User) => ({ label: a.fullName, value: a.id }))
+      ];
+    });
     this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
   }
 
@@ -295,7 +292,7 @@ export class AgentTicketDetailComponent implements OnInit {
     if (this.replyControl.invalid) return;
     this.submitting = true;
     const id = this.ticket()!.id;
-    const isInternal = this.noteMode.value === 'internal';
+    const isInternal = this.noteMode === 'internal';
     this.ticketService.addComment(id, this.replyControl.value!, isInternal).subscribe({
       next: (comment) => { this.comments.update(c => [...c, comment]); this.replyControl.reset(); this.submitting = false; },
       error: () => { this.submitting = false; },
@@ -340,9 +337,5 @@ export class AgentTicketDetailComponent implements OnInit {
       ON_HOLD: 'bg-slate-400', RESOLVED: 'bg-green-500', CLOSED: 'bg-slate-300',
     };
     return map[this.ticket()?.status || ''] || 'bg-gray-200';
-  }
-
-  statusLabel(status: string): string {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
   }
 }

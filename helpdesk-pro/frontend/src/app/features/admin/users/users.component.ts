@@ -1,15 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { SelectModule } from 'primeng/select';
+import { PaginatorModule, PaginatorState } from 'primeng/paginator';
+import { MenuItem } from 'primeng/api';
 import { UserService } from '../../../core/services/user.service';
 import { User, Role } from '../../../core/models';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -18,9 +15,8 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule,
-    MatButtonModule, MatCardModule, MatIconModule, MatInputModule, MatMenuModule,
-    MatPaginatorModule, MatSelectModule, MatSlideToggleModule, MatDialogModule,
+  imports: [CommonModule, ReactiveFormsModule, FormsModule,
+    ButtonModule, MenuModule, SelectModule, PaginatorModule,
     SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-5">
@@ -34,15 +30,11 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
       <!-- Filters bar -->
       <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
-        <mat-icon class="text-gray-400 shrink-0" style="font-size:18px;width:18px;height:18px">filter_list</mat-icon>
+        <i class="pi pi-filter text-gray-400 shrink-0" style="font-size:18px"></i>
         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter:</span>
-        <mat-form-field appearance="outline" style="width:160px;margin-bottom:-1.25em">
-          <mat-label>Role</mat-label>
-          <mat-select [formControl]="roleFilter" (selectionChange)="load()">
-            <mat-option value="">All roles</mat-option>
-            <mat-option *ngFor="let r of roles" [value]="r">{{ r }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <p-select [options]="roleOptions" [(ngModel)]="selectedRole" (onChange)="load()"
+                  optionLabel="label" optionValue="value" placeholder="All roles"
+                  [style]="{'width':'160px'}" />
       </div>
 
       <!-- Table -->
@@ -92,31 +84,24 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
             <!-- Actions -->
             <div class="flex justify-end">
-              <button mat-icon-button [matMenuTriggerFor]="menu" class="!text-gray-400 hover:!text-gray-600">
-                <mat-icon style="font-size:18px;width:18px;height:18px">more_horiz</mat-icon>
+              <button (click)="setMenuItems(user); menu.toggle($event)"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <i class="pi pi-ellipsis-h" style="font-size:18px"></i>
               </button>
-              <mat-menu #menu="matMenu">
-                <button mat-menu-item (click)="toggleActive(user)">
-                  <mat-icon class="text-gray-500">{{ user.active ? 'block' : 'check_circle' }}</mat-icon>
-                  {{ user.active ? 'Deactivate' : 'Activate' }}
-                </button>
-                <button mat-menu-item (click)="deleteUser(user)" style="color:#DC2626">
-                  <mat-icon style="color:#DC2626">delete_outline</mat-icon>
-                  Delete user
-                </button>
-              </mat-menu>
             </div>
           </div>
 
           <div *ngIf="users().length === 0" class="py-16 text-center">
-            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">group</mat-icon>
+            <i class="pi pi-users text-gray-200 mb-3" style="font-size:48px;display:block;margin:0 auto 12px"></i>
             <p class="text-sm font-medium text-gray-400">No users found</p>
           </div>
         </div>
       </div>
 
-      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)"
-                     class="bg-white rounded-xl border border-gray-100 shadow-sm" />
+      <p-menu #menu [model]="menuItems" [popup]="true" />
+
+      <p-paginator [totalRecords]="totalElements()" [rows]="pageSize" (onPageChange)="onPage($event)"
+                   styleClass="bg-white rounded-xl border border-gray-100 shadow-sm" />
     </div>
   `,
 })
@@ -127,7 +112,13 @@ export class UsersComponent implements OnInit {
   pageSize = 15;
   currentPage = 0;
   roles: Role[] = ['CUSTOMER', 'AGENT', 'TEAM_LEAD', 'ADMIN'];
-  roleFilter = this.fb.control('');
+  selectedRole = '';
+  menuItems: MenuItem[] = [];
+
+  roleOptions = [
+    { label: 'All roles', value: '' },
+    ...(['CUSTOMER', 'AGENT', 'TEAM_LEAD', 'ADMIN'] as Role[]).map(r => ({ label: r, value: r }))
+  ];
 
   constructor(private userService: UserService, private fb: FormBuilder) {}
 
@@ -135,11 +126,27 @@ export class UsersComponent implements OnInit {
 
   load() {
     this.loading.set(true);
-    const role = this.roleFilter.value as Role | undefined;
+    const role = this.selectedRole as Role | undefined;
     this.userService.getUsers(role || undefined, this.currentPage, this.pageSize).subscribe({
       next: (p) => { this.users.set(p.content); this.totalElements.set(p.totalElements); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
+  }
+
+  setMenuItems(user: User) {
+    this.menuItems = [
+      {
+        label: user.active ? 'Deactivate' : 'Activate',
+        icon: user.active ? 'pi pi-ban' : 'pi pi-check-circle',
+        command: () => this.toggleActive(user)
+      },
+      {
+        label: 'Delete user',
+        icon: 'pi pi-trash',
+        styleClass: 'text-red-600',
+        command: () => this.deleteUser(user)
+      }
+    ];
   }
 
   toggleActive(user: User) {
@@ -151,5 +158,5 @@ export class UsersComponent implements OnInit {
     this.userService.deleteUser(user.id).subscribe(() => this.load());
   }
 
-  onPage(e: PageEvent) { this.currentPage = e.pageIndex; this.load(); }
+  onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
 }

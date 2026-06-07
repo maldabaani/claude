@@ -1,8 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { StatsService } from '../../../core/services/stats.service';
 import { TicketService } from '../../../core/services/ticket.service';
 import { DashboardStats, Ticket } from '../../../core/models';
@@ -14,7 +12,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, MatButtonModule,
+  imports: [CommonModule, RouterLink,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-6">
@@ -28,7 +26,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <a routerLink="/agent/queue"
            class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
            style="background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 2px 8px rgba(37,99,235,0.3)">
-          <mat-icon style="font-size:16px;width:16px;height:16px">inbox</mat-icon>
+          <i class="pi pi-inbox" style="font-size:16px"></i>
           View Queue
         </a>
       </div>
@@ -39,7 +37,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <div class="stat-card-accent" [ngClass]="kpi.accentColor"></div>
           <div class="flex items-start justify-between mb-4 pl-2">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center" [ngClass]="kpi.bg">
-              <mat-icon [ngClass]="kpi.color" style="font-size:20px;width:20px;height:20px">{{ kpi.icon }}</mat-icon>
+              <i [class]="'pi ' + kpi.icon" [ngClass]="kpi.color" style="font-size:20px"></i>
             </div>
           </div>
           <div class="pl-2">
@@ -56,7 +54,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid #F1F5F9">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-              <mat-icon class="text-slate-500" style="font-size:16px;width:16px;height:16px">receipt_long</mat-icon>
+              <i class="pi pi-list text-slate-500" style="font-size:16px"></i>
             </div>
             <h2 class="font-bold text-gray-900 text-sm">Recent Tickets</h2>
           </div>
@@ -64,7 +62,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
              class="flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition-opacity"
              style="color:#2563EB">
             View all
-            <mat-icon style="font-size:14px;width:14px;height:14px">chevron_right</mat-icon>
+            <i class="pi pi-chevron-right" style="font-size:14px"></i>
           </a>
         </div>
 
@@ -95,7 +93,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           </div>
 
           <div *ngIf="recentTickets().length === 0" class="py-16 text-center">
-            <mat-icon style="font-size:44px;width:44px;height:44px;color:#E2E8F0;display:block;margin:0 auto 10px">inbox</mat-icon>
+            <i class="pi pi-inbox" style="font-size:44px;color:#E2E8F0;display:block;margin:0 auto 10px"></i>
             <p class="text-sm font-semibold text-slate-400">No tickets in your queue</p>
             <p class="text-xs text-slate-300 mt-1">You're all caught up!</p>
           </div>
@@ -116,10 +114,10 @@ export class DashboardComponent implements OnInit {
     this.statsService.getDashboard().subscribe(s => {
       this.stats.set(s);
       this.kpis.set([
-        { label: 'Open', value: s.openTickets, icon: 'inbox', bg: 'bg-blue-50', color: 'text-blue-600', accentColor: 'bg-blue-500' },
-        { label: 'Pending', value: s.pendingTickets, icon: 'schedule', bg: 'bg-amber-50', color: 'text-amber-600', accentColor: 'bg-amber-500' },
-        { label: 'Resolved Today', value: s.resolvedToday, icon: 'check_circle', bg: 'bg-green-50', color: 'text-green-600', accentColor: 'bg-green-500' },
-        { label: 'SLA Breached', value: s.slaBreached, icon: 'warning', bg: 'bg-red-50', color: 'text-red-600', accentColor: 'bg-red-500' },
+        { label: 'Open', value: s.openTickets, icon: 'pi-inbox', bg: 'bg-blue-50', color: 'text-blue-600', accentColor: 'bg-blue-500' },
+        { label: 'Pending', value: s.pendingTickets, icon: 'pi-clock', bg: 'bg-amber-50', color: 'text-amber-600', accentColor: 'bg-amber-500' },
+        { label: 'Resolved Today', value: s.resolvedToday, icon: 'pi-check-circle', bg: 'bg-green-50', color: 'text-green-600', accentColor: 'bg-green-500' },
+        { label: 'SLA Breached', value: s.slaBreached, icon: 'pi-exclamation-triangle', bg: 'bg-red-50', color: 'text-red-600', accentColor: 'bg-red-500' },
       ]);
     });
 
