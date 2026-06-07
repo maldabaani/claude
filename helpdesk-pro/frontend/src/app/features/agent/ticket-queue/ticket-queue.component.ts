@@ -4,7 +4,10 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { PaginatorModule, PaginatorState } from 'primeng/paginator';
+import { CheckboxModule } from 'primeng/checkbox';
+import { ButtonModule } from 'primeng/button';
 import { TicketService } from '../../../core/services/ticket.service';
+import { UserService } from '../../../core/services/user.service';
 import { Ticket, TicketStatus, Priority } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -15,7 +18,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   selector: 'app-ticket-queue',
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule,
-    SelectModule, PaginatorModule,
+    SelectModule, PaginatorModule, CheckboxModule, ButtonModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-5">
@@ -48,13 +51,30 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         </button>
       </div>
 
+      <!-- Bulk action toolbar -->
+      <div *ngIf="selectedIds().size > 0"
+           class="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl border"
+           style="background:#EFF6FF;border-color:#BFDBFE">
+        <span class="text-sm font-bold text-blue-700">{{ selectedIds().size }} selected</span>
+        <div class="flex items-center gap-2 ml-2">
+          <button pButton size="small" severity="success" label="Resolve" (click)="executeBulk('RESOLVE')" [loading]="bulkLoading()"></button>
+          <button pButton size="small" severity="secondary" label="Close" (click)="executeBulk('CLOSE')" [loading]="bulkLoading()"></button>
+          <p-select [options]="agents()" optionLabel="fullName" optionValue="id" placeholder="Assign to..."
+                    [ngModel]="bulkAgentId()" (ngModelChange)="onBulkAgentChange($event)" class="text-sm" />
+        </div>
+        <button pButton size="small" text="true" severity="secondary" label="Clear" (click)="clearSelection()" class="ml-auto"></button>
+      </div>
+
       <!-- Data table -->
       <div class="bg-white rounded-xl border border-gray-100 overflow-hidden"
            style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
 
         <!-- Table header -->
         <div class="grid gap-4 px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
-             style="grid-template-columns:130px 1fr 90px 110px 150px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
+             style="grid-template-columns:40px 130px 1fr 90px 110px 150px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
+          <th class="w-10" style="list-style:none;font-weight:normal">
+            <p-checkbox [ngModel]="isAllSelected()" [binary]="true" (onChange)="toggleSelectAll()" />
+          </th>
           <span>Ticket ID</span>
           <span>Subject</span>
           <span>Priority</span>
@@ -68,9 +88,13 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <div *ngIf="!loading()">
           <div *ngFor="let ticket of tickets(); let last = last"
                class="grid gap-4 items-center px-6 py-3.5 hover:bg-slate-50/70 cursor-pointer transition-colors group"
-               style="grid-template-columns:130px 1fr 90px 110px 150px 80px"
+               style="grid-template-columns:40px 130px 1fr 90px 110px 150px 80px"
                [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'"
                [routerLink]="['/agent/tickets', ticket.id]">
+
+            <td class="w-10" style="list-style:none" (click)="onCheckboxCellClick($event)">
+              <p-checkbox [ngModel]="isSelected(ticket.id)" [binary]="true" (onChange)="toggleSelect(ticket.id)" />
+            </td>
 
             <span class="text-xs font-mono font-bold" style="color:#2563EB">{{ ticket.ticketNumber }}</span>
 
@@ -127,6 +151,13 @@ export class TicketQueueComponent implements OnInit {
   selectedStatus = '';
   selectedPriority = '';
 
+  selectedIds = signal<Set<string>>(new Set());
+  bulkAction = signal<string>('');
+  bulkTag = signal<string>('');
+  bulkAgentId = signal<string | null>(null);
+  agents = signal<any[]>([]);
+  bulkLoading = signal(false);
+
   statusOptions = [
     { label: 'All statuses', value: '' },
     ...(['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'] as TicketStatus[]).map(s => ({
@@ -140,9 +171,12 @@ export class TicketQueueComponent implements OnInit {
     ...(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Priority[]).map(p => ({ label: p, value: p }))
   ];
 
-  constructor(private ticketService: TicketService) {}
+  constructor(private ticketService: TicketService, private userService: UserService) {}
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.userService.getUsers('AGENT', 0, 100).subscribe(p => this.agents.set(p.content));
+  }
 
   load() {
     this.loading.set(true);
@@ -157,4 +191,39 @@ export class TicketQueueComponent implements OnInit {
 
   resetFilters() { this.selectedStatus = ''; this.selectedPriority = ''; this.load(); }
   onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
+
+  isSelected(id: string): boolean { return this.selectedIds().has(id); }
+  toggleSelect(id: string): void {
+    const s = new Set(this.selectedIds());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.selectedIds.set(s);
+  }
+  isAllSelected(): boolean { return this.tickets().length > 0 && this.selectedIds().size === this.tickets().length; }
+  toggleSelectAll(): void {
+    if (this.isAllSelected()) { this.selectedIds.set(new Set()); }
+    else { this.selectedIds.set(new Set(this.tickets().map(t => t.id))); }
+  }
+  clearSelection(): void { this.selectedIds.set(new Set()); }
+
+  onCheckboxCellClick(event: Event): void { event.stopPropagation(); }
+
+  onBulkAgentChange(agentId: string): void {
+    this.bulkAgentId.set(agentId);
+    this.executeBulk('ASSIGN');
+  }
+
+  executeBulk(action: string): void {
+    const ids = Array.from(this.selectedIds());
+    if (!ids.length) return;
+    this.bulkLoading.set(true);
+    this.ticketService.bulkAction({
+      ticketIds: ids,
+      action,
+      agentId: this.bulkAgentId() ?? undefined,
+      tag: this.bulkTag() || undefined
+    }).subscribe({
+      next: () => { this.clearSelection(); this.bulkAgentId.set(null); this.bulkLoading.set(false); this.load(); },
+      error: () => this.bulkLoading.set(false)
+    });
+  }
 }

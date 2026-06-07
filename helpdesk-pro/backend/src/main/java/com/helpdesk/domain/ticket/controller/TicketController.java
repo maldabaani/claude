@@ -1,5 +1,6 @@
 package com.helpdesk.domain.ticket.controller;
 
+import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
@@ -89,5 +90,12 @@ public class TicketController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         ticketService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Ticket deleted", null));
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> bulkAction(
+            @Valid @RequestBody BulkTicketRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.bulkAction(request)));
     }
 }

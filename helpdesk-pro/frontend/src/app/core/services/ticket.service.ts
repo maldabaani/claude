@@ -45,6 +45,10 @@ export class TicketService {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
 
+  bulkAction(data: { ticketIds: string[]; action: string; agentId?: string; tag?: string }): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.base}/bulk`, data).pipe(map(r => r.data));
+  }
+
   getComments(ticketId: string): Observable<Comment[]> {
     return this.http.get<ApiResponse<Comment[]>>(`${this.base}/${ticketId}/comments`).pipe(map(r => r.data));
   }

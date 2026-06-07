@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -118,6 +120,33 @@ public class TicketService {
         Ticket ticket = getTicket(id);
         ticket.softDelete();
         ticketRepository.save(ticket);
+    }
+
+    @Transactional
+    public Map<String, Object> bulkAction(BulkTicketRequest request) {
+        int processed = 0;
+        for (UUID id : request.ticketIds()) {
+            try {
+                switch (request.action()) {
+                    case "RESOLVE" -> changeStatus(id, TicketStatus.RESOLVED);
+                    case "CLOSE"   -> changeStatus(id, TicketStatus.CLOSED);
+                    case "ASSIGN"  -> { if (request.agentId() != null) assign(id, request.agentId()); }
+                    case "TAG"     -> {
+                        if (request.tag() != null && !request.tag().isBlank()) {
+                            Ticket t = getTicket(id);
+                            if (!t.getTags().contains(request.tag())) {
+                                List<String> tags = new java.util.ArrayList<>(t.getTags());
+                                tags.add(request.tag());
+                                t.setTags(tags);
+                                ticketRepository.save(t);
+                            }
+                        }
+                    }
+                }
+                processed++;
+            } catch (Exception ignored) {}
+        }
+        return Map.of("processed", processed, "total", request.ticketIds().size());
     }
 
     private void autoAssign(Ticket ticket) {
