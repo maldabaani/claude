@@ -9,6 +9,7 @@ import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.Ticket;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.ticket.repository.TicketRepository;
+import com.helpdesk.domain.ticket.repository.TicketSpecification;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
 import com.helpdesk.domain.user.service.UserService;
@@ -65,7 +66,8 @@ public class TicketService {
 
     public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
                                         UUID agentId, UUID createdById, Instant from, Instant to, Pageable pageable) {
-        return ticketRepository.findAllFiltered(status, priority, departmentId, agentId, createdById, from, to, pageable)
+        return ticketRepository.findAll(
+                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to), pageable)
                 .map(this::toResponse);
     }
 
