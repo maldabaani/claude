@@ -411,7 +411,7 @@
     <div class="section collapsed" id="step3">
       <div class="section-header" onclick="toggleSection(this)">
         <div class="step-num"><span>3</span></div>
-        <div class="section-title">Install PostgreSQL 16</div>
+        <div class="section-title">Verify PostgreSQL is Running</div>
         <span class="section-badge badge-required">Required — Backend</span>
         <span class="chevron">▾</span>
       </div>
@@ -420,7 +420,11 @@
           <input type="checkbox" id="chk3" onchange="markDone('step3', this)">
           <label for="chk3">PostgreSQL is installed and running</label>
         </div>
-        <p class="desc">The backend stores all data in PostgreSQL. Install it and make sure the service is running.</p>
+
+        <div class="info-box tip">
+          <span class="icon">✅</span>
+          <span>You already have PostgreSQL installed — just make sure the service is <strong>running</strong> before starting the backend.</span>
+        </div>
 
         <div class="os-switch">
           <button class="os-switch-btn active" onclick="localOS('pg','mac',this)">macOS</button>
@@ -429,38 +433,47 @@
         </div>
 
         <div id="pg-mac">
+          <p class="desc">Start PostgreSQL if it isn't already running:</p>
           <div class="code-block">
-            <pre><span class="cmd">brew install postgresql@16</span>
+            <pre><span class="comment"># If installed via Homebrew</span>
 <span class="cmd">brew services start postgresql@16</span>
-<span class="comment"># Add to PATH (add this line to ~/.zshrc or ~/.bashrc)</span>
-<span class="cmd">echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc</span></pre>
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          </div>
-        </div>
-        <div id="pg-win" style="display:none">
-          <div class="info-box info">
-            <span class="icon">🔗</span>
-            <span>Download the installer from <a href="https://www.postgresql.org/download/windows/" target="_blank" style="color:inherit"><strong>postgresql.org/download/windows</strong></a>. During setup: keep default port <strong>5432</strong>, set a password you'll remember, and install <strong>pgAdmin</strong> (check the box).</span>
-          </div>
-          <div class="info-box warn">
-            <span class="icon">⚠️</span>
-            <span>Remember the password you set for the <code>postgres</code> superuser — you'll need it in the next step.</span>
-          </div>
-        </div>
-        <div id="pg-linux" style="display:none">
-          <div class="code-block">
-            <pre><span class="cmd">sudo apt update</span>
-<span class="cmd">sudo apt install -y postgresql-16</span>
-<span class="cmd">sudo systemctl start postgresql</span>
-<span class="cmd">sudo systemctl enable postgresql</span></pre>
+
+<span class="comment"># Or if you have a different version</span>
+<span class="cmd">brew services list</span>  <span class="comment"># find your postgres service name</span>
+<span class="cmd">brew services start postgresql</span></pre>
             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           </div>
         </div>
 
-        <p class="desc" style="margin-top:1rem">Verify PostgreSQL is running:</p>
+        <div id="pg-win" style="display:none">
+          <p class="desc">Start the PostgreSQL service via Services panel or command line:</p>
+          <div class="code-block">
+            <pre><span class="comment">:: Run as Administrator</span>
+<span class="cmd">net start postgresql-x64-16</span>
+<span class="comment"># Or open Services (Win+R → services.msc) and start "postgresql-x64-16"</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="info-box info">
+            <span class="icon">💡</span>
+            <span>You can also manage it from <strong>pgAdmin</strong> → right-click server → Connect.</span>
+          </div>
+        </div>
+
+        <div id="pg-linux" style="display:none">
+          <div class="code-block">
+            <pre><span class="cmd">sudo systemctl start postgresql</span>
+<span class="cmd">sudo systemctl status postgresql</span>  <span class="comment"># should show "active (running)"</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+        </div>
+
+        <p class="desc" style="margin-top:1rem">Confirm it's running:</p>
         <div class="code-block">
           <pre><span class="cmd">psql --version</span>
-<span class="comment"># psql (PostgreSQL) 16.x</span></pre>
+<span class="comment"># psql (PostgreSQL) 1x.x</span>
+
+<span class="cmd">pg_isready</span>
+<span class="comment"># /tmp:5432 - accepting connections</span></pre>
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
         </div>
       </div>
@@ -479,20 +492,26 @@
           <input type="checkbox" id="chk4" onchange="markDone('step4', this)">
           <label for="chk4">Database and user created</label>
         </div>
-        <p class="desc">Create the <code>helpdesk</code> database and a dedicated user. The app will create all tables automatically on first run via Flyway.</p>
+        <p class="desc">Create the <code>helpdesk</code> database and a dedicated user inside your existing PostgreSQL installation. All tables will be created automatically on first run via Flyway — you don't need to create them manually.</p>
 
         <div class="os-switch">
-          <button class="os-switch-btn active" onclick="localOS('db','mac',this)">macOS / Linux</button>
+          <button class="os-switch-btn active" onclick="localOS('db','mac',this)">macOS / Linux (Terminal)</button>
           <button class="os-switch-btn" onclick="localOS('db','win',this)">Windows (pgAdmin)</button>
         </div>
 
         <div id="db-mac">
+          <p class="desc">Open a terminal and connect to PostgreSQL:</p>
           <div class="code-block">
-            <pre><span class="comment"># Open the PostgreSQL shell</span>
+            <pre><span class="comment"># Connect using your existing postgres superuser</span>
 <span class="cmd">psql -U postgres</span>
 
-<span class="comment"># Run these commands inside psql:</span>
-<span class="string">CREATE DATABASE helpdesk;</span>
+<span class="comment"># If that fails, try your system username (common on Homebrew installs)</span>
+<span class="cmd">psql -U $(whoami)</span></pre>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <p class="desc">Once inside the <code>psql</code> prompt, run:</p>
+          <div class="code-block">
+            <pre><span class="string">CREATE DATABASE helpdesk;</span>
 <span class="string">CREATE USER helpdesk WITH PASSWORD 'helpdesk';</span>
 <span class="string">GRANT ALL PRIVILEGES ON DATABASE helpdesk TO helpdesk;</span>
 <span class="string">\q</span></pre>
@@ -500,17 +519,21 @@
           </div>
           <div class="info-box tip">
             <span class="icon">💡</span>
-            <span>On macOS with Homebrew, the default superuser matches your Mac username. Try <code>psql -U $(whoami)</code> if <code>psql -U postgres</code> fails.</span>
+            <span>You can verify the database was created: <code>psql -U helpdesk -d helpdesk -c "\l"</code></span>
           </div>
         </div>
 
         <div id="db-win" style="display:none">
-          <p class="desc">Open <strong>pgAdmin 4</strong> (installed with PostgreSQL), connect to your server, then open the <strong>Query Tool</strong> and run:</p>
+          <p class="desc">Open <strong>pgAdmin 4</strong>, connect to your local server, then go to <strong>Tools → Query Tool</strong> and run:</p>
           <div class="code-block">
             <pre><span class="string">CREATE DATABASE helpdesk;</span>
 <span class="string">CREATE USER helpdesk WITH PASSWORD 'helpdesk';</span>
 <span class="string">GRANT ALL PRIVILEGES ON DATABASE helpdesk TO helpdesk;</span></pre>
             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="info-box tip">
+            <span class="icon">💡</span>
+            <span>Alternatively open <strong>SQL Shell (psql)</strong> from the Start menu, connect as <code>postgres</code>, and run the commands above.</span>
           </div>
         </div>
       </div>
@@ -774,7 +797,11 @@
             </tr>
             <tr>
               <td><code>Connection refused</code> port 5432</td>
-              <td>PostgreSQL not running — run <code>brew services start postgresql@16</code> (Mac) or <code>sudo systemctl start postgresql</code> (Linux)</td>
+              <td>PostgreSQL not running — Mac: <code>brew services start postgresql@16</code> &nbsp; Linux: <code>sudo systemctl start postgresql</code> &nbsp; Windows: <code>net start postgresql-x64-16</code></td>
+            </tr>
+            <tr>
+              <td><code>psql -U postgres</code> fails on Mac</td>
+              <td>Homebrew installs use your system username. Try <code>psql -U $(whoami)</code> instead</td>
             </tr>
             <tr>
               <td><code>password authentication failed</code></td>
