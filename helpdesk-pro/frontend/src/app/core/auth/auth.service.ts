@@ -9,6 +9,7 @@ import { ApiResponse, AuthResponse, Role } from '../models';
 export class AuthService {
   private readonly TOKEN_KEY = 'hd_access_token';
   private readonly REFRESH_KEY = 'hd_refresh_token';
+  private readonly USER_KEY = 'hd_user';
 
   private _currentUser = signal<AuthResponse | null>(this.loadFromStorage());
   currentUser = this._currentUser.asReadonly();
@@ -33,6 +34,7 @@ export class AuthService {
     this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_KEY);
+    localStorage.removeItem(this.USER_KEY);
     this._currentUser.set(null);
     this.router.navigate(['/login']);
   }
@@ -56,6 +58,7 @@ export class AuthService {
   private setSession(auth: AuthResponse) {
     localStorage.setItem(this.TOKEN_KEY, auth.accessToken);
     localStorage.setItem(this.REFRESH_KEY, auth.refreshToken);
+    localStorage.setItem(this.USER_KEY, JSON.stringify(auth));
     this._currentUser.set(auth);
   }
 
@@ -65,14 +68,9 @@ export class AuthService {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (payload.exp * 1000 < Date.now()) return null;
-      return {
-        accessToken: token,
-        refreshToken: localStorage.getItem(this.REFRESH_KEY) ?? '',
-        userId: payload.sub,
-        fullName: '',
-        email: payload.sub,
-        role: 'CUSTOMER',
-      };
+      const saved = localStorage.getItem(this.USER_KEY);
+      if (saved) return JSON.parse(saved);
+      return null;
     } catch {
       return null;
     }
