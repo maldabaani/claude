@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
@@ -32,6 +32,14 @@ import { environment } from '../../../../environments/environment';
     <app-skeleton-loader *ngIf="loading()" type="card" />
 
     <div *ngIf="!loading() && ticket()" class="space-y-5">
+
+      <!-- Collision warning -->
+      <div *ngIf="otherAgentsCount() > 0"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+           style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E">
+        <i class="pi pi-exclamation-triangle" style="font-size:16px;color:#D97706"></i>
+        <span><strong>{{ otherAgentsCount() }}</strong> other agent(s) are viewing this ticket</span>
+      </div>
 
       <!-- Back nav -->
       <a routerLink="/agent/queue"
@@ -156,10 +164,29 @@ import { environment } from '../../../../environments/environment';
                 Internal note — only agents can see this
               </div>
 
-              <textarea pTextarea [formControl]="replyControl" rows="4" class="w-full"
-                        [placeholder]="noteMode === 'internal'
-                          ? 'Add an internal note visible only to your team...'
-                          : 'Type a reply to the customer...'"></textarea>
+              <div class="relative">
+                <textarea #replyTextarea pTextarea [formControl]="replyControl" rows="4" class="w-full"
+                          [placeholder]="noteMode === 'internal'
+                            ? 'Add an internal note visible only to your team... Use &#64; to mention agents'
+                            : 'Type a reply to the customer...'"
+                          (input)="onReplyInput($event)"
+                          (keydown)="onReplyKeydown($event)"></textarea>
+                <div *ngIf="showMentionDropdown() && noteMode === 'internal'"
+                     class="absolute z-50 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden"
+                     style="min-width:200px;max-height:200px;overflow-y:auto;top:100%;left:0;margin-top:4px">
+                  <div *ngIf="mentionFilteredAgents().length === 0" class="px-4 py-3 text-xs text-slate-400">No agents found</div>
+                  <div *ngFor="let agent of mentionFilteredAgents(); let i = index"
+                       (mousedown)="insertMention(agent)"
+                       class="px-4 py-2.5 cursor-pointer flex items-center gap-2.5 hover:bg-blue-50 transition-colors"
+                       [class.bg-blue-50]="i === mentionSelectedIndex()">
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                         style="background:linear-gradient(135deg,#6366F1,#4F46E5)">
+                      {{ agent.fullName[0] }}
+                    </div>
+                    <span class="text-sm font-medium text-gray-800">{{ agent.fullName }}</span>
+                  </div>
+                </div>
+              </div>
 
               <!-- Pending files -->
               <div *ngIf="pendingFiles().length > 0" class="flex flex-wrap gap-2 mt-2">
@@ -306,7 +333,7 @@ import { environment } from '../../../../environments/environment';
     </div>
   `,
 })
-export class AgentTicketDetailComponent implements OnInit {
+export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   ticket = signal<Ticket | null>(null);
   comments = signal<Comment[]>([]);
   agents = signal<User[]>([]);
@@ -319,6 +346,23 @@ export class AgentTicketDetailComponent implements OnInit {
   noteMode: 'public' | 'internal' = 'public';
   currentStatus: TicketStatus = 'NEW';
   currentAgentId: string | null = null;
+
+  // Mention state
+  showMentionDropdown = signal(false);
+  mentionQuery = signal('');
+  mentionSelectedIndex = signal(0);
+  mentionStart = 0;
+
+  @ViewChild('replyTextarea') replyTextarea!: ElementRef<HTMLTextAreaElement>;
+
+  mentionFilteredAgents(): User[] {
+    const q = this.mentionQuery().toLowerCase();
+    return this.agents().filter(a => a.fullName.toLowerCase().includes(q)).slice(0, 8);
+  }
+
+  // Presence state
+  presenceAgents = signal<{agentId: string; agentName: string}[]>([]);
+  private presenceInterval: ReturnType<typeof setInterval> | null = null;
 
   noteModeOptions = [
     { label: 'Public', value: 'public' },
@@ -360,6 +404,50 @@ export class AgentTicketDetailComponent implements OnInit {
     private cannedResponseService: CannedResponseService,
   ) {}
 
+  onReplyInput(event: Event) {
+    if (this.noteMode !== 'internal') { this.showMentionDropdown.set(false); return; }
+    const ta = event.target as HTMLTextAreaElement;
+    const pos = ta.selectionStart;
+    const text = ta.value.substring(0, pos);
+    const atIdx = text.lastIndexOf('@');
+    if (atIdx >= 0 && !text.substring(atIdx).includes(' ')) {
+      this.mentionStart = atIdx;
+      this.mentionQuery.set(text.substring(atIdx + 1));
+      this.mentionSelectedIndex.set(0);
+      this.showMentionDropdown.set(true);
+    } else {
+      this.showMentionDropdown.set(false);
+    }
+  }
+
+  onReplyKeydown(event: KeyboardEvent) {
+    if (!this.showMentionDropdown()) return;
+    const agents = this.mentionFilteredAgents();
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.mentionSelectedIndex.update(i => Math.min(i + 1, agents.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.mentionSelectedIndex.update(i => Math.max(i - 1, 0));
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
+      if (agents.length > 0) {
+        event.preventDefault();
+        this.insertMention(agents[this.mentionSelectedIndex()]);
+      }
+    } else if (event.key === 'Escape') {
+      this.showMentionDropdown.set(false);
+    }
+  }
+
+  insertMention(agent: User) {
+    const current = this.replyControl.value || '';
+    const before = current.substring(0, this.mentionStart);
+    const after = current.substring(this.mentionStart + 1 + this.mentionQuery().length);
+    const newVal = before + '@' + agent.fullName + ' ' + after;
+    this.replyControl.setValue(newVal);
+    this.showMentionDropdown.set(false);
+  }
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.ticketService.getTicket(id).subscribe(t => {
@@ -379,6 +467,22 @@ export class AgentTicketDetailComponent implements OnInit {
     });
     this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
     this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
+
+    // Presence: record and poll
+    this.ticketService.recordPresence(id).subscribe();
+    this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
+    this.presenceInterval = setInterval(() => {
+      this.ticketService.recordPresence(id).subscribe();
+      this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
+    }, 15000);
+  }
+
+  ngOnDestroy() {
+    if (this.presenceInterval) clearInterval(this.presenceInterval);
+  }
+
+  otherAgentsCount(): number {
+    return Math.max(0, this.presenceAgents().length - 1);
   }
 
   onFileSelected(event: Event) {

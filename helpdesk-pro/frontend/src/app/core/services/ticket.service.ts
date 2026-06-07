@@ -66,4 +66,12 @@ export class TicketService {
     formData.append('file', file);
     return this.http.post<ApiResponse<Attachment>>(`${this.base}/${ticketId}/attachments`, formData).pipe(map(r => r.data));
   }
+
+  recordPresence(ticketId: string): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.base}/${ticketId}/presence`, {}).pipe(map(r => r.data));
+  }
+
+  getPresence(ticketId: string): Observable<{agentId: string; agentName: string}[]> {
+    return this.http.get<ApiResponse<{agentId: string; agentName: string}[]>>(`${this.base}/${ticketId}/presence`).pipe(map(r => r.data));
+  }
 }
