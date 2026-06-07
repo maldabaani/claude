@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
@@ -134,6 +134,7 @@ export class AdminTicketsComponent implements OnInit {
 
   selectedStatus = '';
   selectedPriority = '';
+  searchQuery = signal('');
 
   statusOptions = [
     { label: 'All statuses', value: '' },
@@ -148,15 +149,21 @@ export class AdminTicketsComponent implements OnInit {
     ...['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => ({ label: p, value: p }))
   ];
 
-  constructor(private ticketService: TicketService, private fb: FormBuilder) {}
+  constructor(private ticketService: TicketService, private fb: FormBuilder, private route: ActivatedRoute) {}
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.route.queryParams.subscribe(p => {
+      if (p['search']) { this.searchQuery.set(p['search']); }
+      this.load();
+    });
+  }
 
   load() {
     this.loading.set(true);
     const params: any = { page: this.currentPage, size: this.pageSize };
     if (this.selectedStatus) params.status = this.selectedStatus;
     if (this.selectedPriority) params.priority = this.selectedPriority;
+    if (this.searchQuery()) params.search = this.searchQuery();
     this.ticketService.getTickets(params).subscribe({
       next: (p) => { this.tickets.set(p.content); this.totalElements.set(p.totalElements); this.loading.set(false); },
       error: () => this.loading.set(false),
@@ -168,6 +175,7 @@ export class AdminTicketsComponent implements OnInit {
   reset() {
     this.selectedStatus = '';
     this.selectedPriority = '';
+    this.searchQuery.set('');
     this.load();
   }
 

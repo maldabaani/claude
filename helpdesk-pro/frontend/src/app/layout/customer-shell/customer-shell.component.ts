@@ -100,6 +100,8 @@ export class CustomerShellComponent {
       { label: 'Signed in as', disabled: true },
       { label: this.displayName(), disabled: true, styleClass: 'font-bold text-gray-900' },
       { separator: true },
+      { label: 'Profile', icon: 'pi pi-user', routerLink: '/profile' },
+      { separator: true },
       { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
     ];
   }

@@ -28,4 +28,12 @@ export class UserService {
   deleteUser(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
+
+  getMe(): Observable<User> {
+    return this.http.get<ApiResponse<User>>(`${this.base}/me`).pipe(map(r => r.data));
+  }
+
+  updateProfile(data: { fullName?: string; currentPassword?: string; newPassword?: string }): Observable<User> {
+    return this.http.put<ApiResponse<User>>(`${this.base}/me`, data).pipe(map(r => r.data));
+  }
 }

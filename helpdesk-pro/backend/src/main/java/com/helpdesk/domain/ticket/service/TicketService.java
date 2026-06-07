@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
+import com.helpdesk.domain.audit.service.AuditLogService;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class TicketService {
     private final TicketNumberGenerator ticketNumberGenerator;
     private final NotificationService notificationService;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -63,13 +65,20 @@ public class TicketService {
         autoAssign(ticket);
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketCreated(saved);
+        auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
         return toResponse(saved);
     }
 
     public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
                                         UUID agentId, UUID createdById, Instant from, Instant to, Pageable pageable) {
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, null, pageable);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, Pageable pageable) {
         return ticketRepository.findAll(
-                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to), pageable)
+                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search), pageable)
                 .map(this::toResponse);
     }
 
@@ -98,6 +107,7 @@ public class TicketService {
         }
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketAssigned(saved);
+        auditLogService.log("TICKET", saved.getId(), "ASSIGNED", agentId);
         return toResponse(saved);
     }
 
@@ -112,6 +122,7 @@ public class TicketService {
         if (newStatus == TicketStatus.CLOSED) ticket.setClosedAt(Instant.now());
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyStatusChanged(saved);
+        auditLogService.log("TICKET", saved.getId(), "STATUS_CHANGED", null, null, "{\"status\":\"" + newStatus.name() + "\"}");
         return toResponse(saved);
     }
 

@@ -40,11 +40,12 @@ public class TicketController {
             @RequestParam(required = false) UUID createdById,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(required = false) String search,
             Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
 
         UUID filterByCreated = currentUser.getRole().name().equals("CUSTOMER") ? currentUser.getId() : createdById;
-        Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated, from, to, pageable);
+        Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated, from, to, search, pageable);
         return ResponseEntity.ok(ApiResponse.ok(page));
     }
 

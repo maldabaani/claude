@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { PaginatorModule, PaginatorState } from 'primeng/paginator';
@@ -150,6 +150,7 @@ export class TicketQueueComponent implements OnInit {
 
   selectedStatus = '';
   selectedPriority = '';
+  searchQuery = signal('');
 
   selectedIds = signal<Set<string>>(new Set());
   bulkAction = signal<string>('');
@@ -171,10 +172,13 @@ export class TicketQueueComponent implements OnInit {
     ...(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Priority[]).map(p => ({ label: p, value: p }))
   ];
 
-  constructor(private ticketService: TicketService, private userService: UserService) {}
+  constructor(private ticketService: TicketService, private userService: UserService, private route: ActivatedRoute) {}
 
   ngOnInit() {
-    this.load();
+    this.route.queryParams.subscribe(p => {
+      if (p['search']) { this.searchQuery.set(p['search']); }
+      this.load();
+    });
     this.userService.getUsers('AGENT', 0, 100).subscribe(p => this.agents.set(p.content));
   }
 
@@ -183,13 +187,14 @@ export class TicketQueueComponent implements OnInit {
     const params: any = { page: this.currentPage, size: this.pageSize };
     if (this.selectedStatus) params.status = this.selectedStatus;
     if (this.selectedPriority) params.priority = this.selectedPriority;
+    if (this.searchQuery()) params.search = this.searchQuery();
     this.ticketService.getTickets(params).subscribe({
       next: (page) => { this.tickets.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }
 
-  resetFilters() { this.selectedStatus = ''; this.selectedPriority = ''; this.load(); }
+  resetFilters() { this.selectedStatus = ''; this.selectedPriority = ''; this.searchQuery.set(''); this.load(); }
   onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
 
   isSelected(id: string): boolean { return this.selectedIds().has(id); }

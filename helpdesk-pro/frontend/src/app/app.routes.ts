@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard, roleGuard } from './core/auth/auth.guard';
+import { CustomerShellComponent } from './layout/customer-shell/customer-shell.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -49,6 +50,15 @@ export const routes: Routes = [
       { path: 'canned', loadComponent: () => import('./features/admin/canned-responses/canned-responses.component').then(m => m.CannedResponsesComponent) },
       { path: 'analytics', loadComponent: () => import('./features/admin/analytics/analytics.component').then(m => m.AnalyticsComponent) },
       { path: 'kb', loadComponent: () => import('./features/admin/knowledge-base/knowledge-base.component').then(m => m.AdminKbComponent) },
+      { path: 'audit', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent) },
+    ],
+  },
+  {
+    path: 'profile',
+    canActivate: [authGuard],
+    loadComponent: () => import('./layout/customer-shell/customer-shell.component').then(m => m.CustomerShellComponent),
+    children: [
+      { path: '', loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ],
   },
   { path: '**', redirectTo: '/login' },

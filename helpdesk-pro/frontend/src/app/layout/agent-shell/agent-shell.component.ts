@@ -1,10 +1,12 @@
 import { Component, signal, OnInit } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { MenuModule } from 'primeng/menu';
 import { BadgeModule } from 'primeng/badge';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextModule } from 'primeng/inputtext';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -13,8 +15,8 @@ import { WebSocketService } from '../../core/services/websocket.service';
 @Component({
   selector: 'app-agent-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
-    ButtonModule, MenuModule, BadgeModule, TooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FormsModule,
+    ButtonModule, MenuModule, BadgeModule, TooltipModule, InputTextModule],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -93,6 +95,16 @@ import { WebSocketService } from '../../core/services/websocket.service';
             <span class="font-bold text-gray-900 text-sm" style="letter-spacing:-0.01em">Agent Portal</span>
           </div>
 
+          <!-- Search bar -->
+          <div class="flex-1 max-w-md mx-6">
+            <div class="relative">
+              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:14px"></i>
+              <input pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
+                     placeholder="Search tickets..."
+                     class="w-full pl-9 text-sm" style="height:36px;border-radius:8px" />
+            </div>
+          </div>
+
           <div class="flex items-center gap-1">
             <!-- Notification bell -->
             <button (click)="notifMenu.toggle($event)"
@@ -157,6 +169,8 @@ import { WebSocketService } from '../../core/services/websocket.service';
 })
 export class AgentShellComponent implements OnInit {
   collapsed = signal(false);
+  searchQuery = signal('');
+  private searchTimeout: any;
 
   navItems = [
     { path: '/agent', icon: 'pi-th-large', label: 'Dashboard', exact: true },
@@ -164,6 +178,8 @@ export class AgentShellComponent implements OnInit {
   ];
 
   sideMenuItems: MenuItem[] = [
+    { label: 'Profile', icon: 'pi pi-user', routerLink: '/profile' },
+    { separator: true },
     { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
   ];
 
@@ -177,6 +193,7 @@ export class AgentShellComponent implements OnInit {
     public auth: AuthService,
     public notifService: NotificationService,
     private ws: WebSocketService,
+    private router: Router,
   ) {}
 
   ngOnInit() {
@@ -186,11 +203,22 @@ export class AgentShellComponent implements OnInit {
     this.headerMenuItems = [
       { label: this.displayName(), disabled: true, styleClass: 'font-semibold' },
       { separator: true },
+      { label: 'Profile', icon: 'pi pi-user', routerLink: '/profile' },
+      { separator: true },
       { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
     ];
   }
 
   toggleCollapsed() { this.collapsed.update(v => !v); }
+
+  onSearch(query: string) {
+    this.searchQuery.set(query);
+    clearTimeout(this.searchTimeout);
+    if (!query.trim()) return;
+    this.searchTimeout = setTimeout(() => {
+      this.router.navigate(['/agent/queue'], { queryParams: { search: query } });
+    }, 400);
+  }
 
   displayName(): string {
     const user = this.auth.currentUser();

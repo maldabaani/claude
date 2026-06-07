@@ -14,7 +14,7 @@ export class TicketService {
   getTickets(filters: {
     status?: TicketStatus; priority?: Priority; departmentId?: string;
     agentId?: string; createdById?: string; from?: string; to?: string;
-    page?: number; size?: number; sort?: string;
+    page?: number; size?: number; sort?: string; search?: string;
   } = {}): Observable<PageResponse<Ticket>> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([k, v]) => { if (v != null) params = params.set(k, String(v)); });

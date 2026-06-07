@@ -14,11 +14,12 @@ import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
-import { Ticket, Comment, TicketStatus, User, Department } from '../../../core/models';
+import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-agent-ticket-detail',
@@ -62,6 +63,21 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
               <p class="text-xs text-slate-400 mt-3 font-medium">
                 Submitted by <span class="text-gray-700 font-semibold">{{ ticket()!.createdBy?.fullName }}</span>
               </p>
+
+              <!-- Attachments -->
+              <div *ngIf="attachments().length > 0" class="mt-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Attachments</p>
+                <div class="flex flex-wrap gap-2">
+                  <a *ngFor="let att of attachments()"
+                     [href]="getDownloadUrl(att.id)"
+                     target="_blank"
+                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-blue-50 transition-colors"
+                     style="background:#F8FAFC;border-color:#E2E8F0;color:#2563EB">
+                    <i class="pi pi-paperclip" style="font-size:12px"></i>
+                    {{ att.fileName }}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -144,7 +160,29 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
                         [placeholder]="noteMode === 'internal'
                           ? 'Add an internal note visible only to your team...'
                           : 'Type a reply to the customer...'"></textarea>
-              <div class="flex justify-end mt-3">
+
+              <!-- Pending files -->
+              <div *ngIf="pendingFiles().length > 0" class="flex flex-wrap gap-2 mt-2">
+                <div *ngFor="let f of pendingFiles()"
+                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border"
+                     style="background:#F0FDF4;border-color:#BBF7D0;color:#166534">
+                  <i class="pi pi-file" style="font-size:11px"></i>
+                  {{ f.name }}
+                  <button type="button" (click)="removeFile(f)" class="hover:text-red-500 transition-colors ml-1">
+                    <i class="pi pi-times" style="font-size:10px"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between mt-3">
+                <div>
+                  <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display:none">
+                  <button type="button" (click)="fileInput.click()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <i class="pi pi-paperclip" style="font-size:14px"></i>
+                    Attach
+                  </button>
+                </div>
                 <button (click)="sendReply()"
                         [disabled]="replyControl.invalid || submitting"
                         class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -273,6 +311,8 @@ export class AgentTicketDetailComponent implements OnInit {
   comments = signal<Comment[]>([]);
   agents = signal<User[]>([]);
   departments = signal<Department[]>([]);
+  attachments = signal<Attachment[]>([]);
+  pendingFiles = signal<File[]>([]);
   loading = signal(true);
   submitting = false;
   replyControl = new FormControl('', Validators.required);
@@ -308,6 +348,10 @@ export class AgentTicketDetailComponent implements OnInit {
     this.replyControl.setValue((this.replyControl.value || '') + r.body);
   }
 
+  getDownloadUrl(attId: string): string {
+    return `${environment.apiUrl}/attachments/${attId}/download`;
+  }
+
   constructor(
     private route: ActivatedRoute,
     private ticketService: TicketService,
@@ -325,6 +369,7 @@ export class AgentTicketDetailComponent implements OnInit {
       this.loading.set(false);
     });
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
+    this.ticketService.getAttachments(id).subscribe(a => this.attachments.set(a));
     this.userService.getUsers('AGENT', 0, 100).subscribe(p => {
       this.agents.set(p.content);
       this.agentOptions = [
@@ -336,13 +381,34 @@ export class AgentTicketDetailComponent implements OnInit {
     this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
   }
 
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+    const files = Array.from(input.files);
+    this.pendingFiles.update(existing => [...existing, ...files]);
+    input.value = '';
+  }
+
+  removeFile(file: File) {
+    this.pendingFiles.update(existing => existing.filter(f => f !== file));
+  }
+
   sendReply() {
     if (this.replyControl.invalid) return;
     this.submitting = true;
     const id = this.ticket()!.id;
     const isInternal = this.noteMode === 'internal';
     this.ticketService.addComment(id, this.replyControl.value!, isInternal).subscribe({
-      next: (comment) => { this.comments.update(c => [...c, comment]); this.replyControl.reset(); this.submitting = false; },
+      next: (comment) => {
+        this.comments.update(c => [...c, comment]);
+        const files = this.pendingFiles();
+        this.pendingFiles.set([]);
+        files.forEach(f => this.ticketService.uploadAttachment(id, f).subscribe({
+          next: (att) => this.attachments.update(a => [...a, att])
+        }));
+        this.replyControl.reset();
+        this.submitting = false;
+      },
       error: () => { this.submitting = false; },
     });
   }

@@ -42,9 +42,28 @@ public class TicketSpecification {
         return (r, q, cb) -> to == null ? cb.conjunction() : cb.lessThanOrEqualTo(r.get("createdAt"), to);
     }
 
+    public static Specification<Ticket> withSearch(String search) {
+        return (r, q, cb) -> {
+            if (search == null || search.isBlank()) return cb.conjunction();
+            String pattern = "%" + search.toLowerCase() + "%";
+            return cb.or(
+                cb.like(cb.lower(r.get("title")), pattern),
+                cb.like(cb.lower(r.get("description")), pattern),
+                cb.like(cb.lower(r.get("ticketNumber")), pattern)
+            );
+        };
+    }
+
     public static Specification<Ticket> filtered(TicketStatus status, Priority priority,
                                                    UUID departmentId, UUID agentId,
                                                    UUID createdById, Instant from, Instant to) {
+        return filtered(status, priority, departmentId, agentId, createdById, from, to, null);
+    }
+
+    public static Specification<Ticket> filtered(TicketStatus status, Priority priority,
+                                                   UUID departmentId, UUID agentId,
+                                                   UUID createdById, Instant from, Instant to,
+                                                   String search) {
         return Specification.where(notDeleted())
                 .and(withStatus(status))
                 .and(withPriority(priority))
@@ -52,6 +71,7 @@ public class TicketSpecification {
                 .and(withAgent(agentId))
                 .and(withCreatedBy(createdById))
                 .and(createdAfter(from))
-                .and(createdBefore(to));
+                .and(createdBefore(to))
+                .and(withSearch(search));
     }
 }

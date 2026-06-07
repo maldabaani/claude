@@ -1,17 +1,19 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { MenuModule } from 'primeng/menu';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextModule } from 'primeng/inputtext';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-admin-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
-    ButtonModule, MenuModule, TooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FormsModule,
+    ButtonModule, MenuModule, TooltipModule, InputTextModule],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -88,6 +90,16 @@ import { AuthService } from '../../core/auth/auth.service';
             <span class="font-bold text-gray-900 text-sm" style="letter-spacing:-0.01em">Administration</span>
           </div>
 
+          <!-- Search bar -->
+          <div class="flex-1 max-w-md mx-6">
+            <div class="relative">
+              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:14px"></i>
+              <input pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
+                     placeholder="Search tickets..."
+                     class="w-full pl-9 text-sm" style="height:36px;border-radius:8px" />
+            </div>
+          </div>
+
           <div class="flex items-center gap-2">
             <button (click)="topMenu.toggle($event)" class="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
               <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
@@ -137,6 +149,8 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class AdminShellComponent {
   collapsed = signal(false);
+  searchQuery = signal('');
+  private searchTimeout: any;
 
   navItems = [
     { path: '/admin', icon: 'pi-th-large', label: 'Overview', exact: true },
@@ -147,20 +161,34 @@ export class AdminShellComponent {
     { path: '/admin/canned', icon: 'pi-bookmark', label: 'Canned Responses', exact: false },
     { path: '/admin/analytics', icon: 'pi-chart-line', label: 'Analytics', exact: false },
     { path: '/admin/kb', icon: 'pi-book', label: 'Knowledge Base', exact: false },
+    { path: '/admin/audit', icon: 'pi-list', label: 'Audit Log', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 
   sideMenuItems: MenuItem[] = [
+    { label: 'Profile', icon: 'pi pi-user', routerLink: '/profile' },
+    { separator: true },
     { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
   ];
 
   topMenuItems: MenuItem[] = [
     { label: 'Administrator', disabled: true, styleClass: 'font-semibold text-gray-900' },
     { separator: true },
+    { label: 'Profile', icon: 'pi pi-user', routerLink: '/profile' },
+    { separator: true },
     { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
   ];
 
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, private router: Router) {}
 
   toggleCollapsed() { this.collapsed.update(v => !v); }
+
+  onSearch(query: string) {
+    this.searchQuery.set(query);
+    clearTimeout(this.searchTimeout);
+    if (!query.trim()) return;
+    this.searchTimeout = setTimeout(() => {
+      this.router.navigate(['/admin/tickets'], { queryParams: { search: query } });
+    }, 400);
+  }
 }

@@ -1,5 +1,6 @@
 package com.helpdesk.domain.user.service;
 
+import com.helpdesk.domain.user.dto.UpdateProfileRequest;
 import com.helpdesk.domain.user.dto.UpdateUserRequest;
 import com.helpdesk.domain.user.dto.UserResponse;
 import com.helpdesk.domain.user.entity.Role;
@@ -9,6 +10,7 @@ import com.helpdesk.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public Page<UserResponse> findAll(Role role, Pageable pageable) {
         return userRepository.findAllActive(role, pageable).map(this::toResponse);
@@ -36,6 +39,21 @@ public class UserService {
         if (request.avatarUrl() != null) user.setAvatarUrl(request.avatarUrl());
         if (request.active() != null) user.setActive(request.active());
         if (request.role() != null) user.setRole(request.role());
+        return toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UUID id, UpdateProfileRequest request) {
+        User user = getUser(id);
+        if (request.fullName() != null && !request.fullName().isBlank()) {
+            user.setFullName(request.fullName());
+        }
+        if (request.newPassword() != null && !request.newPassword().isBlank()) {
+            if (request.currentPassword() == null || !passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+                throw new IllegalArgumentException("Current password is incorrect");
+            }
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        }
         return toResponse(userRepository.save(user));
     }
 

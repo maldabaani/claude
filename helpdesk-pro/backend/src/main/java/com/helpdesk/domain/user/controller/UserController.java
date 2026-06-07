@@ -1,8 +1,10 @@
 package com.helpdesk.domain.user.controller;
 
+import com.helpdesk.domain.user.dto.UpdateProfileRequest;
 import com.helpdesk.domain.user.dto.UpdateUserRequest;
 import com.helpdesk.domain.user.dto.UserResponse;
 import com.helpdesk.domain.user.entity.Role;
+import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.service.UserService;
 import com.helpdesk.shared.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -21,6 +24,18 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getMe(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.findById(currentUser.getId())));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> updateMe(
+            @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok("Profile updated", userService.updateProfile(currentUser.getId(), request)));
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEAD')")
