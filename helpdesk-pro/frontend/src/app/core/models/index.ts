@@ -101,6 +101,14 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+export interface CannedResponse {
+  id: string;
+  title: string;
+  body: string;
+  category?: string;
+  createdAt: string;
+}
+
 export interface PageResponse<T> {
   content: T[];
   totalElements: number;

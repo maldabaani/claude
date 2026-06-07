@@ -8,9 +8,12 @@ import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TooltipModule } from 'primeng/tooltip';
 import { TextareaModule } from 'primeng/textarea';
+import { PopoverModule } from 'primeng/popover';
+import { InputTextModule } from 'primeng/inputtext';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
+import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
 import { Ticket, Comment, TicketStatus, User, Department } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -22,6 +25,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
     ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
+    PopoverModule, InputTextModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -99,8 +103,34 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
             <div class="p-5">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-gray-900 text-sm">Reply</h3>
-                <p-selectbutton [options]="noteModeOptions" [(ngModel)]="noteMode"
-                                optionLabel="label" optionValue="value" />
+                <div class="flex items-center gap-2">
+                  <button type="button" (click)="cannedPanel.toggle($event)"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <i class="pi pi-bookmark" style="font-size:12px"></i>
+                    Canned
+                  </button>
+                  <p-popover #cannedPanel>
+                    <div style="width:320px">
+                      <div class="p-3 border-b border-gray-100">
+                        <input pInputText class="w-full text-sm" placeholder="Search responses..."
+                               [ngModel]="cannedSearch()" (ngModelChange)="setCannedSearch($event)" />
+                      </div>
+                      <div class="max-h-64 overflow-y-auto">
+                        <div *ngFor="let r of filteredCanned()"
+                             (click)="insertCanned(r); cannedPanel.hide()"
+                             class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 transition-colors">
+                          <p class="text-sm font-semibold text-gray-900">{{ r.title }}</p>
+                          <p class="text-xs text-slate-400 mt-0.5 truncate">{{ r.body }}</p>
+                        </div>
+                        <div *ngIf="filteredCanned().length === 0" class="px-4 py-6 text-center text-xs text-slate-400">
+                          No responses found
+                        </div>
+                      </div>
+                    </div>
+                  </p-popover>
+                  <p-selectbutton [options]="noteModeOptions" [(ngModel)]="noteMode"
+                                  optionLabel="label" optionValue="value" />
+                </div>
               </div>
 
               <div *ngIf="noteMode === 'internal'"
@@ -262,11 +292,28 @@ export class AgentTicketDetailComponent implements OnInit {
 
   agentOptions: { label: string; value: string | null }[] = [{ label: 'Unassigned', value: null }];
 
+  cannedResponses = signal<CannedResponseModel[]>([]);
+  cannedSearch = signal('');
+
+  filteredCanned(): CannedResponseModel[] {
+    const q = this.cannedSearch().toLowerCase();
+    return this.cannedResponses().filter(r =>
+      r.title.toLowerCase().includes(q) || r.body.toLowerCase().includes(q)
+    );
+  }
+
+  setCannedSearch(value: string) { this.cannedSearch.set(value); }
+
+  insertCanned(r: CannedResponseModel) {
+    this.replyControl.setValue((this.replyControl.value || '') + r.body);
+  }
+
   constructor(
     private route: ActivatedRoute,
     private ticketService: TicketService,
     private userService: UserService,
     private departmentService: DepartmentService,
+    private cannedResponseService: CannedResponseService,
   ) {}
 
   ngOnInit() {
@@ -286,6 +333,7 @@ export class AgentTicketDetailComponent implements OnInit {
       ];
     });
     this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
+    this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
   }
 
   sendReply() {
