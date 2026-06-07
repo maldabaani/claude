@@ -19,47 +19,72 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-6">
-      <h1 class="font-heading text-2xl font-bold text-gray-900">Dashboard</h1>
+      <!-- Page title -->
+      <div>
+        <h1 class="font-heading text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Your support queue at a glance</p>
+      </div>
 
       <!-- KPI Cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <mat-card *ngFor="let kpi of kpis()" class="!rounded-xl !shadow-sm">
-          <mat-card-content class="!p-5">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center" [ngClass]="kpi.bg">
-                <mat-icon [ngClass]="kpi.color" class="text-xl">{{ kpi.icon }}</mat-icon>
-              </div>
-              <span class="text-sm text-gray-500 font-medium">{{ kpi.label }}</span>
+        <div *ngFor="let kpi of kpis()"
+             class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" [ngClass]="kpi.bg">
+              <mat-icon [ngClass]="kpi.color" style="font-size:20px;width:20px;height:20px">{{ kpi.icon }}</mat-icon>
             </div>
-            <p class="text-3xl font-heading font-bold text-gray-900">{{ kpi.value }}</p>
-          </mat-card-content>
-        </mat-card>
+          </div>
+          <p class="text-3xl font-heading font-bold text-gray-900 leading-none">{{ kpi.value }}</p>
+          <p class="text-sm text-gray-500 mt-1.5">{{ kpi.label }}</p>
+        </div>
       </div>
 
       <!-- Recent tickets -->
-      <mat-card class="!rounded-xl !shadow-sm">
-        <mat-card-header class="!px-6 !pt-5 !pb-0">
-          <mat-card-title class="!font-heading !text-base !font-semibold !text-gray-900">Recent Tickets</mat-card-title>
-          <span class="flex-1"></span>
-          <a routerLink="/agent/queue" mat-button color="primary" class="!text-sm">View All</a>
-        </mat-card-header>
-        <mat-card-content class="!px-0 !py-0 !mt-3">
-          <app-skeleton-loader *ngIf="loadingTickets()" type="table" [count]="5" class="block px-6 pb-4" />
-          <div *ngIf="!loadingTickets()">
-            <div *ngFor="let ticket of recentTickets()"
-                 class="flex items-center gap-4 px-6 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                 [routerLink]="['/agent/tickets', ticket.id]">
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-gray-900 text-sm truncate">{{ ticket.title }}</p>
-                <p class="text-xs text-gray-400 mt-0.5">{{ ticket.ticketNumber }} · {{ ticket.createdAt | timeAgo }}</p>
-              </div>
-              <app-priority-badge [priority]="ticket.priority" />
-              <app-status-badge [status]="ticket.status" />
-            </div>
-            <p *ngIf="recentTickets().length === 0" class="text-center py-8 text-gray-400 text-sm">No tickets found.</p>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-gray-400" style="font-size:18px;width:18px;height:18px">receipt_long</mat-icon>
+            <h2 class="font-heading font-semibold text-gray-900 text-base">Recent Tickets</h2>
           </div>
-        </mat-card-content>
-      </mat-card>
+          <a routerLink="/agent/queue" mat-button color="primary" class="!text-sm !rounded-lg">
+            View all
+            <mat-icon style="font-size:16px;width:16px;height:16px">chevron_right</mat-icon>
+          </a>
+        </div>
+
+        <!-- Table header -->
+        <div class="grid gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide"
+             style="grid-template-columns:1fr auto auto auto">
+          <span>Ticket</span>
+          <span>Priority</span>
+          <span>Status</span>
+          <span>Created</span>
+        </div>
+
+        <app-skeleton-loader *ngIf="loadingTickets()" type="table" [count]="5" class="block px-6 pb-4" />
+
+        <div *ngIf="!loadingTickets()">
+          <div *ngFor="let ticket of recentTickets(); let last = last"
+               class="grid gap-4 items-center px-6 py-3.5 hover:bg-gray-50/80 cursor-pointer transition-colors"
+               style="grid-template-columns:1fr auto auto auto"
+               [class.border-b]="!last" [class.border-gray-100]="!last"
+               [routerLink]="['/agent/tickets', ticket.id]">
+            <div class="min-w-0">
+              <p class="font-medium text-gray-900 text-sm truncate">{{ ticket.title }}</p>
+              <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ ticket.ticketNumber }} &middot; {{ ticket.createdAt | timeAgo }}</p>
+            </div>
+            <app-priority-badge [priority]="ticket.priority" />
+            <app-status-badge [status]="ticket.status" />
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ ticket.createdAt | timeAgo }}</span>
+          </div>
+
+          <div *ngIf="recentTickets().length === 0" class="py-16 text-center">
+            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">inbox</mat-icon>
+            <p class="text-sm font-medium text-gray-400">No tickets found</p>
+          </div>
+        </div>
+      </div>
     </div>
   `,
 })

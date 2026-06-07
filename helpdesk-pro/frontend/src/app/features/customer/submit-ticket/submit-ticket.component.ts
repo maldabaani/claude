@@ -21,26 +21,42 @@ import { Department } from '../../../core/models';
     MatStepperModule, MatCardModule, MatChipsModule],
   template: `
     <div class="max-w-2xl mx-auto">
+      <!-- Page header -->
       <div class="mb-6">
         <h1 class="font-heading text-2xl font-bold text-gray-900">Submit a Ticket</h1>
-        <p class="text-gray-500 mt-1">Describe your issue and we'll get back to you shortly.</p>
+        <p class="text-gray-500 mt-1 text-sm">Describe your issue and our team will respond shortly.</p>
       </div>
 
-      <mat-card class="!rounded-2xl !shadow-sm">
-        <mat-card-content class="!p-8">
-          <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
-            <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Subject *</mat-label>
-              <input matInput formControlName="title" placeholder="Brief description of your issue">
-              <mat-error>Subject is required</mat-error>
-            </mat-form-field>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Form header bar -->
+        <div class="px-8 py-5 border-b border-gray-100 bg-gray-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+              <mat-icon class="text-blue-600" style="font-size:18px;width:18px;height:18px">edit_note</mat-icon>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900 text-sm">New Support Request</p>
+              <p class="text-xs text-gray-400">Fill in the details below</p>
+            </div>
+          </div>
+        </div>
 
+        <form [formGroup]="form" (ngSubmit)="submit()" class="px-8 py-6 space-y-5">
+          <mat-form-field class="w-full" appearance="outline">
+            <mat-label>Subject</mat-label>
+            <input matInput formControlName="title" placeholder="Brief description of your issue">
+            <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">title</mat-icon>
+            <mat-error>Subject is required</mat-error>
+          </mat-form-field>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <mat-form-field class="w-full" appearance="outline">
               <mat-label>Department</mat-label>
               <mat-select formControlName="departmentId">
                 <mat-option [value]="null">No preference</mat-option>
                 <mat-option *ngFor="let d of departments()" [value]="d.id">{{ d.name }}</mat-option>
               </mat-select>
+              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">business</mat-icon>
             </mat-form-field>
 
             <mat-form-field class="w-full" appearance="outline">
@@ -51,30 +67,40 @@ import { Department } from '../../../core/models';
                 <mat-option value="HIGH">High</mat-option>
                 <mat-option value="CRITICAL">Critical</mat-option>
               </mat-select>
+              <mat-icon matPrefix class="text-slate-400 mr-1" style="font-size:18px">flag</mat-icon>
             </mat-form-field>
+          </div>
 
-            <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Description *</mat-label>
-              <textarea matInput formControlName="description" rows="6"
-                        placeholder="Please provide as much detail as possible..."></textarea>
-              <mat-error>Description is required</mat-error>
-            </mat-form-field>
+          <mat-form-field class="w-full" appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="6"
+                      placeholder="Please provide as much detail as possible — steps to reproduce, expected vs actual behavior, any error messages..."></textarea>
+            <mat-error>Description is required</mat-error>
+            <mat-hint>Be as specific as possible to help us resolve your issue faster</mat-hint>
+          </mat-form-field>
 
-            <div *ngIf="error" class="p-3 bg-red-50 rounded-lg border border-red-200 text-red-700 text-sm">{{ error }}</div>
-            <div *ngIf="success()" class="p-3 bg-green-50 rounded-lg border border-green-200 text-green-700 text-sm">
-              Ticket submitted successfully! Redirecting...
-            </div>
+          <div *ngIf="error" class="flex items-start gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
+            <mat-icon class="text-red-500 shrink-0 mt-0.5" style="font-size:18px">error_outline</mat-icon>
+            <span class="text-red-700 text-sm">{{ error }}</span>
+          </div>
 
-            <div class="flex gap-3">
-              <a routerLink="/customer" mat-stroked-button class="!rounded-xl !flex-1">Cancel</a>
-              <button mat-raised-button color="primary" type="submit"
-                      class="!rounded-xl !flex-1 !font-semibold" [disabled]="loading || form.invalid">
-                {{ loading ? 'Submitting...' : 'Submit Ticket' }}
-              </button>
-            </div>
-          </form>
-        </mat-card-content>
-      </mat-card>
+          <div *ngIf="success()" class="flex items-start gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+            <mat-icon class="text-green-600 shrink-0 mt-0.5" style="font-size:18px">check_circle_outline</mat-icon>
+            <span class="text-green-700 text-sm font-medium">Ticket submitted successfully! Redirecting...</span>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <a routerLink="/customer" mat-stroked-button class="!rounded-lg !flex-1">
+              Cancel
+            </a>
+            <button mat-raised-button color="primary" type="submit"
+                    class="!rounded-lg !flex-1 !font-semibold" [disabled]="loading || form.invalid">
+              <mat-icon *ngIf="!loading" style="font-size:18px;width:18px;height:18px">send</mat-icon>
+              {{ loading ? 'Submitting...' : 'Submit Ticket' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   `,
 })

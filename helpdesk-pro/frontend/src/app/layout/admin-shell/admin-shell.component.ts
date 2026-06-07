@@ -13,49 +13,96 @@ import { AuthService } from '../../core/auth/auth.service';
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule,
     MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   template: `
-    <div class="flex h-screen overflow-hidden bg-[var(--color-surface-2)]">
-      <aside class="flex flex-col transition-all duration-300 bg-[#0F172A] text-white"
-             [class.w-64]="!collapsed()" [class.w-16]="collapsed()">
-        <div class="flex items-center px-4 h-16 border-b border-white/10">
-          <mat-icon class="text-blue-400 shrink-0">admin_panel_settings</mat-icon>
-          <span *ngIf="!collapsed()" class="ml-3 font-heading font-semibold text-lg">Admin Panel</span>
+    <div class="flex h-screen overflow-hidden" style="background:#F1F5F9">
+      <!-- Sidebar -->
+      <aside class="flex flex-col transition-all duration-300 ease-in-out shrink-0 relative z-20"
+             style="background:#0F172A;color:white"
+             [style.width]="collapsed() ? '64px' : '240px'">
+        <!-- Logo -->
+        <div class="flex items-center h-16 border-b shrink-0 overflow-hidden"
+             style="border-color:rgba(255,255,255,0.08)"
+             [class.px-4]="!collapsed()" [class.justify-center]="collapsed()" [class.px-0]="collapsed()">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+            <mat-icon class="text-white" style="font-size:18px;width:18px;height:18px">admin_panel_settings</mat-icon>
+          </div>
+          <span *ngIf="!collapsed()" class="ml-2.5 font-heading font-bold text-white text-base tracking-tight whitespace-nowrap">Admin Panel</span>
         </div>
 
-        <nav class="flex-1 py-4 overflow-y-auto space-y-0.5">
-          <a *ngFor="let item of navItems" [routerLink]="item.path" routerLinkActive="bg-white/10 text-blue-400"
+        <!-- Nav section label -->
+        <div *ngIf="!collapsed()" class="px-4 pt-4 pb-1">
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Navigation</p>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 py-1 overflow-y-auto space-y-0.5">
+          <a *ngFor="let item of navItems"
+             [routerLink]="item.path"
+             routerLinkActive="active-nav-item"
              [routerLinkActiveOptions]="{exact: item.exact}"
-             class="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+             class="admin-nav-item flex items-center gap-3 py-2.5 mx-2 rounded-lg transition-all duration-150 relative"
+             [class.px-3]="!collapsed()" [class.justify-center]="collapsed()" [class.px-0]="collapsed()"
              [matTooltip]="collapsed() ? item.label : ''" matTooltipPosition="right">
-            <mat-icon class="shrink-0 text-xl">{{ item.icon }}</mat-icon>
-            <span *ngIf="!collapsed()" class="text-sm font-medium">{{ item.label }}</span>
+            <mat-icon class="shrink-0 transition-colors" style="font-size:19px;width:19px;height:19px">{{ item.icon }}</mat-icon>
+            <span *ngIf="!collapsed()" class="text-sm font-medium whitespace-nowrap">{{ item.label }}</span>
           </a>
         </nav>
 
+        <!-- Collapse toggle -->
         <button (click)="toggleCollapsed()"
-                class="flex items-center justify-center h-12 border-t border-white/10 text-slate-400 hover:text-white">
-          <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+                class="flex items-center justify-center h-11 border-t shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+                style="border-color:rgba(255,255,255,0.08)">
+          <mat-icon style="font-size:18px;width:18px;height:18px">{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
         </button>
       </aside>
 
-      <div class="flex flex-col flex-1 overflow-hidden">
-        <header class="flex items-center justify-between px-6 h-16 bg-white border-b border-gray-200 shrink-0">
-          <h1 class="font-heading font-semibold text-gray-900 text-lg">Administration</h1>
-          <button mat-icon-button [matMenuTriggerFor]="userMenu">
-            <mat-icon>account_circle</mat-icon>
-          </button>
-          <mat-menu #userMenu="matMenu">
-            <button mat-menu-item (click)="auth.logout()">
-              <mat-icon>logout</mat-icon> Logout
+      <!-- Main -->
+      <div class="flex flex-col flex-1 overflow-hidden min-w-0">
+        <!-- Header -->
+        <header class="flex items-center justify-between px-6 h-16 bg-white border-b border-gray-200/80 shrink-0 shadow-sm">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+            <span class="font-heading font-semibold text-gray-900 text-base">Administration</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button mat-button [matMenuTriggerFor]="userMenu" class="!rounded-lg !px-3 !py-1">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                  A
+                </div>
+                <span class="text-sm font-medium text-gray-700">Admin</span>
+                <mat-icon class="text-gray-400 !text-base">expand_more</mat-icon>
+              </div>
             </button>
-          </mat-menu>
+            <mat-menu #userMenu="matMenu">
+              <div class="px-4 py-3 border-b border-gray-100">
+                <p class="text-xs text-gray-400 font-medium">Administrator</p>
+              </div>
+              <button mat-menu-item (click)="auth.logout()">
+                <mat-icon class="text-gray-500">logout</mat-icon>
+                <span>Sign out</span>
+              </button>
+            </mat-menu>
+          </div>
         </header>
 
-        <main class="flex-1 overflow-auto p-6">
+        <!-- Content -->
+        <main class="flex-1 overflow-auto px-6 py-6">
           <router-outlet />
         </main>
       </div>
     </div>
   `,
+  styles: [`
+    .admin-nav-item { color: rgba(148, 163, 184, 1); }
+    .admin-nav-item:hover { color: white; background: rgba(255,255,255,0.07); }
+    :host ::ng-deep .active-nav-item {
+      color: #818CF8 !important;
+      background: rgba(129, 140, 248, 0.12) !important;
+      border-left: 2px solid #6366F1;
+      padding-left: calc(0.75rem - 2px) !important;
+    }
+  `],
 })
 export class AdminShellComponent {
   collapsed = signal(false);

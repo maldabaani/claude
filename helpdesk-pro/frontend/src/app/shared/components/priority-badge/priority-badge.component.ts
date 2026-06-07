@@ -7,7 +7,7 @@ import { Priority } from '../../../core/models';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide"
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
           [ngClass]="badgeClass">
       {{ priority }}
     </span>

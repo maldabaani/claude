@@ -26,69 +26,87 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
     MatSelectModule, MatInputModule, MatPaginatorModule, MatSortModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
-    <div class="space-y-4">
+    <div class="space-y-5">
+      <!-- Page header -->
       <div class="flex items-center justify-between">
-        <h1 class="font-heading text-2xl font-bold text-gray-900">Ticket Queue</h1>
-        <span class="text-sm text-gray-500">{{ totalElements() }} tickets</span>
+        <div>
+          <h1 class="font-heading text-2xl font-bold text-gray-900">Ticket Queue</h1>
+          <p class="text-sm text-gray-500 mt-0.5">{{ totalElements() }} tickets total</p>
+        </div>
       </div>
 
-      <!-- Filters -->
-      <mat-card class="!rounded-xl !shadow-sm">
-        <mat-card-content class="!p-4">
-          <div class="flex gap-3 flex-wrap items-end">
-            <mat-form-field appearance="outline" style="width:160px" class="!text-sm">
-              <mat-label>Status</mat-label>
-              <mat-select [formControl]="filters.controls['status']" (selectionChange)="load()">
-                <mat-option value="">All</mat-option>
-                <mat-option *ngFor="let s of statuses" [value]="s">{{ s }}</mat-option>
-              </mat-select>
-            </mat-form-field>
+      <!-- Filters bar -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
+        <mat-icon class="text-gray-400 shrink-0" style="font-size:18px;width:18px;height:18px">filter_list</mat-icon>
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter:</span>
 
-            <mat-form-field appearance="outline" style="width:160px" class="!text-sm">
-              <mat-label>Priority</mat-label>
-              <mat-select [formControl]="filters.controls['priority']" (selectionChange)="load()">
-                <mat-option value="">All</mat-option>
-                <mat-option *ngFor="let p of priorities" [value]="p">{{ p }}</mat-option>
-              </mat-select>
-            </mat-form-field>
+        <mat-form-field appearance="outline" style="width:160px;margin-bottom:-1.25em" class="!text-sm">
+          <mat-label>Status</mat-label>
+          <mat-select [formControl]="filters.controls['status']" (selectionChange)="load()">
+            <mat-option value="">All statuses</mat-option>
+            <mat-option *ngFor="let s of statuses" [value]="s">{{ s }}</mat-option>
+          </mat-select>
+        </mat-form-field>
 
-            <button mat-stroked-button (click)="resetFilters()" class="!rounded-lg">
-              <mat-icon>clear</mat-icon> Reset
-            </button>
-          </div>
-        </mat-card-content>
-      </mat-card>
+        <mat-form-field appearance="outline" style="width:160px;margin-bottom:-1.25em" class="!text-sm">
+          <mat-label>Priority</mat-label>
+          <mat-select [formControl]="filters.controls['priority']" (selectionChange)="load()">
+            <mat-option value="">All priorities</mat-option>
+            <mat-option *ngFor="let p of priorities" [value]="p">{{ p }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-stroked-button (click)="resetFilters()" class="!rounded-lg !text-sm !text-gray-500">
+          <mat-icon style="font-size:16px;width:16px;height:16px">refresh</mat-icon>
+          Reset
+        </button>
+      </div>
 
       <!-- Table -->
-      <mat-card class="!rounded-xl !shadow-sm overflow-hidden">
-        <!-- Header -->
-        <div class="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 px-6 py-3 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          <span>ID</span>
-          <span>Title</span>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Table header -->
+        <div class="grid gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide"
+             style="grid-template-columns:140px 1fr 100px 120px 140px 100px">
+          <span>Ticket ID</span>
+          <span>Subject</span>
           <span>Priority</span>
           <span>Status</span>
-          <span>Assigned</span>
+          <span>Assigned To</span>
           <span>Created</span>
         </div>
 
         <app-skeleton-loader *ngIf="loading()" type="table" [count]="8" class="block px-4 py-2" />
 
         <div *ngIf="!loading()">
-          <div *ngFor="let ticket of tickets()"
-               class="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-6 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+          <div *ngFor="let ticket of tickets(); let last = last"
+               class="grid gap-4 items-center px-6 py-3.5 hover:bg-gray-50/80 cursor-pointer transition-colors"
+               style="grid-template-columns:140px 1fr 100px 120px 140px 100px"
+               [class.border-b]="!last" [class.border-gray-100]="!last"
                [routerLink]="['/agent/tickets', ticket.id]">
-            <span class="text-xs font-mono text-blue-600">{{ ticket.ticketNumber }}</span>
+            <span class="text-xs font-mono text-blue-600 font-semibold">{{ ticket.ticketNumber }}</span>
             <span class="text-sm font-medium text-gray-900 truncate">{{ ticket.title }}</span>
             <app-priority-badge [priority]="ticket.priority" />
             <app-status-badge [status]="ticket.status" />
-            <span class="text-xs text-gray-500">{{ ticket.assignedAgent?.fullName || '—' }}</span>
-            <span class="text-xs text-gray-400">{{ ticket.createdAt | timeAgo }}</span>
+            <div class="flex items-center gap-2 min-w-0">
+              <div *ngIf="ticket.assignedAgent"
+                   class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                {{ ticket.assignedAgent.fullName?.charAt(0) }}
+              </div>
+              <span class="text-xs text-gray-500 truncate">{{ ticket.assignedAgent?.fullName || 'Unassigned' }}</span>
+            </div>
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ ticket.createdAt | timeAgo }}</span>
           </div>
-          <p *ngIf="tickets().length === 0" class="text-center py-12 text-gray-400">No tickets match the filters.</p>
-        </div>
-      </mat-card>
 
-      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)" />
+          <div *ngIf="tickets().length === 0" class="py-16 text-center">
+            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">inbox</mat-icon>
+            <p class="text-sm font-medium text-gray-400">No tickets match the filters</p>
+            <p class="text-xs text-gray-300 mt-1">Try adjusting your search criteria</p>
+          </div>
+        </div>
+      </div>
+
+      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)"
+                     class="bg-white rounded-xl border border-gray-100 shadow-sm" />
     </div>
   `,
 })

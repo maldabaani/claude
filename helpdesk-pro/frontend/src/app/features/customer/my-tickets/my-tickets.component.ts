@@ -22,50 +22,70 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
     MatButtonModule, MatInputModule, MatSelectModule, MatIconModule, MatCardModule, MatPaginatorModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
-    <div class="space-y-4">
+    <div class="space-y-5">
+      <!-- Page header -->
       <div class="flex items-center justify-between">
-        <h1 class="font-heading text-2xl font-bold text-gray-900">My Tickets</h1>
-        <a routerLink="/customer/submit" mat-raised-button color="primary" class="!rounded-xl">
-          <mat-icon>add</mat-icon> New Ticket
+        <div>
+          <h1 class="font-heading text-2xl font-bold text-gray-900">My Tickets</h1>
+          <p class="text-sm text-gray-500 mt-0.5">Track and manage your support requests</p>
+        </div>
+        <a routerLink="/customer/submit" mat-raised-button color="primary" class="!rounded-lg">
+          <mat-icon style="font-size:18px;width:18px;height:18px">add</mat-icon>
+          <span class="ml-1">New Ticket</span>
         </a>
       </div>
 
-      <!-- Filters -->
-      <mat-card class="!rounded-xl !shadow-sm">
-        <mat-card-content class="!p-4">
-          <div class="flex gap-3 flex-wrap">
-            <mat-form-field appearance="outline" class="!text-sm" style="width:200px">
-              <mat-label>Status</mat-label>
-              <mat-select [formControl]="statusFilter" (selectionChange)="loadTickets()">
-                <mat-option value="">All</mat-option>
-                <mat-option *ngFor="let s of statuses" [value]="s">{{ s }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <!-- Filters bar -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
+        <mat-icon class="text-gray-400 shrink-0" style="font-size:18px;width:18px;height:18px">filter_list</mat-icon>
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter:</span>
+        <mat-form-field appearance="outline" class="!text-sm" style="width:180px;margin-bottom:-1.25em">
+          <mat-label>Status</mat-label>
+          <mat-select [formControl]="statusFilter" (selectionChange)="loadTickets()">
+            <mat-option value="">All statuses</mat-option>
+            <mat-option *ngFor="let s of statuses" [value]="s">{{ s }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
 
-      <!-- Table -->
-      <mat-card class="!rounded-xl !shadow-sm overflow-hidden">
-        <app-skeleton-loader *ngIf="loading()" type="table" [count]="5" class="block p-4" />
+      <!-- Ticket list -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Table header -->
+        <div class="grid gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100"
+             style="grid-template-columns:1fr auto auto auto">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ticket</span>
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</span>
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</span>
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</span>
+        </div>
+
+        <app-skeleton-loader *ngIf="loading()" type="table" [count]="5" class="block px-5 py-2" />
 
         <div *ngIf="!loading()">
-          <div *ngFor="let ticket of tickets()"
-               class="flex items-center gap-4 px-6 py-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+          <div *ngFor="let ticket of tickets(); let last = last"
+               class="grid gap-4 items-center px-5 py-4 hover:bg-gray-50/80 cursor-pointer transition-colors"
+               style="grid-template-columns:1fr auto auto auto"
+               [class.border-b]="!last" [class.border-gray-100]="!last"
                [routerLink]="['/customer/tickets', ticket.id]">
-            <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-900 truncate">{{ ticket.title }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">{{ ticket.ticketNumber }} · {{ ticket.createdAt | timeAgo }}</p>
+            <div class="min-w-0">
+              <p class="font-medium text-gray-900 truncate text-sm">{{ ticket.title }}</p>
+              <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ ticket.ticketNumber }}</p>
             </div>
             <app-priority-badge [priority]="ticket.priority" />
             <app-status-badge [status]="ticket.status" />
-            <mat-icon class="text-gray-300 shrink-0">chevron_right</mat-icon>
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ ticket.createdAt | timeAgo }}</span>
           </div>
-          <p *ngIf="tickets().length === 0" class="text-center py-12 text-gray-400">No tickets found.</p>
-        </div>
-      </mat-card>
 
-      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)" />
+          <div *ngIf="tickets().length === 0" class="py-16 text-center">
+            <mat-icon class="text-gray-200 mb-3" style="font-size:48px;width:48px;height:48px">inbox</mat-icon>
+            <p class="text-sm font-medium text-gray-400">No tickets found</p>
+            <p class="text-xs text-gray-300 mt-1">Try adjusting your filters</p>
+          </div>
+        </div>
+      </div>
+
+      <mat-paginator [length]="totalElements()" [pageSize]="pageSize" (page)="onPage($event)"
+                     class="bg-white rounded-xl border border-gray-100 shadow-sm" />
     </div>
   `,
 })

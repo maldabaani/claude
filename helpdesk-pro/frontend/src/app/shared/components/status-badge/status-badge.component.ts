@@ -7,9 +7,9 @@ import { TicketStatus } from '../../../core/models';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
           [ngClass]="badgeClass">
-      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="dotClass"></span>
+      <span class="w-1.5 h-1.5 rounded-full shrink-0" [ngClass]="dotClass"></span>
       {{ label }}
     </span>
   `,
