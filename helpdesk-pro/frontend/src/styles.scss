@@ -1,0 +1,224 @@
+@use '@angular/material' as mat;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// Design Tokens
+:root {
+  --color-primary: #0F172A;
+  --color-accent: #3B82F6;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-muted: #64748B;
+
+  --priority-critical: #DC2626;
+  --priority-high: #EA580C;
+  --priority-medium: #CA8A04;
+  --priority-low: #16A34A;
+
+  --status-new: #3B82F6;
+  --status-open: #6366F1;
+  --status-pending: #EAB308;
+  --status-on-hold: #94A3B8;
+  --status-resolved: #22C55E;
+  --status-closed: #475569;
+
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+// Angular Material theme (M2 API, compatible with all AM versions)
+@include mat.core();
+
+$_primary: mat.m2-define-palette(mat.$m2-blue-palette, 600);
+$_accent:  mat.m2-define-palette(mat.$m2-indigo-palette, A200);
+$_warn:    mat.m2-define-palette(mat.$m2-red-palette);
+
+$_theme: mat.m2-define-light-theme((
+  color: (primary: $_primary, accent: $_accent, warn: $_warn),
+  typography: mat.m2-define-typography-config($font-family: 'Inter, sans-serif'),
+  density: 0,
+));
+
+@include mat.all-component-themes($_theme);
+
+// Base styles
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 { font-family: 'Sora', sans-serif; line-height: 1.3; }
+
+// Smooth transitions for interactive elements
+a, button { transition: all 0.15s ease; }
+
+// Global focus ring
+*:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+// Skeleton loader animation
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+// Priority badge colors
+.badge-critical {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border: 1px solid #FECACA;
+  font-weight: 600;
+}
+.badge-high {
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid #FED7AA;
+  font-weight: 600;
+}
+.badge-medium {
+  background: #FEFCE8;
+  color: #A16207;
+  border: 1px solid #FEF08A;
+  font-weight: 600;
+}
+.badge-low {
+  background: #F0FDF4;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+  font-weight: 600;
+}
+
+// Status badge colors
+.badge-new {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+.badge-open {
+  background: #EEF2FF;
+  color: #4338CA;
+  border: 1px solid #C7D2FE;
+}
+.badge-pending {
+  background: #FEFCE8;
+  color: #A16207;
+  border: 1px solid #FEF08A;
+}
+.badge-on-hold {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+.badge-resolved {
+  background: #F0FDF4;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+}
+.badge-closed {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+// Custom scrollbar
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+// Material overrides for cleaner look
+.mat-mdc-card {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+.mat-mdc-card:hover { box-shadow: var(--shadow-sm) !important; }
+.mat-mdc-button { border-radius: var(--radius-sm) !important; }
+.mat-mdc-raised-button { border-radius: var(--radius-sm) !important; }
+.mat-mdc-outlined-button { border-radius: var(--radius-sm) !important; }
+.mat-mdc-unelevated-button { border-radius: var(--radius-sm) !important; }
+
+// Form field styling
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: #E2E8F0 !important;
+  }
+  &:hover .mdc-notched-outline__leading,
+  &:hover .mdc-notched-outline__notch,
+  &:hover .mdc-notched-outline__trailing {
+    border-color: #94A3B8 !important;
+  }
+  &.mat-focused .mdc-notched-outline__leading,
+  &.mat-focused .mdc-notched-outline__notch,
+  &.mat-focused .mdc-notched-outline__trailing {
+    border-color: #3B82F6 !important;
+    border-width: 2px !important;
+  }
+}
+
+// Paginator clean style
+.mat-mdc-paginator {
+  background: transparent !important;
+  border-radius: var(--radius-md) !important;
+}
+
+// Table rows transition
+.hover\:bg-gray-50:hover {
+  transition: background-color 0.1s ease !important;
+}
+
+// Menu panel rounding
+.mat-mdc-menu-panel {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+// Badge
+.mat-badge-content {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+// Tab group
+.mat-mdc-tab-header {
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+// Slide toggle
+.mat-mdc-slide-toggle .mdc-switch:enabled .mdc-switch__track::after {
+  background: #3B82F6 !important;
+}
