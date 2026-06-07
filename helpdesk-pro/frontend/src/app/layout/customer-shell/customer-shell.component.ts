@@ -42,6 +42,12 @@ import { AuthService } from '../../core/auth/auth.service';
               <i class="pi pi-ticket" style="font-size:16px"></i>
               <span class="hidden sm:inline">My Tickets</span>
             </a>
+            <a routerLink="/customer/kb"
+               routerLinkActive="nav-active"
+               class="cust-nav-link flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium">
+              <i class="pi pi-book" style="font-size:16px"></i>
+              <span class="hidden sm:inline">Knowledge Base</span>
+            </a>
 
             <div class="w-px h-5 mx-1.5" style="background:#E2E8F0"></div>
 
