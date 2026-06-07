@@ -2,12 +2,15 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { PaginatorModule, PaginatorState } from 'primeng/paginator';
 import { CheckboxModule } from 'primeng/checkbox';
 import { FormsModule } from '@angular/forms';
 import { TicketService } from '../../../core/services/ticket.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 import { Ticket, TicketStatus, Priority } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -17,7 +20,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 @Component({
   selector: 'app-admin-tickets',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, FormsModule,
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, FormsModule, HttpClientModule,
     ButtonModule, SelectModule, PaginatorModule, CheckboxModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
@@ -29,13 +32,21 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           <h1 class="text-2xl font-black text-gray-900" style="letter-spacing:-0.03em">All Tickets</h1>
           <p class="text-sm text-slate-400 mt-0.5">{{ totalElements() }} total tickets across all departments</p>
         </div>
-        <button *ngIf="selected.size > 0"
-                (click)="bulkDelete()"
-                class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style="background:#EF4444;box-shadow:0 2px 6px rgba(239,68,68,0.3)">
-          <i class="pi pi-trash" style="font-size:16px"></i>
-          Delete ({{ selected.size }})
-        </button>
+        <div class="flex items-center gap-2">
+          <button (click)="exportCsv()"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style="background:#059669;box-shadow:0 2px 6px rgba(5,150,105,0.3)">
+            <i class="pi pi-download" style="font-size:16px"></i>
+            Export CSV
+          </button>
+          <button *ngIf="selected.size > 0"
+                  (click)="bulkDelete()"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style="background:#EF4444;box-shadow:0 2px 6px rgba(239,68,68,0.3)">
+            <i class="pi pi-trash" style="font-size:16px"></i>
+            Delete ({{ selected.size }})
+          </button>
+        </div>
       </div>
 
       <!-- Filter bar -->
@@ -149,7 +160,7 @@ export class AdminTicketsComponent implements OnInit {
     ...['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => ({ label: p, value: p }))
   ];
 
-  constructor(private ticketService: TicketService, private fb: FormBuilder, private route: ActivatedRoute) {}
+  constructor(private ticketService: TicketService, private fb: FormBuilder, private route: ActivatedRoute, private http: HttpClient) {}
 
   ngOnInit() {
     this.route.queryParams.subscribe(p => {
@@ -180,6 +191,17 @@ export class AdminTicketsComponent implements OnInit {
   }
 
   onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
+
+  exportCsv() {
+    this.http.get(`${environment.apiUrl}/tickets/export?format=csv`, { responseType: 'blob' }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tickets.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
   bulkDelete() {
     if (!confirm(`Delete ${this.selected.size} ticket(s)? This cannot be undone.`)) return;

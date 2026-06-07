@@ -6,21 +6,26 @@ import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
+import com.helpdesk.domain.ticket.service.PresenceService;
 import com.helpdesk.domain.ticket.service.TicketService;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,6 +35,7 @@ import java.util.UUID;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final PresenceService presenceService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -86,11 +92,63 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.ok("Status updated", ticketService.changeStatus(id, newStatus)));
     }
 
+    @PostMapping("/{id}/presence")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> recordPresence(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser) {
+        presenceService.recordPresence(id, currentUser.getId(), currentUser.getFullName());
+        return ResponseEntity.ok(ApiResponse.ok("Presence recorded", null));
+    }
+
+    @GetMapping("/{id}/presence")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> getPresence(
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(presenceService.getPresence(id)));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         ticketService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Ticket deleted", null));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEAD')")
+    public ResponseEntity<byte[]> exportCsv(@RequestParam(defaultValue = "csv") String format) {
+        List<TicketResponse> tickets = ticketService.findAll(null, null, null, null, null, null, null,
+                PageRequest.of(0, Integer.MAX_VALUE)).getContent();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,subject,status,priority,category,customer_email,agent_email,created_at,resolved_at\n");
+        for (TicketResponse t : tickets) {
+            sb.append(escapeCsv(t.id().toString())).append(",");
+            sb.append(escapeCsv(t.title())).append(",");
+            sb.append(escapeCsv(t.status() != null ? t.status().name() : "")).append(",");
+            sb.append(escapeCsv(t.priority() != null ? t.priority().name() : "")).append(",");
+            sb.append(escapeCsv(t.category())).append(",");
+            sb.append(escapeCsv(t.createdBy() != null ? t.createdBy().email() : "")).append(",");
+            sb.append(escapeCsv(t.assignedAgent() != null ? t.assignedAgent().email() : "")).append(",");
+            sb.append(escapeCsv(t.createdAt() != null ? t.createdAt().toString() : "")).append(",");
+            sb.append(escapeCsv(t.resolvedAt() != null ? t.resolvedAt().toString() : "")).append("\n");
+        }
+
+        byte[] bytes = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv"));
+        headers.setContentDispositionFormData("attachment", "tickets.csv");
+        headers.setContentLength(bytes.length);
+        return ResponseEntity.ok().headers(headers).body(bytes);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     @PostMapping("/bulk")
