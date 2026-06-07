@@ -30,21 +30,20 @@
   --header-height: 64px;
 }
 
-// Angular Material 18 M3 theme
-html {
-  @include mat.theme((
-    color: (
-      theme-type: light,
-      primary: mat.$azure-palette,
-      tertiary: mat.$blue-palette,
-    ),
-    typography: (
-      plain-family: 'Inter, sans-serif',
-      brand-family: 'Sora, sans-serif',
-    ),
-    density: 0,
-  ));
-}
+// Angular Material theme (M2 API, compatible with all AM versions)
+@include mat.core();
+
+$_primary: mat.m2-define-palette(mat.$m2-blue-palette, 600);
+$_accent:  mat.m2-define-palette(mat.$m2-indigo-palette, A200);
+$_warn:    mat.m2-define-palette(mat.$m2-red-palette);
+
+$_theme: mat.m2-define-light-theme((
+  color: (primary: $_primary, accent: $_accent, warn: $_warn),
+  typography: mat.m2-define-typography-config($font-family: 'Inter, sans-serif'),
+  density: 0,
+));
+
+@include mat.all-component-themes($_theme);
 
 // Base styles
 * { box-sizing: border-box; }
