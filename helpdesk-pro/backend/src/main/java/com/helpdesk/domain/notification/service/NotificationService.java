@@ -168,7 +168,7 @@ public class NotificationService {
             helper.setFrom("noreply@helpdesk.com");
             helper.setText(htmlBody, true);
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.warn("Failed to send email to {}: {}", to, e.getMessage());
         }
     }
