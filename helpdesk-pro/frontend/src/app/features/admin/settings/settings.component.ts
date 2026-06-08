@@ -49,6 +49,14 @@ import { SettingsService } from '../../../core/services/settings.service';
                   </div>
                 </div>
 
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Auto-assign New Tickets</label>
+                    <div class="flex items-center gap-3 mt-1">
+                      <p-toggle-switch [(ngModel)]="autoAssignTickets" (onChange)="saveAutoAssign($event.checked)" />
+                      <span class="text-sm text-slate-500">Automatically assign tickets to the agent with fewest open tickets</span>
+                    </div>
+                  </div>
+
                 <div *ngIf="generalSaved()"
                      class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
                      style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
@@ -170,6 +178,7 @@ export class SettingsComponent implements OnInit {
   saving = signal(false);
   generalSaved = signal(false);
   notifSaved = signal(false);
+  autoAssignTickets = false;
 
   // Business hours
   bhStart = '09:00';
@@ -199,6 +208,7 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.settingsService.getSettings().subscribe(s => {
       this.generalForm.patchValue({ companyName: s.companyName, supportEmail: s.supportEmail });
+      this.autoAssignTickets = s.autoAssignTickets || false;
       if (s.businessHoursStart) this.bhStart = s.businessHoursStart;
       if (s.businessHoursEnd) this.bhEnd = s.businessHoursEnd;
       if (s.businessTimezone) this.bhTimezone = s.businessTimezone;
@@ -239,6 +249,13 @@ export class SettingsComponent implements OnInit {
         setTimeout(() => this.bhSaved.set(false), 3000);
       },
       error: () => this.bhSaving.set(false),
+    });
+  }
+
+  saveAutoAssign(enabled: boolean) {
+    this.settingsService.updateSettings({ autoAssignTickets: enabled } as any).subscribe(() => {
+      this.generalSaved.set(true);
+      setTimeout(() => this.generalSaved.set(false), 3000);
     });
   }
 

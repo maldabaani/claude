@@ -13,6 +13,7 @@ export interface AppSettings {
   notifyStatusChanged: boolean;
   notifyTicketAssigned: boolean;
   notifySlaBreached: boolean;
+  autoAssignTickets: boolean;
   businessHoursStart: string;
   businessHoursEnd: string;
   businessDays: string;
