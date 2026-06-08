@@ -27,7 +27,7 @@ public class PreAuthorizationController {
 
     private final PreAuthorizationService preAuthorizationService;
 
-    @PostMapping("/")
+    @PostMapping
     @PreAuthorize("hasAuthority('BILLING_WRITE')")
     public ResponseEntity<PreAuthorizationResponse> create(
             @Valid @RequestBody CreatePreAuthRequest req,
@@ -41,7 +41,7 @@ public class PreAuthorizationController {
         return ResponseEntity.ok(preAuthorizationService.listByPatient(patientId));
     }
 
-    @GetMapping("/")
+    @GetMapping
     @PreAuthorize("hasAuthority('BILLING_READ')")
     public ResponseEntity<List<PreAuthorizationResponse>> listAll(
             @RequestParam(required = false) PreAuthorizationStatus status) {

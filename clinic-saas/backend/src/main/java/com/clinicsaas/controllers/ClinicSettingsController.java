@@ -20,13 +20,13 @@ public class ClinicSettingsController {
 
     private final ClinicSettingsService clinicSettingsService;
 
-    @GetMapping("/")
+    @GetMapping
     @PreAuthorize("hasAuthority('SETTINGS_READ') or hasAuthority('SETTINGS_WRITE')")
     public ResponseEntity<ClinicSettingsResponse> getAll() {
         return ResponseEntity.ok(clinicSettingsService.getAll());
     }
 
-    @PutMapping("/")
+    @PutMapping
     @PreAuthorize("hasAuthority('SETTINGS_WRITE')")
     public ResponseEntity<ClinicSettingsResponse> update(@RequestBody UpdateSettingsRequest req) {
         return ResponseEntity.ok(clinicSettingsService.update(req));

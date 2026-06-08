@@ -1,6 +1,7 @@
 package com.clinicsaas.exceptions;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -68,6 +69,18 @@ public class GlobalExceptionHandler {
         pd.setType(URI.create("/errors/forbidden"));
         pd.setTitle("Access Denied");
         pd.setDetail("You do not have permission to perform this action");
+        pd.setProperty("timestamp", Instant.now());
+        return pd;
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
+        String detail = ex.getMostSpecificCause().getMessage();
+        boolean isDuplicate = detail != null && detail.contains("duplicate key");
+        ProblemDetail pd = ProblemDetail.forStatus(isDuplicate ? HttpStatus.CONFLICT : HttpStatus.UNPROCESSABLE_ENTITY);
+        pd.setType(URI.create(isDuplicate ? "/errors/conflict" : "/errors/constraint"));
+        pd.setTitle(isDuplicate ? "Duplicate Entry" : "Constraint Violation");
+        pd.setDetail(isDuplicate ? "A record with the same unique identifier already exists" : "Data constraint violation");
         pd.setProperty("timestamp", Instant.now());
         return pd;
     }

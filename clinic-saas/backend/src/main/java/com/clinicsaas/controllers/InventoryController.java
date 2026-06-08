@@ -28,7 +28,7 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    @GetMapping("/")
+    @GetMapping
     @PreAuthorize("hasAuthority('SETTINGS_READ')")
     public ResponseEntity<List<InventoryItemResponse>> listAll(
             @RequestParam(required = false) InventoryCategory category) {
@@ -41,7 +41,7 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.listLowStock());
     }
 
-    @PostMapping("/")
+    @PostMapping
     @PreAuthorize("hasAuthority('SETTINGS_WRITE')")
     public ResponseEntity<InventoryItemResponse> create(@Valid @RequestBody CreateInventoryItemRequest req) {
         return ResponseEntity.status(201).body(inventoryService.create(req));
