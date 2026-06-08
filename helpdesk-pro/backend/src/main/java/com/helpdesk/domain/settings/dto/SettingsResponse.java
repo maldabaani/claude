@@ -7,5 +7,6 @@ public record SettingsResponse(
         boolean notifyCommentAdded,
         boolean notifyStatusChanged,
         boolean notifyTicketAssigned,
-        boolean notifySlaBreached
+        boolean notifySlaBreached,
+        boolean autoAssignTickets
 ) {}

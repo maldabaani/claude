@@ -1,6 +1,9 @@
 package com.helpdesk.domain.ticket.service;
 
+import com.helpdesk.domain.csat.repository.CsatRatingRepository;
 import com.helpdesk.domain.notification.service.NotificationService;
+import com.helpdesk.domain.settings.repository.SystemSettingRepository;
+import com.helpdesk.domain.webhook.WebhookService;
 import com.helpdesk.domain.sla.repository.SlaPolicyRepository;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
@@ -44,6 +47,9 @@ public class TicketService {
     private final UserService userService;
     private final AuditLogService auditLogService;
     private final CommentRepository commentRepository;
+    private final CsatRatingRepository csatRatingRepository;
+    private final SystemSettingRepository systemSettingRepository;
+    private final WebhookService webhookService;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -69,6 +75,7 @@ public class TicketService {
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketCreated(saved);
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
+        webhookService.fireEvent("ticket.created", toResponse(saved));
         return toResponse(saved);
     }
 
@@ -126,6 +133,13 @@ public class TicketService {
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyStatusChanged(saved);
         auditLogService.log("TICKET", saved.getId(), "STATUS_CHANGED", null, null, "{\"status\":\"" + newStatus.name() + "\"}");
+        webhookService.fireEvent("ticket.updated", toResponse(saved));
+        if (newStatus == TicketStatus.RESOLVED || newStatus == TicketStatus.CLOSED) {
+            boolean noRating = csatRatingRepository.findByTicketId(saved.getId()).isEmpty();
+            if (noRating) {
+                try { notificationService.sendCsatSurvey(saved); } catch (Exception e) {}
+            }
+        }
         return toResponse(saved);
     }
 
@@ -194,12 +208,25 @@ public class TicketService {
     }
 
     private void autoAssign(Ticket ticket) {
-        if (ticket.getDepartmentId() == null) return;
-        List<User> agents = userRepository.findActiveAgentsByDepartment(ticket.getDepartmentId());
+        boolean enabled = Boolean.parseBoolean(
+            systemSettingRepository.findById("autoAssignTickets").map(s -> s.getValue()).orElse("false"));
+        if (!enabled) return;
+
+        List<User> agents;
+        if (ticket.getDepartmentId() != null) {
+            agents = userRepository.findActiveAgentsByDepartment(ticket.getDepartmentId());
+        } else {
+            agents = userRepository.findAllActiveAgents();
+        }
         if (agents.isEmpty()) return;
-        List<Object[]> loads = ticketRepository.findAgentLoadByDepartment(ticket.getDepartmentId());
-        UUID leastLoaded = loads.isEmpty() ? agents.get(0).getId() : (UUID) loads.get(0)[0];
-        ticket.setAssignedAgentId(leastLoaded);
+
+        // Find agent with fewest open tickets
+        UUID leastLoadedAgent = agents.stream()
+            .min(java.util.Comparator.comparingLong(a -> ticketRepository.countOpenByAgent(a.getId())))
+            .map(User::getId)
+            .orElse(null);
+        if (leastLoadedAgent == null) return;
+        ticket.setAssignedAgentId(leastLoadedAgent);
         ticket.setStatus(TicketStatus.OPEN);
     }
 

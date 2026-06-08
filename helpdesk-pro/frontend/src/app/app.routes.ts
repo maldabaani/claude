@@ -51,6 +51,11 @@ export const routes: Routes = [
       { path: 'analytics', loadComponent: () => import('./features/admin/analytics/analytics.component').then(m => m.AnalyticsComponent) },
       { path: 'kb', loadComponent: () => import('./features/admin/knowledge-base/knowledge-base.component').then(m => m.AdminKbComponent) },
       { path: 'audit', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent) },
+      { path: 'custom-fields', loadComponent: () => import('./features/admin/custom-fields/custom-fields.component').then(m => m.CustomFieldsComponent) },
+      { path: 'sla-rules', loadComponent: () => import('./features/admin/sla-rules/sla-rules.component').then(m => m.SlaRulesComponent) },
+      { path: 'templates', loadComponent: () => import('./features/admin/templates/templates.component').then(m => m.TemplatesComponent) },
+      { path: 'webhooks', loadComponent: () => import('./features/admin/webhooks/webhooks.component').then(m => m.WebhooksComponent) },
+      { path: 'api-keys', loadComponent: () => import('./features/admin/api-keys/api-keys.component').then(m => m.ApiKeysComponent) },
     ],
   },
   {
@@ -60,6 +65,11 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ],
+  },
+  {
+    path: 'rate/:ticketId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/csat/csat-rating.component').then(m => m.CsatRatingComponent),
   },
   { path: '**', redirectTo: '/login' },
 ];

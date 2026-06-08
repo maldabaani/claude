@@ -11,6 +11,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -31,6 +32,9 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final JavaMailSender mailSender;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     public void notifyTicketCreated(Ticket ticket) {
         String msg = "New ticket created: " + ticket.getTicketNumber();
@@ -99,6 +103,21 @@ public class NotificationService {
         if (ticket.getAssignedAgentId() != null && !comment.getAuthorId().equals(ticket.getAssignedAgentId())) {
             createAndSend(ticket.getAssignedAgentId(), "COMMENT_ADDED", ticket.getId(), msg);
         }
+    }
+
+    public void sendCsatSurvey(Ticket ticket) {
+        userRepository.findById(ticket.getCreatedById()).ifPresent(customer -> {
+            String ratingUrl = frontendUrl + "/rate/" + ticket.getId();
+            String subject = "How did we do? Rate your support experience";
+            String details = "Ticket: <strong>" + ticket.getTitle() + "</strong><br>" +
+                "Reference: " + ticket.getTicketNumber() + "<br><br>" +
+                "<a href=\"" + ratingUrl + "\" style=\"display:inline-block;background:#2563EB;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600\">Rate Your Experience</a>";
+            String body = buildEmail("How did we do?",
+                "Hi " + customer.getFullName() + ",",
+                "Please take a moment to rate your support experience.",
+                details);
+            sendEmail(customer.getEmail(), subject, body);
+        });
     }
 
     public void notifySlaBreached(Ticket ticket) {

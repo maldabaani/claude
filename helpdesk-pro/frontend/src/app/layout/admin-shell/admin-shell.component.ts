@@ -168,6 +168,11 @@ export class AdminShellComponent {
     { path: '/admin/analytics', icon: 'pi-chart-line', label: 'Analytics', exact: false },
     { path: '/admin/kb', icon: 'pi-book', label: 'Knowledge Base', exact: false },
     { path: '/admin/audit', icon: 'pi-list', label: 'Audit Log', exact: false },
+    { path: '/admin/custom-fields', icon: 'pi-sliders-h', label: 'Custom Fields', exact: false },
+    { path: '/admin/sla-rules', icon: 'pi-clock', label: 'SLA Rules', exact: false },
+    { path: '/admin/templates', icon: 'pi-file', label: 'Templates', exact: false },
+    { path: '/admin/webhooks', icon: 'pi-link', label: 'Webhooks', exact: false },
+    { path: '/admin/api-keys', icon: 'pi-key', label: 'API Keys', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 

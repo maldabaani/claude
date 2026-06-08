@@ -28,7 +28,8 @@ public class SettingsService {
                 Boolean.parseBoolean(map.getOrDefault("notify_comment_added", "true")),
                 Boolean.parseBoolean(map.getOrDefault("notify_status_changed", "true")),
                 Boolean.parseBoolean(map.getOrDefault("notify_ticket_assigned", "true")),
-                Boolean.parseBoolean(map.getOrDefault("notify_sla_breached", "true"))
+                Boolean.parseBoolean(map.getOrDefault("notify_sla_breached", "true")),
+                Boolean.parseBoolean(map.getOrDefault("autoAssignTickets", "false"))
         );
     }
 
@@ -41,6 +42,7 @@ public class SettingsService {
         if (req.notifyStatusChanged() != null)   set("notify_status_changed", String.valueOf(req.notifyStatusChanged()));
         if (req.notifyTicketAssigned() != null)  set("notify_ticket_assigned", String.valueOf(req.notifyTicketAssigned()));
         if (req.notifySlaBreached() != null)     set("notify_sla_breached", String.valueOf(req.notifySlaBreached()));
+        if (req.autoAssignTickets() != null)     set("autoAssignTickets", String.valueOf(req.autoAssignTickets()));
         return getAll();
     }
 

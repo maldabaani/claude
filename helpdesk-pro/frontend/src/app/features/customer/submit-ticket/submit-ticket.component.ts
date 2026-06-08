@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -8,12 +8,13 @@ import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
 import { TicketService } from '../../../core/services/ticket.service';
 import { DepartmentService } from '../../../core/services/department.service';
+import { TemplateService, TicketTemplate } from '../../../core/services/template.service';
 import { Department } from '../../../core/models';
 
 @Component({
   selector: 'app-submit-ticket',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule,
     ButtonModule, InputTextModule, SelectModule, TextareaModule],
   template: `
     <div class="max-w-2xl mx-auto">
@@ -50,6 +51,20 @@ import { Department } from '../../../core/models';
 
         <!-- Form body -->
         <form [formGroup]="form" (ngSubmit)="submit()" class="px-8 py-7 space-y-5">
+
+          <!-- Template selector -->
+          <div *ngIf="templates().length > 0">
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <i class="pi pi-file text-blue-500 mr-1" style="font-size:14px"></i>
+              Use a template
+            </label>
+            <p-select [options]="templateOptions" [(ngModel)]="selectedTemplateId"
+                      (ngModelChange)="applyTemplate($event)"
+                      [ngModelOptions]="{standalone: true}"
+                      optionLabel="label" optionValue="value"
+                      placeholder="Select a template to pre-fill the form"
+                      class="w-full" />
+          </div>
 
           <!-- Subject -->
           <div>
@@ -137,6 +152,9 @@ export class SubmitTicketComponent implements OnInit {
   });
 
   departments = signal<Department[]>([]);
+  templates = signal<TicketTemplate[]>([]);
+  selectedTemplateId: string | null = null;
+  templateOptions: { label: string; value: string }[] = [];
   loading = false;
   error = '';
   success = signal(false);
@@ -154,6 +172,7 @@ export class SubmitTicketComponent implements OnInit {
     private fb: FormBuilder,
     private ticketService: TicketService,
     private departmentService: DepartmentService,
+    private templateService: TemplateService,
     private router: Router,
   ) {}
 
@@ -164,6 +183,22 @@ export class SubmitTicketComponent implements OnInit {
         { label: 'No preference', value: null },
         ...page.content.map((d: Department) => ({ label: d.name, value: d.id }))
       ];
+    });
+    this.templateService.getTemplates().subscribe(tmplList => {
+      this.templates.set(tmplList);
+      this.templateOptions = tmplList.map(t => ({ label: t.name, value: t.id }));
+    });
+  }
+
+  applyTemplate(templateId: string | null) {
+    if (!templateId) return;
+    const tmpl = this.templates().find(t => t.id === templateId);
+    if (!tmpl) return;
+    this.form.patchValue({
+      title: tmpl.subject || '',
+      description: tmpl.description || '',
+      priority: tmpl.priority || 'MEDIUM',
+      category: tmpl.category || '',
     });
   }
 

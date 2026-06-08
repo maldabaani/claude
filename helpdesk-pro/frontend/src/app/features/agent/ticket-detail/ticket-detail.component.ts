@@ -11,10 +11,13 @@ import { TextareaModule } from 'primeng/textarea';
 import { PopoverModule } from 'primeng/popover';
 import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
+import { DatePickerModule } from 'primeng/datepicker';
+import { CheckboxModule } from 'primeng/checkbox';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
+import { CustomFieldService, CustomField } from '../../../core/services/custom-field.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -27,7 +30,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
     ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
-    PopoverModule, InputTextModule, DialogModule,
+    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -356,6 +359,46 @@ import { environment } from '../../../../environments/environment';
                   </button>
                 </div>
               </div>
+
+              <!-- Custom Fields -->
+              <div *ngIf="customFields().length > 0" style="border-top:1px solid #F1F5F9;padding-top:16px">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Custom Fields</label>
+                <div class="space-y-3">
+                  <div *ngFor="let field of customFields()">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">
+                      {{ field.name }}
+                      <span *ngIf="field.required" class="text-red-400 ml-0.5">*</span>
+                    </label>
+                    <!-- TEXT -->
+                    <input *ngIf="field.fieldType === 'TEXT'"
+                           class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                           style="font-family:inherit"
+                           [ngModel]="customValues()[field.fieldKey]"
+                           (ngModelChange)="onCustomValueChange(field.fieldKey, $event)"
+                           (blur)="saveCustomValues()"
+                           placeholder="{{ field.name }}" />
+                    <!-- DROPDOWN -->
+                    <p-select *ngIf="field.fieldType === 'DROPDOWN'"
+                              [options]="field.options"
+                              [ngModel]="customValues()[field.fieldKey]"
+                              (ngModelChange)="onCustomValueChangeAndSave(field.fieldKey, $event)"
+                              class="w-full" />
+                    <!-- DATE -->
+                    <p-datepicker *ngIf="field.fieldType === 'DATE'"
+                                  [ngModel]="customDateValues()[field.fieldKey]"
+                                  (ngModelChange)="onCustomDateChange(field.fieldKey, $event)"
+                                  dateFormat="yy-mm-dd"
+                                  class="w-full" />
+                    <!-- CHECKBOX -->
+                    <div *ngIf="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2">
+                      <p-checkbox [ngModel]="customValues()[field.fieldKey] === 'true'"
+                                  (ngModelChange)="onCustomValueChangeAndSave(field.fieldKey, $event ? 'true' : 'false')"
+                                  [binary]="true" />
+                      <span class="text-xs text-gray-600">{{ field.name }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -430,6 +473,11 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   // Watchers
   watchers = signal<string[]>([]);
 
+  // Custom fields
+  customFields = signal<CustomField[]>([]);
+  customValues = signal<Record<string, string>>({});
+  customDateValues = signal<Record<string, Date | null>>({});
+
   // Merge
   mergeDialogVisible = false;
   mergeSearch = signal('');
@@ -498,6 +546,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private userService: UserService,
     private departmentService: DepartmentService,
     private cannedResponseService: CannedResponseService,
+    private customFieldService: CustomFieldService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -564,6 +613,13 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.departmentService.getDepartments().subscribe(p => this.departments.set(p.content));
     this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
     this.ticketService.getWatchers(id).subscribe(w => this.watchers.set(w));
+    this.customFieldService.getFields().subscribe(fields => this.customFields.set(fields));
+    this.customFieldService.getValues(id).subscribe(vals => {
+      this.customValues.set(vals);
+      const dates: Record<string, Date | null> = {};
+      Object.entries(vals).forEach(([k, v]) => { if (v) dates[k] = new Date(v); });
+      this.customDateValues.set(dates);
+    });
 
     // Presence: record and poll
     this.ticketService.recordPresence(id).subscribe();
@@ -696,6 +752,27 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       },
       error: () => { this.merging = false; },
     });
+  }
+
+  onCustomValueChange(key: string, value: string) {
+    this.customValues.update(vals => ({ ...vals, [key]: value }));
+  }
+
+  onCustomValueChangeAndSave(key: string, value: string) {
+    this.onCustomValueChange(key, value);
+    this.saveCustomValues();
+  }
+
+  onCustomDateChange(key: string, date: Date | null) {
+    this.customDateValues.update(d => ({ ...d, [key]: date }));
+    const value = date ? date.toISOString().substring(0, 10) : '';
+    this.onCustomValueChangeAndSave(key, value);
+  }
+
+  saveCustomValues() {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.customFieldService.saveValues(id, this.customValues()).subscribe();
   }
 
   topBarClass(): string {

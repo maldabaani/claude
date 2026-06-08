@@ -25,6 +25,6 @@ public class SettingsController {
     @PutMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SettingsResponse>> update(@RequestBody SettingsRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(settingsService.update(request)));
+        return ResponseEntity.ok(ApiResponse.ok(settingsService.update(request)));
     }
 }

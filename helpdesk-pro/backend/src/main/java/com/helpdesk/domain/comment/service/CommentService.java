@@ -5,6 +5,7 @@ import com.helpdesk.domain.comment.dto.CreateCommentRequest;
 import com.helpdesk.domain.comment.entity.Comment;
 import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.notification.service.NotificationService;
+import com.helpdesk.domain.webhook.WebhookService;
 import com.helpdesk.domain.ticket.entity.Ticket;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.ticket.repository.TicketRepository;
@@ -31,6 +32,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final UserService userService;
+    private final WebhookService webhookService;
 
     @Transactional
     public CommentResponse create(UUID ticketId, CreateCommentRequest request, User author) {
@@ -58,6 +60,7 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
         notificationService.notifyCommentAdded(ticket, saved);
+        webhookService.fireEvent("comment.added", toResponse(saved));
         return toResponse(saved);
     }
 
