@@ -89,6 +89,18 @@ export const routes: Routes = [
           import('./features/billing/billing.routes').then(m => m.BILLING_ROUTES)
       },
       {
+        path: 'settings',
+        canActivate: [permissionGuard('SETTINGS_WRITE')],
+        loadChildren: () =>
+          import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+      },
+      {
+        path: 'inventory',
+        canActivate: [permissionGuard('SETTINGS_READ')],
+        loadChildren: () =>
+          import('./features/inventory/inventory.routes').then(m => m.INVENTORY_ROUTES)
+      },
+      {
         path: 'platform',
         loadChildren: () =>
           import('./features/platform/platform.routes').then(m => m.PLATFORM_ROUTES)

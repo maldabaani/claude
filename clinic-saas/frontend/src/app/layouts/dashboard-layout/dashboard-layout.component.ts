@@ -100,6 +100,8 @@ export class DashboardLayoutComponent implements OnInit {
       // Admin-only
       if (has('REPORTS_READ'))        base.push({ label: 'Reports',       icon: 'pi pi-chart-bar',    routerLink: '/dashboard/reports' });
       if (has('STAFF_READ'))          base.push({ label: 'Staff',         icon: 'pi pi-id-card',      routerLink: '/dashboard/staff' });
+      if (has('SETTINGS_READ') || has('SETTINGS_WRITE')) base.push({ label: 'Inventory', icon: 'pi pi-box',      routerLink: '/dashboard/inventory' });
+      if (has('SETTINGS_WRITE'))      base.push({ label: 'Settings',      icon: 'pi pi-cog',          routerLink: '/dashboard/settings' });
     }
     return base;
   }

@@ -355,6 +355,51 @@
       }
     </p-tabPanel>
 
+    <!-- DOCUMENTS TAB -->
+    <p-tabPanel header="Documents ({{ documents().length }})">
+      <div class="flex justify-content-between align-items-center mb-3">
+        <div class="flex gap-2 align-items-center">
+          <label class="text-sm">Type:</label>
+          <select [ngModel]="selectedDocType()" (ngModelChange)="selectedDocType.set($event)" class="p-inputtext p-inputtext-sm">
+            @for (t of docTypes; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+          <input pInputText placeholder="Description..." [ngModel]="docDescription()" (ngModelChange)="docDescription.set($event)" class="p-inputtext-sm" style="width:200px" />
+        </div>
+        <label class="p-button p-button-sm p-button-outlined" style="cursor:pointer">
+          <i class="pi pi-upload mr-1"></i> Upload
+          <input type="file" hidden (change)="uploadDocument($event)" />
+        </label>
+      </div>
+      @if (loadingDocs()) {
+        <p-skeleton height="80px" />
+      } @else if (documents().length === 0) {
+        <p class="text-center p-4" style="color:var(--text-color-secondary)">No documents uploaded.</p>
+      } @else {
+        <p-table [value]="documents()" styleClass="p-datatable-sm" responsiveLayout="scroll">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>File Name</th><th>Type</th><th>Description</th><th>Size</th><th>Uploaded</th><th></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-doc>
+            <tr>
+              <td class="font-medium">{{ doc.fileName }}</td>
+              <td><p-tag [value]="doc.documentType" severity="info" /></td>
+              <td>{{ doc.description || '—' }}</td>
+              <td>{{ doc.fileSize ? (doc.fileSize / 1024 | number:'1.0-0') + ' KB' : '—' }}</td>
+              <td>{{ doc.createdAt | date:'dd MMM yyyy' }}</td>
+              <td>
+                <button pButton icon="pi pi-download" class="p-button-text p-button-sm" (click)="downloadDocument(doc)"></button>
+                <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" (click)="deleteDocument(doc.id)"></button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </p-tabPanel>
+
   </p-tabView>
 
   } <!-- end loading else -->

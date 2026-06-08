@@ -233,6 +233,15 @@ export class PatientDetailComponent implements OnInit {
   savingPayment  = signal(false);
   selectedInvoice = signal<any>(null);
 
+  // ── Documents state ────────────────────────────────────────
+  documents       = signal<any[]>([]);
+  loadingDocs     = signal(false);
+  showUploadDoc   = signal(false);
+  uploadingDoc    = signal(false);
+  selectedDocType = signal('OTHER');
+  docDescription  = signal('');
+  docTypes = ['CONSENT', 'LAB_REPORT', 'RADIOLOGY_REPORT', 'PRESCRIPTION', 'REFERRAL', 'INSURANCE', 'ID', 'OTHER'];
+
   // ── Insurance state ────────────────────────────────────────
   policies         = signal<InsurancePolicy[]>([]);
   payers           = signal<InsurancePayer[]>([]);
@@ -412,9 +421,10 @@ export class PatientDetailComponent implements OnInit {
       allergies: this.svc.getAllergies(id).pipe(catchError(() => of([]))),
       history:   this.svc.getMedicalHistory(id).pipe(catchError(() => of([]))),
       vitals:    this.visitSvc.getVitalsByPatient(id).pipe(catchError(() => of([]))),
-      policies:  this.insuranceSvc.getPoliciesByPatient(id).pipe(catchError(() => of([])))
+      policies:  this.insuranceSvc.getPoliciesByPatient(id).pipe(catchError(() => of([]))),
+      docs:      this.http.get<any[]>('/api/v1/documents/patient/' + id).pipe(catchError(() => of([])))
     }).subscribe({
-      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history, vitals, policies }) => {
+      next: ({ patient, visits, labs, rxs, inv, rad, allergies, history, vitals, policies, docs }) => {
         this.patient.set(patient);
         this.visits.set((visits as any).content ?? visits);
         this.labOrders.set(labs as LabOrderResponse[]);
@@ -425,6 +435,7 @@ export class PatientDetailComponent implements OnInit {
         this.medHistory.set(history as any[]);
         this.vitalsHistory.set(vitals as any[]);
         this.policies.set(policies as InsurancePolicy[]);
+        this.documents.set(docs as any[]);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -650,5 +661,51 @@ export class PatientDetailComponent implements OnInit {
     const p = this.patient();
     if (!p) return;
     this.pdf.printPrescription(rx, { firstName: p.firstName, lastName: p.lastName, medicalRecordNumber: p.medicalRecordNumber, dateOfBirth: p.dateOfBirth });
+  }
+
+  uploadDocument(event: any) {
+    const file: File = event.target.files?.[0];
+    if (!file) return;
+    const patientId = this.patient()?.id;
+    if (!patientId) return;
+    this.uploadingDoc.set(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', this.selectedDocType());
+    formData.append('description', this.docDescription());
+    this.http.post<any>(`/api/v1/documents/patient/${patientId}`, formData)
+      .pipe(catchError(() => {
+        this.msg.add({ severity: 'error', summary: 'Failed to upload document' });
+        this.uploadingDoc.set(false);
+        return of(null);
+      }))
+      .subscribe(doc => {
+        if (doc) {
+          this.documents.update(list => [doc, ...list]);
+          this.msg.add({ severity: 'success', summary: 'Document uploaded' });
+          this.docDescription.set('');
+        }
+        this.uploadingDoc.set(false);
+        // Reset file input
+        event.target.value = '';
+      });
+  }
+
+  downloadDocument(doc: any) {
+    window.open('/api/v1/documents/' + doc.id + '/download', '_blank');
+  }
+
+  deleteDocument(docId: string) {
+    this.http.delete(`/api/v1/documents/${docId}`)
+      .pipe(catchError(() => {
+        this.msg.add({ severity: 'error', summary: 'Failed to delete document' });
+        return of(null);
+      }))
+      .subscribe(result => {
+        if (result !== null) {
+          this.documents.update(list => list.filter(d => d.id !== docId));
+          this.msg.add({ severity: 'success', summary: 'Document deleted' });
+        }
+      });
   }
 }
