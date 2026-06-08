@@ -9,6 +9,17 @@ spring:
         format_sql: false
         jdbc:
           time_zone: UTC
+  mail:
+    host: ${MAIL_SMTP_HOST:localhost}
+    port: ${MAIL_SMTP_PORT:587}
+    username: ${MAIL_SMTP_USER:}
+    password: ${MAIL_SMTP_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 management:
   endpoints:
@@ -56,3 +67,6 @@ app:
     port: ${POSTGRES_PORT:5432}
     admin-user: ${POSTGRES_ADMIN_USER}
     admin-password: ${POSTGRES_ADMIN_PASSWORD}
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:noreply@clinic.local}

@@ -10,12 +10,12 @@ import java.util.UUID;
 
 public record PreAuthorizationResponse(
         UUID id,
-        String preauthNumber,
         UUID patientId,
         UUID insurancePolicyId,
-        String payerName,
         String policyNumber,
+        String payerName,
         UUID visitId,
+        String preauthNumber,
         String serviceDescription,
         String icdCode,
         BigDecimal estimatedAmount,
@@ -29,28 +29,28 @@ public record PreAuthorizationResponse(
         UUID requestedBy,
         LocalDateTime createdAt
 ) {
-    public static PreAuthorizationResponse from(PreAuthorization preAuth) {
-        var policy = preAuth.getInsurancePolicy();
+    public static PreAuthorizationResponse from(PreAuthorization pa) {
+        var policy = pa.getInsurancePolicy();
         return new PreAuthorizationResponse(
-                preAuth.getId(),
-                preAuth.getPreauthNumber(),
-                preAuth.getPatientId(),
+                pa.getId(),
+                pa.getPatientId(),
                 policy != null ? policy.getId() : null,
-                policy != null && policy.getPayer() != null ? policy.getPayer().getName() : null,
                 policy != null ? policy.getPolicyNumber() : null,
-                preAuth.getVisitId(),
-                preAuth.getServiceDescription(),
-                preAuth.getIcdCode(),
-                preAuth.getEstimatedAmount(),
-                preAuth.getStatus(),
-                preAuth.getApprovalNumber(),
-                preAuth.getValidUntil(),
-                preAuth.getRejectionReason(),
-                preAuth.getNotes(),
-                preAuth.getSubmittedAt(),
-                preAuth.getProcessedAt(),
-                preAuth.getRequestedBy(),
-                preAuth.getCreatedAt()
+                policy != null && policy.getPayer() != null ? policy.getPayer().getName() : null,
+                pa.getVisitId(),
+                pa.getPreauthNumber(),
+                pa.getServiceDescription(),
+                pa.getIcdCode(),
+                pa.getEstimatedAmount(),
+                pa.getStatus(),
+                pa.getApprovalNumber(),
+                pa.getValidUntil(),
+                pa.getRejectionReason(),
+                pa.getNotes(),
+                pa.getSubmittedAt(),
+                pa.getProcessedAt(),
+                pa.getRequestedBy(),
+                pa.getCreatedAt()
         );
     }
 }
