@@ -16,6 +16,7 @@ import com.helpdesk.domain.user.repository.UserRepository;
 import com.helpdesk.domain.user.service.UserService;
 import com.helpdesk.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,17 +72,27 @@ public class CommentService {
     }
 
     @Transactional
-    public CommentResponse update(UUID ticketId, UUID commentId, String body) {
+    public CommentResponse update(UUID ticketId, UUID commentId, String body, User currentUser) {
         Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!comment.getAuthorId().equals(currentUser.getId())
+                && currentUser.getRole() != Role.ADMIN
+                && currentUser.getRole() != Role.TEAM_LEAD) {
+            throw new AccessDeniedException("You are not allowed to update this comment");
+        }
         comment.setBody(body);
         return toResponse(commentRepository.save(comment));
     }
 
     @Transactional
-    public void delete(UUID ticketId, UUID commentId) {
+    public void delete(UUID ticketId, UUID commentId, User currentUser) {
         Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!comment.getAuthorId().equals(currentUser.getId())
+                && currentUser.getRole() != Role.ADMIN
+                && currentUser.getRole() != Role.TEAM_LEAD) {
+            throw new AccessDeniedException("You are not allowed to delete this comment");
+        }
         comment.softDelete();
         commentRepository.save(comment);
     }

@@ -7,6 +7,7 @@ import com.helpdesk.domain.user.entity.Role;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
 import com.helpdesk.shared.exception.ResourceNotFoundException;
+import com.helpdesk.shared.util.EncryptionUtil;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMultipart;
@@ -30,6 +31,7 @@ public class EmailInboxService {
     private final UserRepository userRepository;
     private final TicketService ticketService;
     private final PasswordEncoder passwordEncoder;
+    private final EncryptionUtil encryptionUtil;
 
     public List<EmailInboxDto> findAll() {
         return emailInboxRepository.findAll().stream().map(this::toDto).toList();
@@ -43,7 +45,7 @@ public class EmailInboxService {
                 .host(request.host())
                 .port(request.port() > 0 ? request.port() : 993)
                 .username(request.username())
-                .password(request.password())
+                .password(encryptionUtil.encrypt(request.password()))
                 .protocol(request.protocol() != null ? request.protocol() : "IMAP")
                 .useSsl(request.useSsl())
                 .defaultDepartmentId(request.defaultDepartmentId())
@@ -62,7 +64,7 @@ public class EmailInboxService {
         inbox.setPort(request.port() > 0 ? request.port() : 993);
         inbox.setUsername(request.username());
         if (request.password() != null && !request.password().isBlank()) {
-            inbox.setPassword(request.password());
+            inbox.setPassword(encryptionUtil.encrypt(request.password()));
         }
         inbox.setProtocol(request.protocol() != null ? request.protocol() : "IMAP");
         inbox.setUseSsl(request.useSsl());
@@ -83,7 +85,7 @@ public class EmailInboxService {
             Properties props = buildMailProperties(inbox);
             Session session = Session.getInstance(props);
             Store store = session.getStore(inbox.isUseSsl() ? "imaps" : "imap");
-            store.connect(inbox.getHost(), inbox.getPort(), inbox.getUsername(), inbox.getPassword());
+            store.connect(inbox.getHost(), inbox.getPort(), inbox.getUsername(), encryptionUtil.decrypt(inbox.getPassword()));
             store.close();
             return "Connection successful";
         } catch (Exception e) {
@@ -97,7 +99,7 @@ public class EmailInboxService {
             Properties props = buildMailProperties(inbox);
             Session session = Session.getInstance(props);
             Store store = session.getStore(inbox.isUseSsl() ? "imaps" : "imap");
-            store.connect(inbox.getHost(), inbox.getPort(), inbox.getUsername(), inbox.getPassword());
+            store.connect(inbox.getHost(), inbox.getPort(), inbox.getUsername(), encryptionUtil.decrypt(inbox.getPassword()));
 
             Folder folder = store.getFolder("INBOX");
             folder.open(Folder.READ_WRITE);

@@ -1,6 +1,7 @@
 package com.helpdesk.domain.emailinbox;
 
 import com.helpdesk.shared.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,13 +25,13 @@ public class EmailInboxController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<EmailInboxDto>> create(@RequestBody CreateEmailInboxRequest request) {
+    public ResponseEntity<ApiResponse<EmailInboxDto>> create(@Valid @RequestBody CreateEmailInboxRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Email inbox created", emailInboxService.create(request)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<EmailInboxDto>> update(
-            @PathVariable UUID id, @RequestBody CreateEmailInboxRequest request) {
+            @PathVariable UUID id, @Valid @RequestBody CreateEmailInboxRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Email inbox updated", emailInboxService.update(id, request)));
     }
 

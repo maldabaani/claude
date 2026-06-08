@@ -21,11 +21,13 @@ public class SlaPolicyController {
     private final SlaPolicyService slaPolicyService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<SlaPolicy>>> findAll(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.ok(slaPolicyService.findAll(pageable)));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SlaPolicy>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(slaPolicyService.findById(id)));
     }

@@ -21,11 +21,13 @@ public class DepartmentController {
     private final DepartmentService departmentService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<Department>>> findAll(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.ok(departmentService.findAll(pageable)));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Department>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(departmentService.findById(id)));
     }

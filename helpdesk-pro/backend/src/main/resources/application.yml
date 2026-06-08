@@ -41,12 +41,14 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-in-production-must-be-at-least-32-characters-long}
+    secret: ${JWT_SECRET:local-dev-secret-change-in-production-must-be-at-least-64-chars-long-abc123}
     access-expiry: 3600000
     refresh-expiry: 604800000
   upload:
     path: ${UPLOAD_PATH:./uploads}
   frontend-url: ${FRONTEND_URL:http://localhost:4200}
+  encryption:
+    key: ${ENCRYPTION_KEY:dev-encryption-key-32-chars-long!}
   sla:
     check-interval-ms: 300000
 

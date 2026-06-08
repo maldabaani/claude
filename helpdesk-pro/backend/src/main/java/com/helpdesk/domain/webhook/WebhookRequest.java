@@ -1,8 +1,11 @@
 package com.helpdesk.domain.webhook;
 
+import jakarta.validation.constraints.NotBlank;
+import org.hibernate.validator.constraints.URL;
+
 public record WebhookRequest(
-    String name,
-    String url,
+    @NotBlank String name,
+    @NotBlank @URL String url,
     String secret,
     String events,
     Boolean active

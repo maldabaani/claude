@@ -1,14 +1,15 @@
 package com.helpdesk.domain.emailinbox;
 
+import jakarta.validation.constraints.*;
 import java.util.UUID;
 
 public record CreateEmailInboxRequest(
-        String name,
-        String email,
-        String host,
-        int port,
-        String username,
-        String password,
+        @NotBlank String name,
+        @NotBlank @Email String email,
+        @NotBlank String host,
+        @Min(1) @Max(65535) int port,
+        @NotBlank String username,
+        @NotBlank String password,
         String protocol,
         boolean useSsl,
         UUID defaultDepartmentId,

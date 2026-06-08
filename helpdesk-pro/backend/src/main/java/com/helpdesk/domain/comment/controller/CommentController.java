@@ -8,6 +8,7 @@ import com.helpdesk.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,18 +39,22 @@ public class CommentController {
     }
 
     @PatchMapping("/{commentId}")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN', 'CUSTOMER')")
     public ResponseEntity<ApiResponse<CommentResponse>> update(
             @PathVariable UUID ticketId,
             @PathVariable UUID commentId,
-            @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(ApiResponse.ok("Comment updated", commentService.update(ticketId, commentId, body.get("body"))));
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok("Comment updated", commentService.update(ticketId, commentId, body.get("body"), currentUser)));
     }
 
     @DeleteMapping("/{commentId}")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN', 'CUSTOMER')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID ticketId,
-            @PathVariable UUID commentId) {
-        commentService.delete(ticketId, commentId);
+            @PathVariable UUID commentId,
+            @AuthenticationPrincipal User currentUser) {
+        commentService.delete(ticketId, commentId, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Comment deleted", null));
     }
 }

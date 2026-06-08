@@ -1,6 +1,7 @@
 package com.helpdesk.domain.webhook;
 
 import com.helpdesk.shared.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,7 +24,7 @@ public class WebhookController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Webhook>> create(@RequestBody WebhookRequest request) {
+    public ResponseEntity<ApiResponse<Webhook>> create(@Valid @RequestBody WebhookRequest request) {
         Webhook webhook = Webhook.builder()
             .name(request.name())
             .url(request.url())
@@ -35,7 +36,7 @@ public class WebhookController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Webhook>> update(@PathVariable UUID id, @RequestBody WebhookRequest request) {
+    public ResponseEntity<ApiResponse<Webhook>> update(@PathVariable UUID id, @Valid @RequestBody WebhookRequest request) {
         Webhook webhook = Webhook.builder()
             .name(request.name())
             .url(request.url())

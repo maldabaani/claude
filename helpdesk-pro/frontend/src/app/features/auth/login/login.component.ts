@@ -212,7 +212,7 @@ import { ApiResponse, AuthResponse } from '../../../core/models';
           </p>
 
           <!-- Demo credentials -->
-          <div class="mt-6 rounded-xl p-4" style="background:#EFF6FF;border:1px solid #BFDBFE">
+          <div *ngIf="showDemo" class="mt-6 rounded-xl p-4" style="background:#EFF6FF;border:1px solid #BFDBFE">
             <div class="flex items-center gap-2 mb-2">
               <i class="pi pi-info-circle" style="font-size:14px;color:#2563EB"></i>
               <p class="text-xs font-bold" style="color:#1D4ED8">Demo credentials</p>
@@ -238,6 +238,7 @@ export class LoginComponent {
   requiresTwoFactor = false;
   tempToken = '';
   totpCode = '';
+  showDemo = !environment.production;
 
   constructor(private fb: FormBuilder, private auth: AuthService, private http: HttpClient) {}
 

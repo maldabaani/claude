@@ -4,6 +4,7 @@ import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,11 +19,13 @@ public class TicketTaskController {
     private final TicketTaskService taskService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<TicketTaskDto>>> getTasks(@PathVariable UUID ticketId) {
         return ResponseEntity.ok(ApiResponse.ok(taskService.getTasks(ticketId)));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
     public ResponseEntity<ApiResponse<TicketTaskDto>> create(
             @PathVariable UUID ticketId,
             @RequestBody CreateTaskRequest request,
@@ -31,6 +34,7 @@ public class TicketTaskController {
     }
 
     @PatchMapping("/{taskId}")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
     public ResponseEntity<ApiResponse<TicketTaskDto>> toggleCompleted(
             @PathVariable UUID ticketId,
             @PathVariable UUID taskId) {
@@ -38,6 +42,7 @@ public class TicketTaskController {
     }
 
     @DeleteMapping("/{taskId}")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID ticketId,
             @PathVariable UUID taskId) {
