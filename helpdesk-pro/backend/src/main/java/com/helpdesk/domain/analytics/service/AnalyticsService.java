@@ -26,10 +26,20 @@ public class AnalyticsService {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM dd").withZone(ZoneId.systemDefault());
 
         List<AnalyticsResponse.DailyCount> daily = ticketRepository.countByDay(since).stream()
-            .map(row -> new AnalyticsResponse.DailyCount(
-                fmt.format(((java.sql.Timestamp) row[0]).toInstant()),
-                ((Number) row[1]).longValue()
-            )).toList();
+            .map(row -> {
+                Instant instant;
+                Object dateVal = row[0];
+                if (dateVal instanceof java.sql.Timestamp ts) {
+                    instant = ts.toInstant();
+                } else if (dateVal instanceof java.time.LocalDateTime ldt) {
+                    instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+                } else if (dateVal instanceof java.time.LocalDate ld) {
+                    instant = ld.atStartOfDay(ZoneId.systemDefault()).toInstant();
+                } else {
+                    instant = Instant.parse(dateVal.toString());
+                }
+                return new AnalyticsResponse.DailyCount(fmt.format(instant), ((Number) row[1]).longValue());
+            }).toList();
 
         double avgRes = ticketRepository.avgResolutionHours(since) != null
             ? Math.round(ticketRepository.avgResolutionHours(since) * 10.0) / 10.0 : 0.0;
