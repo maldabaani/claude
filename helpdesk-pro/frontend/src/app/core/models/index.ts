@@ -33,6 +33,7 @@ export interface Ticket {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  manualDueDate?: string;
 }
 
 export interface Comment {

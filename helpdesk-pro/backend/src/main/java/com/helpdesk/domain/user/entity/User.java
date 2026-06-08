@@ -43,6 +43,16 @@ public class User extends AuditableEntity implements UserDetails {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
+    @Column(name = "totp_secret", length = 100)
+    private String totpSecret;
+
+    @Column(name = "totp_enabled")
+    @Builder.Default
+    private boolean totpEnabled = false;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;

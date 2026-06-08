@@ -23,4 +23,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.role IN ('AGENT', 'TEAM_LEAD') AND u.active = true")
     List<User> findAllActiveAgents();
+
+    List<User> findByOrganizationId(UUID organizationId);
+
+    long countByOrganizationId(UUID organizationId);
+
+    @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.organizationId = :orgId")
+    List<User> findActiveByOrganizationId(UUID orgId);
 }

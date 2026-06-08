@@ -1,0 +1,1 @@
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS manual_due_date TIMESTAMP;

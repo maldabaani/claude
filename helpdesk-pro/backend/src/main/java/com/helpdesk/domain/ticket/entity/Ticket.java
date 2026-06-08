@@ -72,6 +72,9 @@ public class Ticket extends AuditableEntity {
     @Builder.Default
     private boolean slaBreached = false;
 
+    @Column(name = "manual_due_date")
+    private Instant manualDueDate;
+
     @ElementCollection
     @CollectionTable(name = "ticket_tags", joinColumns = @JoinColumn(name = "ticket_id"))
     @Column(name = "tag")

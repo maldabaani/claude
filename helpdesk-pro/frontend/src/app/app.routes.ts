@@ -56,6 +56,8 @@ export const routes: Routes = [
       { path: 'templates', loadComponent: () => import('./features/admin/templates/templates.component').then(m => m.TemplatesComponent) },
       { path: 'webhooks', loadComponent: () => import('./features/admin/webhooks/webhooks.component').then(m => m.WebhooksComponent) },
       { path: 'api-keys', loadComponent: () => import('./features/admin/api-keys/api-keys.component').then(m => m.ApiKeysComponent) },
+      { path: 'help-topics', loadComponent: () => import('./features/admin/help-topics/help-topics.component').then(m => m.HelpTopicsComponent) },
+      { path: 'email-inboxes', loadComponent: () => import('./features/admin/email-inboxes/email-inboxes.component').then(m => m.EmailInboxesComponent) },
     ],
   },
   {

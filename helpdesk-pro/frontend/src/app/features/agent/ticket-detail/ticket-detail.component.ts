@@ -18,6 +18,7 @@ import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
 import { CustomFieldService, CustomField } from '../../../core/services/custom-field.service';
+import { TaskService, TicketTask } from '../../../core/services/task.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -402,6 +403,58 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
+          <!-- Tasks section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-gray-900 text-sm">Tasks</h3>
+                <span *ngIf="tasks().length > 0"
+                      class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style="background:#EFF6FF;color:#1D4ED8">
+                  {{ completedTaskCount() }}/{{ tasks().length }} complete
+                </span>
+              </div>
+              <!-- Progress bar -->
+              <div *ngIf="tasks().length > 0" class="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <div class="h-full rounded-full bg-blue-500 transition-all"
+                     [style.width]="taskProgressPct() + '%'"></div>
+              </div>
+            </div>
+            <div class="p-4 space-y-2">
+              <div *ngFor="let task of tasks()"
+                   class="flex items-center gap-2 group">
+                <input type="checkbox"
+                       [checked]="task.completed"
+                       (change)="toggleTask(task)"
+                       class="w-4 h-4 rounded accent-blue-600 cursor-pointer shrink-0" />
+                <span class="flex-1 text-sm text-gray-700 min-w-0 truncate"
+                      [class.line-through]="task.completed"
+                      [class.text-slate-400]="task.completed">
+                  {{ task.title }}
+                </span>
+                <button (click)="deleteTask(task)"
+                        class="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 transition-all shrink-0">
+                  <i class="pi pi-times" style="font-size:11px"></i>
+                </button>
+              </div>
+              <div *ngIf="tasks().length === 0" class="text-xs text-slate-400 italic text-center py-2">No tasks yet</div>
+              <!-- Add task input -->
+              <div class="flex gap-1.5 mt-3">
+                <input #taskInput
+                       class="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                       placeholder="Add a task..."
+                       (keydown.enter)="addTask(taskInput.value); taskInput.value = ''"
+                       style="font-family:inherit" />
+                <button (click)="addTask(taskInput.value); taskInput.value = ''"
+                        class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white shrink-0"
+                        style="background:#2563EB">
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Merge ticket button -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -539,6 +592,41 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     return `${environment.apiUrl}/attachments/${attId}/download`;
   }
 
+  // Tasks
+  tasks = signal<TicketTask[]>([]);
+
+  completedTaskCount(): number {
+    return this.tasks().filter(t => t.completed).length;
+  }
+
+  taskProgressPct(): number {
+    if (this.tasks().length === 0) return 0;
+    return Math.round((this.completedTaskCount() / this.tasks().length) * 100);
+  }
+
+  addTask(title: string) {
+    const t = title.trim();
+    if (!t) return;
+    const id = this.ticket()!.id;
+    this.taskService.createTask(id, t).subscribe(task => {
+      this.tasks.update(list => [...list, task]);
+    });
+  }
+
+  toggleTask(task: TicketTask) {
+    const id = this.ticket()!.id;
+    this.taskService.toggleTask(id, task.id).subscribe(updated => {
+      this.tasks.update(list => list.map(t => t.id === updated.id ? updated : t));
+    });
+  }
+
+  deleteTask(task: TicketTask) {
+    const id = this.ticket()!.id;
+    this.taskService.deleteTask(id, task.id).subscribe(() => {
+      this.tasks.update(list => list.filter(t => t.id !== task.id));
+    });
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -547,6 +635,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private departmentService: DepartmentService,
     private cannedResponseService: CannedResponseService,
     private customFieldService: CustomFieldService,
+    private taskService: TaskService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -614,6 +703,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.cannedResponseService.getAll().subscribe(list => this.cannedResponses.set(list));
     this.ticketService.getWatchers(id).subscribe(w => this.watchers.set(w));
     this.customFieldService.getFields().subscribe(fields => this.customFields.set(fields));
+    this.taskService.getTasks(id).subscribe(list => this.tasks.set(list));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};

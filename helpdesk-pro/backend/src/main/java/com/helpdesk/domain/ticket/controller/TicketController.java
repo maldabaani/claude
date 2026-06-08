@@ -53,8 +53,18 @@ public class TicketController {
             Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
 
-        UUID filterByCreated = currentUser.getRole().name().equals("CUSTOMER") ? currentUser.getId() : createdById;
-        Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated, from, to, search, pageable);
+        UUID filterByCreated = createdById;
+        if (currentUser.getRole().name().equals("CUSTOMER")) {
+            if (currentUser.getOrganizationId() != null) {
+                // org member: filter by org, handled in service
+                filterByCreated = null;
+            } else {
+                filterByCreated = currentUser.getId();
+            }
+        }
+        Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated,
+                from, to, search, currentUser.getOrganizationId(), currentUser.getId(),
+                currentUser.getRole().name().equals("CUSTOMER"), pageable);
         return ResponseEntity.ok(ApiResponse.ok(page));
     }
 
@@ -193,6 +203,16 @@ public class TicketController {
     }
 
     // ── Merge ─────────────────────────────────────────────────────────────────
+
+    @PatchMapping("/{id}/due-date")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> updateDueDate(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body) {
+        String dueDateStr = body.get("dueDate");
+        Instant dueDate = (dueDateStr != null && !dueDateStr.isBlank()) ? Instant.parse(dueDateStr) : null;
+        return ResponseEntity.ok(ApiResponse.ok("Due date updated", ticketService.updateManualDueDate(id, dueDate)));
+    }
 
     @PostMapping("/{id}/merge")
     @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")

@@ -9,6 +9,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { TicketService } from '../../../core/services/ticket.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { TemplateService, TicketTemplate } from '../../../core/services/template.service';
+import { HelpTopicService, HelpTopic } from '../../../core/services/help-topic.service';
 import { Department } from '../../../core/models';
 
 @Component({
@@ -51,6 +52,20 @@ import { Department } from '../../../core/models';
 
         <!-- Form body -->
         <form [formGroup]="form" (ngSubmit)="submit()" class="px-8 py-7 space-y-5">
+
+          <!-- Help Topic selector -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <i class="pi pi-tags text-indigo-500 mr-1" style="font-size:14px"></i>
+              Help Topic
+            </label>
+            <p-select [options]="helpTopicOptions" [(ngModel)]="selectedHelpTopicId"
+                      (ngModelChange)="applyHelpTopic($event)"
+                      [ngModelOptions]="{standalone: true}"
+                      optionLabel="label" optionValue="value"
+                      placeholder="Select a help topic"
+                      class="w-full" />
+          </div>
 
           <!-- Template selector -->
           <div *ngIf="templates().length > 0">
@@ -153,8 +168,11 @@ export class SubmitTicketComponent implements OnInit {
 
   departments = signal<Department[]>([]);
   templates = signal<TicketTemplate[]>([]);
+  helpTopics = signal<HelpTopic[]>([]);
   selectedTemplateId: string | null = null;
+  selectedHelpTopicId: string | null = null;
   templateOptions: { label: string; value: string }[] = [];
+  helpTopicOptions: { label: string; value: string }[] = [];
   loading = false;
   error = '';
   success = signal(false);
@@ -173,6 +191,7 @@ export class SubmitTicketComponent implements OnInit {
     private ticketService: TicketService,
     private departmentService: DepartmentService,
     private templateService: TemplateService,
+    private helpTopicService: HelpTopicService,
     private router: Router,
   ) {}
 
@@ -188,6 +207,20 @@ export class SubmitTicketComponent implements OnInit {
       this.templates.set(tmplList);
       this.templateOptions = tmplList.map(t => ({ label: t.name, value: t.id }));
     });
+    this.helpTopicService.getActiveTopics().subscribe(list => {
+      this.helpTopics.set(list);
+      this.helpTopicOptions = list.map(t => ({ label: t.name, value: t.id }));
+    });
+  }
+
+  applyHelpTopic(topicId: string | null) {
+    if (!topicId) return;
+    const topic = this.helpTopics().find(t => t.id === topicId);
+    if (!topic) return;
+    const patch: Record<string, unknown> = {};
+    if (topic.defaultPriority) patch['priority'] = topic.defaultPriority;
+    if (topic.departmentId) patch['departmentId'] = topic.departmentId;
+    if (Object.keys(patch).length > 0) this.form.patchValue(patch);
   }
 
   applyTemplate(templateId: string | null) {
@@ -206,7 +239,8 @@ export class SubmitTicketComponent implements OnInit {
     if (this.form.invalid) return;
     this.loading = true;
     this.error = '';
-    this.ticketService.createTicket(this.form.value as any).subscribe({
+    const payload = { ...this.form.value, helpTopicId: this.selectedHelpTopicId };
+    this.ticketService.createTicket(payload as any).subscribe({
       next: (ticket) => {
         this.success.set(true);
         setTimeout(() => this.router.navigate(['/customer/tickets', ticket.id]), 1500);

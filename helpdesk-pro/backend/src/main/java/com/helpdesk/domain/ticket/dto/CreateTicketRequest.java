@@ -18,5 +18,6 @@ public record CreateTicketRequest(
         Priority priority,
         String category,
         UUID departmentId,
-        List<String> tags
+        List<String> tags,
+        UUID helpTopicId
 ) {}

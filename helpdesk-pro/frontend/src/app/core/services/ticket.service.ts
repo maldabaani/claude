@@ -79,6 +79,10 @@ export class TicketService {
     return this.http.delete<ApiResponse<void>>(`${this.base}/${ticketId}/watchers/${encodeURIComponent(email)}`).pipe(map(() => undefined));
   }
 
+  updateDueDate(ticketId: string, dueDate: string | null): Observable<Ticket> {
+    return this.http.patch<ApiResponse<Ticket>>(`${this.base}/${ticketId}/due-date`, { dueDate }).pipe(map(r => r.data));
+  }
+
   mergeTicket(sourceId: string, targetTicketId: string): Observable<Ticket> {
     return this.http.post<ApiResponse<Ticket>>(`${this.base}/${sourceId}/merge`, { targetTicketId }).pipe(map(r => r.data));
   }

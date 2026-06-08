@@ -64,6 +64,21 @@ public class JwtTokenProvider {
         }
     }
 
+    public String generateTempToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "temp_2fa");
+        return buildToken(claims, userDetails.getUsername(), 5 * 60 * 1000L); // 5 minutes
+    }
+
+    public boolean isTempToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return "temp_2fa".equals(claims.get("type"));
+        } catch (JwtException e) {
+            return false;
+        }
+    }
+
     public boolean isRefreshToken(String token) {
         try {
             Claims claims = parseClaims(token);

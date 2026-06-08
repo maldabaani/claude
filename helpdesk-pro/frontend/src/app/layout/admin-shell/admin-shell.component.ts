@@ -173,6 +173,8 @@ export class AdminShellComponent {
     { path: '/admin/templates', icon: 'pi-file', label: 'Templates', exact: false },
     { path: '/admin/webhooks', icon: 'pi-link', label: 'Webhooks', exact: false },
     { path: '/admin/api-keys', icon: 'pi-key', label: 'API Keys', exact: false },
+    { path: '/admin/help-topics', icon: 'pi-tags', label: 'Help Topics', exact: false },
+    { path: '/admin/email-inboxes', icon: 'pi-inbox', label: 'Email Inboxes', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 

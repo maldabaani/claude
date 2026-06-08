@@ -34,6 +34,8 @@ import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.audit.service.AuditLogService;
 import com.helpdesk.domain.comment.entity.Comment;
 import com.helpdesk.domain.comment.repository.CommentRepository;
+import com.helpdesk.domain.helptopic.HelpTopic;
+import com.helpdesk.domain.helptopic.HelpTopicRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -50,10 +52,26 @@ public class TicketService {
     private final CsatRatingRepository csatRatingRepository;
     private final SystemSettingRepository systemSettingRepository;
     private final WebhookService webhookService;
+    private final HelpTopicRepository helpTopicRepository;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
         Priority priority = request.priority() != null ? request.priority() : Priority.MEDIUM;
+        UUID departmentId = request.departmentId();
+
+        // Apply help topic defaults if provided
+        if (request.helpTopicId() != null) {
+            Optional<HelpTopic> helpTopicOpt = helpTopicRepository.findById(request.helpTopicId());
+            if (helpTopicOpt.isPresent()) {
+                HelpTopic helpTopic = helpTopicOpt.get();
+                if (request.priority() == null) {
+                    try { priority = Priority.valueOf(helpTopic.getDefaultPriority()); } catch (Exception ignored) {}
+                }
+                if (departmentId == null && helpTopic.getDepartment() != null) {
+                    departmentId = helpTopic.getDepartment().getId();
+                }
+            }
+        }
 
         Ticket ticket = Ticket.builder()
                 .ticketNumber(ticketNumberGenerator.generate())
@@ -61,7 +79,7 @@ public class TicketService {
                 .description(request.description())
                 .priority(priority)
                 .category(request.category())
-                .departmentId(request.departmentId())
+                .departmentId(departmentId)
                 .createdById(currentUser.getId())
                 .tags(request.tags() != null ? request.tags() : List.of())
                 .build();
@@ -90,6 +108,22 @@ public class TicketService {
         return ticketRepository.findAll(
                 TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search), pageable)
                 .map(this::toResponse);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, UUID organizationId, UUID currentUserId,
+                                        boolean isCustomer, Pageable pageable) {
+        if (isCustomer && organizationId != null) {
+            List<UUID> orgUserIds = userRepository.findActiveByOrganizationId(organizationId)
+                    .stream().map(User::getId).toList();
+            org.springframework.data.jpa.domain.Specification<Ticket> baseSpec =
+                TicketSpecification.filtered(status, priority, departmentId, agentId, null, from, to, search);
+            org.springframework.data.jpa.domain.Specification<Ticket> orgSpec =
+                baseSpec.and((r, q, cb) -> r.get("createdById").in(orgUserIds));
+            return ticketRepository.findAll(orgSpec, pageable).map(this::toResponse);
+        }
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, pageable);
     }
 
     public TicketResponse findById(UUID id) {
@@ -230,6 +264,13 @@ public class TicketService {
         ticket.setStatus(TicketStatus.OPEN);
     }
 
+    @Transactional
+    public TicketResponse updateManualDueDate(UUID id, Instant dueDate) {
+        Ticket ticket = getTicket(id);
+        ticket.setManualDueDate(dueDate);
+        return toResponse(ticketRepository.save(ticket));
+    }
+
     public Ticket getTicket(UUID id) {
         return ticketRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", id));
@@ -245,7 +286,8 @@ public class TicketService {
                 userRepository.findById(ticket.getCreatedById()).map(userService::toResponse).orElse(null),
                 ticket.getSlaPolicyId(), ticket.getDueDate(), ticket.getFirstResponseAt(),
                 ticket.getResolvedAt(), ticket.getClosedAt(), ticket.isSlaBreached(),
-                ticket.getTags(), ticket.getCreatedAt(), ticket.getUpdatedAt()
+                ticket.getTags(), ticket.getCreatedAt(), ticket.getUpdatedAt(),
+                ticket.getManualDueDate()
         );
     }
 }

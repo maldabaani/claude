@@ -27,5 +27,6 @@ public record TicketResponse(
         boolean slaBreached,
         List<String> tags,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Instant manualDueDate
 ) {}
