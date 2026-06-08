@@ -1,5 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
@@ -108,13 +108,14 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 
         <!-- Table header -->
         <div class="grid gap-3 items-center px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
-             style="grid-template-columns:32px 130px 1fr 90px 110px 120px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
+             style="grid-template-columns:32px 130px 1fr 90px 110px 120px 100px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
           <span></span>
           <span>Ticket ID</span>
           <span>Subject</span>
           <span>Priority</span>
           <span>Status</span>
           <span>Assignee</span>
+          <span>Due Date</span>
           <span>Age</span>
         </div>
 
@@ -123,7 +124,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         <div *ngIf="!loading()">
           <div *ngFor="let ticket of tickets(); let last = last"
                class="grid gap-3 items-center px-4 py-3.5 hover:bg-slate-50/70 transition-colors group"
-               style="grid-template-columns:32px 130px 1fr 90px 110px 120px 80px"
+               style="grid-template-columns:32px 130px 1fr 90px 110px 120px 100px 80px"
                [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'">
             <p-checkbox [binary]="true" [ngModel]="selected.has(ticket.id)"
                         (ngModelChange)="toggle(ticket.id)" (click)="$event.stopPropagation()" />
@@ -145,6 +146,13 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
               </div>
               <span class="text-xs text-slate-500 truncate">{{ ticket.assignedAgent?.fullName || '—' }}</span>
             </div>
+            <span *ngIf="ticket.manualDueDate"
+                  class="text-xs font-semibold"
+                  [style.color]="isOverdue(ticket) ? '#EF4444' : '#374151'">
+              {{ ticket.manualDueDate | date:'MMM d' }}
+              <i *ngIf="isOverdue(ticket)" class="pi pi-exclamation-triangle ml-1 text-red-500" style="font-size:10px"></i>
+            </span>
+            <span *ngIf="!ticket.manualDueDate" class="text-xs text-slate-300">—</span>
             <span class="text-xs text-slate-400 font-medium">{{ ticket.createdAt | timeAgo }}</span>
           </div>
 
@@ -316,5 +324,10 @@ export class AdminTicketsComponent implements OnInit {
     const ids = [...this.selected];
     Promise.all(ids.map(id => this.ticketService.deleteTicket(id).toPromise()))
       .then(() => { this.selected.clear(); this.load(); });
+  }
+
+  isOverdue(ticket: any): boolean {
+    if (!ticket.manualDueDate) return false;
+    return new Date(ticket.manualDueDate) < new Date();
   }
 }

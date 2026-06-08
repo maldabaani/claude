@@ -19,6 +19,7 @@ import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
 import { CustomFieldService, CustomField } from '../../../core/services/custom-field.service';
 import { TaskService, TicketTask } from '../../../core/services/task.service';
+import { IssueService, Issue } from '../../../core/services/issue.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -262,6 +263,20 @@ import { environment } from '../../../../environments/environment';
                 <p *ngIf="ticket()!.slaBreached" class="text-xs text-red-500 font-medium mt-1">SLA Breached</p>
               </div>
 
+              <!-- Manual Due Date -->
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Due Date</label>
+                <p-datepicker [(ngModel)]="manualDueDateValue"
+                              (onSelect)="onManualDueDateChange($event)"
+                              (onClear)="clearManualDueDate()"
+                              [showClear]="true"
+                              dateFormat="M d, yy"
+                              [showTime]="false"
+                              class="w-full"
+                              placeholder="Set due date" />
+                <p *ngIf="isManualOverdue()" class="text-xs text-red-500 font-medium mt-1">Overdue!</p>
+              </div>
+
               <!-- Divider -->
               <div style="border-top:1px solid #F1F5F9"></div>
 
@@ -455,14 +470,19 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
-          <!-- Merge ticket button -->
+          <!-- Merge ticket / Link to Issue buttons -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-            <div class="p-4">
+            <div class="p-4 space-y-2">
               <button (click)="showMergeDialog()"
                       class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 <i class="pi pi-arrow-right-arrow-left" style="font-size:15px"></i>
                 Merge Ticket
+              </button>
+              <button (click)="showLinkIssueDialog()"
+                      class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-exclamation-circle" style="font-size:15px"></i>
+                Link to Issue
               </button>
             </div>
           </div>
@@ -511,6 +531,50 @@ import { environment } from '../../../../environments/environment';
         </button>
       </ng-template>
     </p-dialog>
+
+    <!-- Link to Issue dialog -->
+    <p-dialog [(visible)]="linkIssueDialogVisible" [modal]="true" header="Link to Issue"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for an issue to link this ticket to.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search issues</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Issue title..."
+                 [ngModel]="issueSearch()"
+                 (ngModelChange)="onIssueSearch($event)" />
+        </div>
+        <div *ngIf="issueResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let iss of issueResults()"
+               (click)="selectIssue(iss)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="selectedIssueId() === iss.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ iss.title }}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
+                    [ngClass]="iss.status === 'OPEN' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'">
+                {{ iss.status }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="issueSearch().length > 1 && issueResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No issues found
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="linkIssueDialogVisible = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmLinkIssue()"
+                [disabled]="!selectedIssueId() || linkingIssue"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ linkingIssue ? 'Linking...' : 'Link Issue' }}
+        </button>
+      </ng-template>
+    </p-dialog>
   `,
 })
 export class AgentTicketDetailComponent implements OnInit, OnDestroy {
@@ -530,6 +594,17 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   customFields = signal<CustomField[]>([]);
   customValues = signal<Record<string, string>>({});
   customDateValues = signal<Record<string, Date | null>>({});
+
+  // Manual due date
+  manualDueDateValue: Date | null = null;
+
+  // Link to Issue
+  linkIssueDialogVisible = false;
+  issueSearch = signal('');
+  issueResults = signal<Issue[]>([]);
+  selectedIssueId = signal<string | null>(null);
+  linkingIssue = false;
+  private issueSearchTimeout: any;
 
   // Merge
   mergeDialogVisible = false;
@@ -636,6 +711,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private cannedResponseService: CannedResponseService,
     private customFieldService: CustomFieldService,
     private taskService: TaskService,
+    private issueService: IssueService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -688,6 +764,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       this.ticket.set(t);
       this.currentStatus = t.status;
       this.currentAgentId = t.assignedAgent?.id ?? null;
+      if (t.manualDueDate) this.manualDueDateValue = new Date(t.manualDueDate);
       this.loading.set(false);
     });
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
@@ -871,5 +948,61 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       ON_HOLD: 'bg-slate-400', RESOLVED: 'bg-green-500', CLOSED: 'bg-slate-300',
     };
     return map[this.ticket()?.status || ''] || 'bg-gray-200';
+  }
+
+  onManualDueDateChange(date: Date) {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.ticketService.updateDueDate(id, date.toISOString()).subscribe(t => this.ticket.set(t));
+  }
+
+  clearManualDueDate() {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.manualDueDateValue = null;
+    this.ticketService.updateDueDate(id, null).subscribe(t => this.ticket.set(t));
+  }
+
+  isManualOverdue(): boolean {
+    const d = this.ticket()?.manualDueDate;
+    if (!d) return false;
+    return new Date(d) < new Date();
+  }
+
+  showLinkIssueDialog() {
+    this.linkIssueDialogVisible = true;
+    this.issueSearch.set('');
+    this.issueResults.set([]);
+    this.selectedIssueId.set(null);
+    // Load all issues for search
+    this.issueService.getIssues().subscribe(issues => this.issueResults.set(issues));
+  }
+
+  onIssueSearch(query: string) {
+    this.issueSearch.set(query);
+    clearTimeout(this.issueSearchTimeout);
+    this.issueSearchTimeout = setTimeout(() => {
+      this.issueService.getIssues().subscribe(issues => {
+        const q = query.toLowerCase();
+        this.issueResults.set(issues.filter(i => i.title.toLowerCase().includes(q)));
+      });
+    }, 300);
+  }
+
+  selectIssue(issue: Issue) {
+    this.selectedIssueId.set(issue.id);
+  }
+
+  confirmLinkIssue() {
+    const issueId = this.selectedIssueId();
+    if (!issueId) return;
+    this.linkingIssue = true;
+    this.issueService.linkTicket(issueId, this.ticket()!.id).subscribe({
+      next: () => {
+        this.linkingIssue = false;
+        this.linkIssueDialogVisible = false;
+      },
+      error: () => { this.linkingIssue = false; },
+    });
   }
 }

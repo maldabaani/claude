@@ -58,6 +58,8 @@ export const routes: Routes = [
       { path: 'api-keys', loadComponent: () => import('./features/admin/api-keys/api-keys.component').then(m => m.ApiKeysComponent) },
       { path: 'help-topics', loadComponent: () => import('./features/admin/help-topics/help-topics.component').then(m => m.HelpTopicsComponent) },
       { path: 'email-inboxes', loadComponent: () => import('./features/admin/email-inboxes/email-inboxes.component').then(m => m.EmailInboxesComponent) },
+      { path: 'organizations', loadComponent: () => import('./features/admin/organizations/organizations.component').then(m => m.OrganizationsComponent) },
+      { path: 'issues', loadComponent: () => import('./features/admin/issues/issues.component').then(m => m.IssuesComponent) },
     ],
   },
   {

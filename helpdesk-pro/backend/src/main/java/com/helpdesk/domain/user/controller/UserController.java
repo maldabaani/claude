@@ -30,6 +30,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(userService.findById(currentUser.getId())));
     }
 
+    @GetMapping("/me/2fa-status")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Boolean>>> getTwoFaStatus(
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok(java.util.Map.of("totpEnabled", currentUser.isTotpEnabled())));
+    }
+
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> updateMe(
             @RequestBody UpdateProfileRequest request,

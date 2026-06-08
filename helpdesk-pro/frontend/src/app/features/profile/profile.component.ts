@@ -7,6 +7,10 @@ import { PasswordModule } from 'primeng/password';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { User } from '../../core/models';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { map } from 'rxjs/operators';
+import { ApiResponse } from '../../core/models';
 
 @Component({
   selector: 'app-profile',
@@ -89,6 +93,72 @@ import { User } from '../../core/models';
           </button>
         </div>
       </div>
+
+      <!-- 2FA Section -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
+           style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-gray-900 text-sm">Two-Factor Authentication</h3>
+          <span *ngIf="twoFaEnabled()"
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                style="background:#F0FDF4;color:#166534;border:1px solid #BBF7D0">
+            <i class="pi pi-check-circle" style="font-size:12px"></i>
+            2FA Active
+          </span>
+        </div>
+        <p class="text-sm text-slate-500">Protect your account with a time-based one-time password (TOTP) authenticator app.</p>
+
+        <!-- Not enabled -->
+        <div *ngIf="!twoFaEnabled() && !setupSecret()">
+          <button (click)="setup2FA()"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+            <i class="pi pi-shield" style="font-size:15px"></i>
+            Enable Two-Factor Authentication
+          </button>
+        </div>
+
+        <!-- Setup flow -->
+        <div *ngIf="setupSecret() && !twoFaEnabled()" class="space-y-4">
+          <div class="p-4 rounded-xl" style="background:#F8FAFC;border:1px solid #E2E8F0">
+            <p class="text-xs font-bold text-slate-500 mb-2">Step 1: Scan QR or enter secret key</p>
+            <div class="flex items-start gap-4">
+              <div class="text-xs font-mono bg-white border border-gray-200 rounded-lg px-3 py-2 break-all select-all"
+                   style="max-width:280px">{{ setupSecret() }}</div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Copy this key into your authenticator app (Google Authenticator, Authy, etc.)</p>
+            <p class="text-xs text-slate-400 mt-1 break-all">Or use the otpauth URL: <span class="font-mono text-blue-600">{{ setupQrUrl() }}</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Step 2: Enter verification code</label>
+            <div class="flex gap-2">
+              <input pInputText [(ngModel)]="twoFaCode" placeholder="6-digit code" class="w-40 text-center tracking-widest font-mono" maxlength="6" />
+              <button (click)="enable2FA()" [disabled]="twoFaCode.length < 6 || twoFaSaving()"
+                      class="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                      style="background:#2563EB">
+                {{ twoFaSaving() ? 'Activating...' : 'Activate' }}
+              </button>
+              <button (click)="cancelSetup()"
+                      class="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div *ngIf="twoFaError()" class="text-xs text-red-500 font-medium">{{ twoFaError() }}</div>
+        </div>
+
+        <!-- Enabled, show disable -->
+        <div *ngIf="twoFaEnabled()" class="space-y-3">
+          <div class="text-xs text-slate-500">To disable 2FA, enter your current authenticator code.</div>
+          <div class="flex gap-2">
+            <input pInputText [(ngModel)]="twoFaCode" placeholder="6-digit code" class="w-40 text-center tracking-widest font-mono" maxlength="6" />
+            <button (click)="disable2FA()" [disabled]="twoFaCode.length < 6 || twoFaSaving()"
+                    class="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
+              {{ twoFaSaving() ? 'Disabling...' : 'Disable 2FA' }}
+            </button>
+          </div>
+          <div *ngIf="twoFaError()" class="text-xs text-red-500 font-medium">{{ twoFaError() }}</div>
+        </div>
+      </div>
     </div>
   `,
 })
@@ -103,12 +173,30 @@ export class ProfileComponent implements OnInit {
   newPasswordControl = new FormControl('');
   confirmPasswordControl = new FormControl('');
 
-  constructor(private userService: UserService, public auth: AuthService) {}
+  // 2FA state
+  twoFaEnabled = signal(false);
+  setupSecret = signal('');
+  setupQrUrl = signal('');
+  twoFaCode = '';
+  twoFaSaving = signal(false);
+  twoFaError = signal('');
+
+  constructor(private userService: UserService, public auth: AuthService, private http: HttpClient) {}
 
   ngOnInit() {
     this.userService.getMe().subscribe(u => {
       this.user.set(u);
       this.fullNameControl.setValue(u.fullName);
+    });
+    this.loadTwoFaStatus();
+  }
+
+  loadTwoFaStatus() {
+    this.http.get<ApiResponse<{totpEnabled: boolean}>>(`${environment.apiUrl}/users/me/2fa-status`).pipe(
+      map(r => r.data)
+    ).subscribe({
+      next: data => this.twoFaEnabled.set(data?.totpEnabled ?? false),
+      error: () => {}
     });
   }
 
@@ -122,6 +210,58 @@ export class ProfileComponent implements OnInit {
     const cp = this.confirmPasswordControl.value;
     if (!np && !cp) return false;
     return np !== cp;
+  }
+
+  setup2FA() {
+    this.http.post<ApiResponse<{secret: string; qrUrl: string}>>(`${environment.apiUrl}/auth/2fa/setup`, {}).pipe(
+      map(r => r.data)
+    ).subscribe(data => {
+      this.setupSecret.set(data.secret);
+      this.setupQrUrl.set(data.qrUrl);
+      this.twoFaCode = '';
+      this.twoFaError.set('');
+    });
+  }
+
+  cancelSetup() {
+    this.setupSecret.set('');
+    this.setupQrUrl.set('');
+    this.twoFaCode = '';
+    this.twoFaError.set('');
+  }
+
+  enable2FA() {
+    this.twoFaSaving.set(true);
+    this.twoFaError.set('');
+    this.http.post<ApiResponse<void>>(`${environment.apiUrl}/auth/2fa/enable`, { code: this.twoFaCode }).subscribe({
+      next: () => {
+        this.twoFaSaving.set(false);
+        this.twoFaEnabled.set(true);
+        this.setupSecret.set('');
+        this.setupQrUrl.set('');
+        this.twoFaCode = '';
+      },
+      error: err => {
+        this.twoFaSaving.set(false);
+        this.twoFaError.set(err?.error?.message || 'Invalid code. Try again.');
+      }
+    });
+  }
+
+  disable2FA() {
+    this.twoFaSaving.set(true);
+    this.twoFaError.set('');
+    this.http.post<ApiResponse<void>>(`${environment.apiUrl}/auth/2fa/disable`, { code: this.twoFaCode }).subscribe({
+      next: () => {
+        this.twoFaSaving.set(false);
+        this.twoFaEnabled.set(false);
+        this.twoFaCode = '';
+      },
+      error: err => {
+        this.twoFaSaving.set(false);
+        this.twoFaError.set(err?.error?.message || 'Invalid code. Try again.');
+      }
+    });
   }
 
   save() {

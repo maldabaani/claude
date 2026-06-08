@@ -71,7 +71,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
         <!-- Table header -->
         <div class="grid gap-4 px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
-             style="grid-template-columns:40px 130px 1fr 90px 110px 150px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
+             style="grid-template-columns:40px 130px 1fr 90px 110px 150px 100px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
           <th class="w-10" style="list-style:none;font-weight:normal">
             <p-checkbox [ngModel]="isAllSelected()" [binary]="true" (onChange)="toggleSelectAll()" />
           </th>
@@ -80,6 +80,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <span>Priority</span>
           <span>Status</span>
           <span>Assigned To</span>
+          <span>Due Date</span>
           <span>Age</span>
         </div>
 
@@ -88,7 +89,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <div *ngIf="!loading()">
           <div *ngFor="let ticket of tickets(); let last = last"
                class="grid gap-4 items-center px-6 py-3.5 hover:bg-slate-50/70 cursor-pointer transition-colors group"
-               style="grid-template-columns:40px 130px 1fr 90px 110px 150px 80px"
+               style="grid-template-columns:40px 130px 1fr 90px 110px 150px 100px 80px"
                [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'"
                [routerLink]="['/agent/tickets', ticket.id]">
 
@@ -121,6 +122,12 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
               </span>
             </div>
 
+            <span *ngIf="ticket.manualDueDate"
+                  class="text-xs font-semibold"
+                  [style.color]="ticket.manualDueDate && (ticket.manualDueDate | date) && isTicketOverdue(ticket) ? '#EF4444' : '#374151'">
+              {{ ticket.manualDueDate | date:'MMM d' }}
+            </span>
+            <span *ngIf="!ticket.manualDueDate" class="text-xs text-slate-300">—</span>
             <span class="text-xs text-slate-400 font-medium">{{ ticket.createdAt | timeAgo }}</span>
           </div>
 
@@ -230,5 +237,10 @@ export class TicketQueueComponent implements OnInit {
       next: () => { this.clearSelection(); this.bulkAgentId.set(null); this.bulkLoading.set(false); this.load(); },
       error: () => this.bulkLoading.set(false)
     });
+  }
+
+  isTicketOverdue(ticket: any): boolean {
+    if (!ticket.manualDueDate) return false;
+    return new Date(ticket.manualDueDate) < new Date();
   }
 }

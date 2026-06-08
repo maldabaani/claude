@@ -55,6 +55,10 @@ export class AuthService {
     return !!role && roles.includes(role);
   }
 
+  setSessionPublic(auth: AuthResponse) {
+    this.setSession(auth);
+  }
+
   private setSession(auth: AuthResponse) {
     localStorage.setItem(this.TOKEN_KEY, auth.accessToken);
     localStorage.setItem(this.REFRESH_KEY, auth.refreshToken);

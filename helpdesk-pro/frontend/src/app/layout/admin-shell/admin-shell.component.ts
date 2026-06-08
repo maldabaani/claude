@@ -175,6 +175,8 @@ export class AdminShellComponent {
     { path: '/admin/api-keys', icon: 'pi-key', label: 'API Keys', exact: false },
     { path: '/admin/help-topics', icon: 'pi-tags', label: 'Help Topics', exact: false },
     { path: '/admin/email-inboxes', icon: 'pi-inbox', label: 'Email Inboxes', exact: false },
+    { path: '/admin/organizations', icon: 'pi-building', label: 'Organizations', exact: false },
+    { path: '/admin/issues', icon: 'pi-exclamation-circle', label: 'Issues', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 

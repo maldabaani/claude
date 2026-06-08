@@ -1,17 +1,22 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+import { map } from 'rxjs/operators';
+import { ApiResponse, AuthResponse } from '../../../core/models';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink,
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink,
     ButtonModule, InputTextModule, FloatLabelModule, ProgressSpinnerModule],
   template: `
     <div class="min-h-screen flex">
@@ -117,7 +122,43 @@ import { AuthService } from '../../../core/auth/auth.service';
 
           <!-- Form card -->
           <div class="bg-white rounded-2xl border border-gray-200 p-8" style="box-shadow:0 1px 3px rgba(0,0,0,0.07),0 8px 24px rgba(0,0,0,0.04)">
-            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+
+            <!-- 2FA step -->
+            <div *ngIf="requiresTwoFactor" class="space-y-5">
+              <div class="flex items-center gap-3 p-3.5 rounded-xl" style="background:#EFF6FF;border:1px solid #BFDBFE">
+                <i class="pi pi-shield shrink-0" style="font-size:18px;color:#2563EB"></i>
+                <div>
+                  <p class="text-sm font-bold text-blue-800">Two-Factor Authentication</p>
+                  <p class="text-xs text-blue-600 mt-0.5">Enter the 6-digit code from your authenticator app.</p>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Authenticator Code</label>
+                <input pInputText type="text" [(ngModel)]="totpCode" maxlength="6"
+                       placeholder="000000"
+                       class="w-full text-center tracking-widest text-lg font-mono" />
+              </div>
+              <div *ngIf="error"
+                   class="flex items-center gap-3 p-3.5 rounded-xl"
+                   style="background:#FEF2F2;border:1px solid #FECACA">
+                <i class="pi pi-exclamation-circle shrink-0" style="font-size:16px;color:#EF4444"></i>
+                <span class="text-sm font-medium" style="color:#B91C1C">{{ error }}</span>
+              </div>
+              <button type="button" (click)="submitTotp()"
+                      class="w-full"
+                      pButton
+                      style="height:48px;font-size:14px;font-weight:600;border-radius:12px"
+                      [disabled]="loading || totpCode.length < 6">
+                <p-progress-spinner *ngIf="loading" styleClass="!w-4 !h-4 mr-2" strokeWidth="4" />
+                <span>{{ loading ? 'Verifying...' : 'Verify Code' }}</span>
+              </button>
+              <button type="button" (click)="cancelTotp()"
+                      class="w-full text-sm text-slate-500 hover:text-slate-700 transition-colors">
+                Back to login
+              </button>
+            </div>
+
+            <form *ngIf="!requiresTwoFactor" [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email address</label>
@@ -194,8 +235,11 @@ export class LoginComponent {
   loading = false;
   error = '';
   showPassword = false;
+  requiresTwoFactor = false;
+  tempToken = '';
+  totpCode = '';
 
-  constructor(private fb: FormBuilder, private auth: AuthService) {}
+  constructor(private fb: FormBuilder, private auth: AuthService, private http: HttpClient) {}
 
   togglePassword() { this.showPassword = !this.showPassword; }
 
@@ -204,9 +248,43 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
     const { email, password } = this.form.value;
-    this.auth.login(email!, password!).subscribe({
-      next: () => this.auth.redirectAfterLogin(),
+    this.http.post<ApiResponse<any>>(`${environment.apiUrl}/auth/login`, { email, password }).pipe(
+      map(r => r.data)
+    ).subscribe({
+      next: data => {
+        this.loading = false;
+        if (data?.requiresTwoFactor) {
+          this.requiresTwoFactor = true;
+          this.tempToken = data.tempToken;
+        } else {
+          this.auth.setSessionPublic(data as AuthResponse);
+          this.auth.redirectAfterLogin();
+        }
+      },
       error: () => { this.error = 'Invalid email or password. Please try again.'; this.loading = false; },
     });
+  }
+
+  submitTotp() {
+    this.loading = true;
+    this.error = '';
+    this.http.post<ApiResponse<AuthResponse>>(`${environment.apiUrl}/auth/2fa/verify`, {
+      tempToken: this.tempToken,
+      code: this.totpCode,
+    }).pipe(map(r => r.data)).subscribe({
+      next: data => {
+        this.loading = false;
+        this.auth.setSessionPublic(data);
+        this.auth.redirectAfterLogin();
+      },
+      error: () => { this.error = 'Invalid code. Please try again.'; this.loading = false; }
+    });
+  }
+
+  cancelTotp() {
+    this.requiresTwoFactor = false;
+    this.tempToken = '';
+    this.totpCode = '';
+    this.error = '';
   }
 }
