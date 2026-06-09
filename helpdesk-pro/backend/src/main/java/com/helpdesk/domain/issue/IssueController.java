@@ -27,6 +27,11 @@ public class IssueController {
         return ResponseEntity.ok(ApiResponse.ok(issueService.findAll()));
     }
 
+    @GetMapping("/by-ticket/{ticketId}")
+    public ResponseEntity<ApiResponse<List<IssueDto>>> findByTicket(@PathVariable UUID ticketId) {
+        return ResponseEntity.ok(ApiResponse.ok(issueService.getIssuesByTicket(ticketId)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<IssueDto>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(issueService.findById(id)));

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public interface IssueTicketRepository extends JpaRepository<IssueTicket, IssueTicketId> {
     List<IssueTicket> findByIssueId(UUID issueId);
+    List<IssueTicket> findByTicketId(UUID ticketId);
     void deleteByIssueIdAndTicketId(UUID issueId, UUID ticketId);
     long countByIssueId(UUID issueId);
 }

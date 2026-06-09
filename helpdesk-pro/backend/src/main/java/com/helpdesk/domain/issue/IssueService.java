@@ -75,6 +75,13 @@ public class IssueService {
                 .toList();
     }
 
+    public List<IssueDto> getIssuesByTicket(UUID ticketId) {
+        return issueTicketRepository.findByTicketId(ticketId).stream()
+                .map(it -> issueRepository.findById(it.getIssueId()).map(this::toDto).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     private Issue getIssue(UUID id) {
         return issueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue", id));

@@ -6,8 +6,10 @@ import { SelectModule } from 'primeng/select';
 import { PaginatorModule, PaginatorState } from 'primeng/paginator';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
+import { SavedViewService, SavedView } from '../../../core/services/saved-view.service';
 import { Ticket, TicketStatus, Priority } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -18,7 +20,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   selector: 'app-ticket-queue',
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule,
-    SelectModule, PaginatorModule, CheckboxModule, ButtonModule,
+    SelectModule, PaginatorModule, CheckboxModule, ButtonModule, InputTextModule,
     StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
   template: `
     <div class="space-y-5">
@@ -28,6 +30,63 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <div>
           <h1 class="text-2xl font-black text-gray-900" style="letter-spacing:-0.03em">Ticket Queue</h1>
           <p class="text-sm text-slate-400 mt-0.5">{{ totalElements() }} tickets total</p>
+        </div>
+      </div>
+
+      <!-- ── Saved Views ── -->
+      <div class="bg-white rounded-xl border border-gray-100 overflow-hidden"
+           style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div class="flex items-center justify-between px-5 py-3"
+             style="border-bottom:1px solid #F1F5F9;background:#FAFAFA">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-bookmark text-slate-400" style="font-size:15px"></i>
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Saved Views</span>
+          </div>
+          <button (click)="showSaveForm.set(!showSaveForm())"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+            <i class="pi pi-plus" style="font-size:12px"></i>
+            Save Current Filters
+          </button>
+        </div>
+
+        <!-- Save form -->
+        <div *ngIf="showSaveForm()" class="px-5 py-3 flex items-center gap-3"
+             style="border-bottom:1px solid #F1F5F9;background:#F8FAFC">
+          <input pInputText [(ngModel)]="newViewName"
+                 placeholder="View name e.g. 'Open Critical Tickets'"
+                 class="flex-1 text-sm"
+                 (keydown.enter)="saveView()" />
+          <button (click)="saveView()"
+                  [disabled]="!newViewName.trim()"
+                  class="px-4 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                  style="background:#2563EB">
+            Save
+          </button>
+          <button (click)="showSaveForm.set(false); newViewName = ''"
+                  class="px-4 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Cancel
+          </button>
+        </div>
+
+        <!-- Views list -->
+        <div class="px-5 py-3 flex flex-wrap gap-2">
+          <button *ngFor="let view of savedViews()"
+                  (click)="applyView(view)"
+                  class="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                  [style.background]="activeViewId() === view.id ? '#EFF6FF' : '#F8FAFC'"
+                  [style.border-color]="activeViewId() === view.id ? '#BFDBFE' : '#E2E8F0'"
+                  [style.color]="activeViewId() === view.id ? '#1D4ED8' : '#475569'">
+            <i class="pi pi-bookmark-fill" style="font-size:11px"></i>
+            {{ view.name }}
+            <span (click)="deleteView($event, view.id)"
+                  class="opacity-0 group-hover:opacity-100 ml-1 hover:text-red-500 transition-all leading-none"
+                  title="Delete view">
+              <i class="pi pi-times" style="font-size:10px"></i>
+            </span>
+          </button>
+          <span *ngIf="savedViews().length === 0" class="text-xs text-slate-400 italic py-1">
+            No saved views yet — use current filters and click "Save Current Filters"
+          </span>
         </div>
       </div>
 
@@ -124,7 +183,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
             <span *ngIf="ticket.manualDueDate"
                   class="text-xs font-semibold"
-                  [style.color]="ticket.manualDueDate && (ticket.manualDueDate | date) && isTicketOverdue(ticket) ? '#EF4444' : '#374151'">
+                  [style.color]="isTicketOverdue(ticket) ? '#EF4444' : '#374151'">
               {{ ticket.manualDueDate | date:'MMM d' }}
             </span>
             <span *ngIf="!ticket.manualDueDate" class="text-xs text-slate-300">—</span>
@@ -166,6 +225,12 @@ export class TicketQueueComponent implements OnInit {
   agents = signal<any[]>([]);
   bulkLoading = signal(false);
 
+  // Saved views
+  savedViews = signal<SavedView[]>([]);
+  activeViewId = signal<string | null>(null);
+  showSaveForm = signal(false);
+  newViewName = '';
+
   statusOptions = [
     { label: 'All statuses', value: '' },
     ...(['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'] as TicketStatus[]).map(s => ({
@@ -179,7 +244,12 @@ export class TicketQueueComponent implements OnInit {
     ...(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Priority[]).map(p => ({ label: p, value: p }))
   ];
 
-  constructor(private ticketService: TicketService, private userService: UserService, private route: ActivatedRoute) {}
+  constructor(
+    private ticketService: TicketService,
+    private userService: UserService,
+    private savedViewService: SavedViewService,
+    private route: ActivatedRoute,
+  ) {}
 
   ngOnInit() {
     this.route.queryParams.subscribe(p => {
@@ -187,6 +257,7 @@ export class TicketQueueComponent implements OnInit {
       this.load();
     });
     this.userService.getUsers('AGENT', 0, 100).subscribe(p => this.agents.set(p.content));
+    this.savedViewService.getAll().subscribe(views => this.savedViews.set(views));
   }
 
   load() {
@@ -201,8 +272,51 @@ export class TicketQueueComponent implements OnInit {
     });
   }
 
-  resetFilters() { this.selectedStatus = ''; this.selectedPriority = ''; this.searchQuery.set(''); this.load(); }
+  resetFilters() {
+    this.selectedStatus = '';
+    this.selectedPriority = '';
+    this.searchQuery.set('');
+    this.activeViewId.set(null);
+    this.load();
+  }
+
   onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
+
+  // ── Saved Views ──
+
+  saveView() {
+    const name = this.newViewName.trim();
+    if (!name) return;
+    const filterJson = JSON.stringify({
+      status: this.selectedStatus,
+      priority: this.selectedPriority,
+    });
+    this.savedViewService.create(name, filterJson).subscribe(view => {
+      this.savedViews.update(list => [...list, view]);
+      this.newViewName = '';
+      this.showSaveForm.set(false);
+    });
+  }
+
+  applyView(view: SavedView) {
+    this.activeViewId.set(view.id);
+    try {
+      const filters = JSON.parse(view.filterJson);
+      this.selectedStatus = filters.status || '';
+      this.selectedPriority = filters.priority || '';
+    } catch { /* ignore parse errors */ }
+    this.load();
+  }
+
+  deleteView(event: Event, id: string) {
+    event.stopPropagation();
+    this.savedViewService.delete(id).subscribe(() => {
+      this.savedViews.update(list => list.filter(v => v.id !== id));
+      if (this.activeViewId() === id) this.activeViewId.set(null);
+    });
+  }
+
+  // ── Selection ──
 
   isSelected(id: string): boolean { return this.selectedIds().has(id); }
   toggleSelect(id: string): void {
@@ -216,7 +330,6 @@ export class TicketQueueComponent implements OnInit {
     else { this.selectedIds.set(new Set(this.tickets().map(t => t.id))); }
   }
   clearSelection(): void { this.selectedIds.set(new Set()); }
-
   onCheckboxCellClick(event: Event): void { event.stopPropagation(); }
 
   onBulkAgentChange(agentId: string): void {
