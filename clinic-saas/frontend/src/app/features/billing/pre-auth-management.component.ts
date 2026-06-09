@@ -106,7 +106,7 @@ import { catchError, of } from 'rxjs';
 
         <ng-template pTemplate="body" let-pa>
           <tr>
-            <td><code class="text-sm">{{ pa.paNumber }}</code></td>
+            <td><code class="text-sm">{{ pa.preauthNumber }}</code></td>
             <td><code class="text-sm">{{ (pa.patientId || '').substring(0, 8) }}</code></td>
             <td class="font-medium" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               {{ pa.serviceDescription }}
@@ -198,7 +198,7 @@ import { catchError, of } from 'rxjs';
       @if (selectedPA(); as pa) {
         <div class="flex justify-content-between mb-3 text-sm">
           <span style="color:var(--text-color-secondary)">PA Number</span>
-          <strong>{{ pa.paNumber }}</strong>
+          <strong>{{ pa.preauthNumber }}</strong>
         </div>
         <div class="flex justify-content-between mb-3 text-sm">
           <span style="color:var(--text-color-secondary)">Service</span>
