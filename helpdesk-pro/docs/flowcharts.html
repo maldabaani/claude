@@ -88,8 +88,8 @@
       width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
     }
 
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .tab-content { display: block; visibility: hidden; height: 0; overflow: hidden; pointer-events: none; }
+    .tab-content.active { visibility: visible; height: auto; overflow: visible; pointer-events: auto; }
 
     .section-header {
       padding: 28px 28px 8px;
@@ -1181,7 +1181,7 @@ flowchart TD
 
 <script>
   mermaid.initialize({
-    startOnLoad: true,
+    startOnLoad: false,
     theme: 'dark',
     themeVariables: {
       primaryColor: '#1E293B',
@@ -1205,6 +1205,11 @@ flowchart TD
       useMaxWidth: true
     },
     securityLevel: 'loose'
+  });
+
+  // Render all diagrams on load (works even in hidden containers)
+  document.addEventListener('DOMContentLoaded', function() {
+    mermaid.run({ querySelector: '.mermaid' });
   });
 
   function showTab(name) {
