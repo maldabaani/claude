@@ -5,6 +5,7 @@ import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.user.dto.UserResponse;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,5 +29,7 @@ public record TicketResponse(
         List<String> tags,
         Instant createdAt,
         Instant updatedAt,
-        Instant manualDueDate
+        Instant manualDueDate,
+        LocalDateTime snoozedUntil,
+        String preSnoozeStatus
 ) {}

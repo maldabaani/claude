@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,16 @@ public class Ticket extends AuditableEntity {
     @Column(name = "tag")
     @Builder.Default
     private List<String> tags = new ArrayList<>();
+
+
+    @Column(name = "snoozed_until")
+    private LocalDateTime snoozedUntil;
+
+    @Column(name = "snoozed_by_id")
+    private UUID snoozedById;
+
+    @Column(name = "pre_snooze_status")
+    private String preSnoozeStatus;
 
     @Version
     private Long version;
