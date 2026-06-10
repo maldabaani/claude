@@ -11,13 +11,30 @@ import '../../features/customer/tickets/my_tickets_screen.dart';
 import '../../features/customer/tickets/ticket_detail_screen.dart';
 import '../../features/customer/submit/submit_ticket_screen.dart';
 import '../../features/customer/kb/knowledge_base_screen.dart';
+import '../../features/customer/csat/csat_rating_screen.dart';
 import '../../features/agent/dashboard/agent_dashboard_screen.dart';
 import '../../features/agent/queue/ticket_queue_screen.dart';
 import '../../features/agent/tickets/agent_ticket_detail_screen.dart';
+import '../../features/agent/saved_views/saved_views_screen.dart';
 import '../../features/admin/overview/admin_overview_screen.dart';
 import '../../features/admin/users/users_screen.dart';
 import '../../features/admin/analytics/analytics_screen.dart';
 import '../../features/admin/settings/settings_screen.dart';
+import '../../features/admin/departments/departments_screen.dart';
+import '../../features/admin/sla/sla_policies_screen.dart';
+import '../../features/admin/canned_responses/canned_responses_screen.dart';
+import '../../features/admin/templates/templates_screen.dart';
+import '../../features/admin/kb/admin_kb_screen.dart';
+import '../../features/admin/custom_fields/custom_fields_screen.dart';
+import '../../features/admin/webhooks/webhooks_screen.dart';
+import '../../features/admin/api_keys/api_keys_screen.dart';
+import '../../features/admin/help_topics/help_topics_screen.dart';
+import '../../features/admin/email_inboxes/email_inboxes_screen.dart';
+import '../../features/admin/organizations/organizations_screen.dart';
+import '../../features/admin/issues/issues_screen.dart';
+import '../../features/admin/audit_log/audit_log_screen.dart';
+import '../../features/admin/sla_rules/sla_rules_screen.dart';
+import '../../features/admin/tickets/admin_tickets_screen.dart';
 import '../../features/shared/profile/profile_screen.dart';
 import '../../features/shared/notifications/notifications_screen.dart';
 import '../../features/customer/shell/customer_shell.dart';
@@ -55,6 +72,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         tempToken: s.uri.queryParameters['tempToken'] ?? '',
       )),
 
+      // Top-level CSAT route (no shell)
+      GoRoute(path: '/rate/:ticketId', builder: (_, s) => CsatRatingScreen(ticketId: s.pathParameters['ticketId']!)),
+
       // Customer
       ShellRoute(
         builder: (_, __, child) => CustomerShell(child: child),
@@ -76,6 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/agent', builder: (_, __) => const AgentDashboardScreen()),
           GoRoute(path: '/agent/queue', builder: (_, __) => const TicketQueueScreen()),
           GoRoute(path: '/agent/tickets/:id', builder: (_, s) => AgentTicketDetailScreen(id: s.pathParameters['id']!)),
+          GoRoute(path: '/agent/saved-views', builder: (_, __) => const SavedViewsScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         ],
@@ -86,8 +107,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __, child) => AdminShell(child: child),
         routes: [
           GoRoute(path: '/admin', builder: (_, __) => const AdminOverviewScreen()),
+          GoRoute(path: '/admin/tickets', builder: (_, __) => const AdminTicketsScreen()),
           GoRoute(path: '/admin/users', builder: (_, __) => const UsersScreen()),
+          GoRoute(path: '/admin/departments', builder: (_, __) => const DepartmentsScreen()),
+          GoRoute(path: '/admin/sla', builder: (_, __) => const SlaPoliciesScreen()),
+          GoRoute(path: '/admin/canned', builder: (_, __) => const CannedResponsesScreen()),
           GoRoute(path: '/admin/analytics', builder: (_, __) => const AnalyticsScreen()),
+          GoRoute(path: '/admin/kb', builder: (_, __) => const AdminKbScreen()),
+          GoRoute(path: '/admin/audit', builder: (_, __) => const AuditLogScreen()),
+          GoRoute(path: '/admin/custom-fields', builder: (_, __) => const CustomFieldsScreen()),
+          GoRoute(path: '/admin/sla-rules', builder: (_, __) => const SlaRulesScreen()),
+          GoRoute(path: '/admin/templates', builder: (_, __) => const TemplatesScreen()),
+          GoRoute(path: '/admin/webhooks', builder: (_, __) => const WebhooksScreen()),
+          GoRoute(path: '/admin/api-keys', builder: (_, __) => const ApiKeysScreen()),
+          GoRoute(path: '/admin/help-topics', builder: (_, __) => const HelpTopicsScreen()),
+          GoRoute(path: '/admin/email-inboxes', builder: (_, __) => const EmailInboxesScreen()),
+          GoRoute(path: '/admin/organizations', builder: (_, __) => const OrganizationsScreen()),
+          GoRoute(path: '/admin/issues', builder: (_, __) => const IssuesScreen()),
           GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
