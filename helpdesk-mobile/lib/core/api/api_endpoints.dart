@@ -1,7 +1,7 @@
 class ApiEndpoints {
   // Use 10.0.2.2 for Android emulator (maps to localhost)
   // Use localhost for iOS simulator
-  static const String _baseUrl = 'http://10.0.2.2:8080/api/v1';
+  static const String _baseUrl = 'http://localhost:8080/api/v1';
   static String get base => _baseUrl;
 
   // Auth
