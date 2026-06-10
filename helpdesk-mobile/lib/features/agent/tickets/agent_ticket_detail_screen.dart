@@ -36,22 +36,75 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   List<Map<String, dynamic>> _otherViewers = [];
   Timer? _presenceTimer;
 
+  // Draft
+  Timer? _draftTimer;
+  DateTime? _draftSavedAt;
+
   static const _statuses = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
-    _load().then((_) => _joinPresence());
+    _load().then((_) {
+      _joinPresence();
+      _loadDraft();
+    });
+    _commentController.addListener(_onCommentChanged);
   }
 
   @override
   void dispose() {
     _presenceTimer?.cancel();
+    _draftTimer?.cancel();
     _leavePresence();
+    _commentController.removeListener(_onCommentChanged);
     _commentController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onCommentChanged() {
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(seconds: 3), _saveDraft);
+  }
+
+  Future<void> _loadDraft() async {
+    try {
+      final res = await _api.get(ApiEndpoints.ticketDraft(widget.id));
+      final draft = res.data['data'] as Map<String, dynamic>?;
+      if (draft != null && mounted && _commentController.text.isEmpty) {
+        setState(() {
+          _commentController.text = draft['content'] ?? '';
+          _internalNote = draft['isInternal'] == true;
+          _draftSavedAt = DateTime.tryParse(draft['updatedAt'] ?? '');
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveDraft() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await _api.put(ApiEndpoints.ticketDraft(widget.id), data: {
+        'content': text,
+        'isInternal': _internalNote,
+      });
+      if (mounted) setState(() => _draftSavedAt = DateTime.now());
+    } catch (_) {}
+  }
+
+  Future<void> _discardDraft() async {
+    try {
+      await _api.delete(ApiEndpoints.ticketDraft(widget.id));
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _commentController.clear();
+        _draftSavedAt = null;
+      });
+    }
   }
 
   Future<void> _joinPresence() async {
@@ -160,6 +213,8 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         'internal': _internalNote,
       });
       _commentController.clear();
+      setState(() => _draftSavedAt = null);
+      _api.delete(ApiEndpoints.ticketDraft(widget.id)).catchError((_) {});
       await _load();
     } catch (_) {
       if (mounted) {
@@ -440,6 +495,8 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                             submitting: _submitting,
                             onToggleInternal: (v) => setState(() => _internalNote = v),
                             onSend: _postComment,
+                            draftSavedAt: _draftSavedAt,
+                            onDiscardDraft: _discardDraft,
                           ),
                           _WatchersTab(
                             watchers: _watchers,
@@ -974,6 +1031,8 @@ class _CommentsTab extends StatelessWidget {
   final bool submitting;
   final ValueChanged<bool> onToggleInternal;
   final VoidCallback onSend;
+  final DateTime? draftSavedAt;
+  final VoidCallback? onDiscardDraft;
 
   const _CommentsTab({
     required this.comments,
@@ -982,6 +1041,8 @@ class _CommentsTab extends StatelessWidget {
     required this.submitting,
     required this.onToggleInternal,
     required this.onSend,
+    this.draftSavedAt,
+    this.onDiscardDraft,
   });
 
   @override
@@ -1019,6 +1080,20 @@ class _CommentsTab extends StatelessWidget {
               const SizedBox(width: 8),
               Transform.scale(scale: 0.8, child: Switch(value: internalNote, onChanged: onToggleInternal, activeColor: AppColors.warning)),
             ]),
+            if (draftSavedAt != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  const Icon(Icons.save_outlined, size: 12, color: AppColors.textTertiary),
+                  const SizedBox(width: 4),
+                  Text('Draft saved', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: onDiscardDraft,
+                    child: const Text('Discard', style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+              ),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
                 child: TextField(

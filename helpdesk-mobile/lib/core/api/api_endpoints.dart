@@ -95,6 +95,8 @@ class ApiEndpoints {
   static String ticketPresenceJoin(String id) => '/tickets/$id/presence/join';
   static String ticketPresenceLeave(String id) => '/tickets/$id/presence/leave';
   static String ticketPresence(String id) => '/tickets/$id/presence';
+  static String ticketSnooze(String id) => '/tickets/$id/snooze';
+  static String ticketDraft(String id) => '/tickets/$id/draft';
 
   // Attachments
   static String attachmentDownload(String id) => '/attachments/$id/download';
