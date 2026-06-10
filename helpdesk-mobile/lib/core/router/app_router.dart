@@ -62,7 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/customer', builder: (_, __) => const CustomerHomeScreen()),
           GoRoute(path: '/customer/tickets', builder: (_, __) => const MyTicketsScreen()),
-          GoRoute(path: '/customer/tickets/:id', builder: (_, s) => TicketDetailScreen(id: s.pathParameters['id']!)),
+          GoRoute(path: '/customer/tickets/:id', builder: (_, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
           GoRoute(path: '/customer/submit', builder: (_, __) => const SubmitTicketScreen()),
           GoRoute(path: '/customer/kb', builder: (_, __) => const KnowledgeBaseScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
