@@ -125,6 +125,10 @@ class ApiEndpoints {
   static String ticketLinks(String id) => '/tickets/$id/links';
   static String ticketLink(String ticketId, String linkId) => '/tickets/$ticketId/links/$linkId';
 
+  // Business Hours
+  static const String businessHours = '/business-hours';
+  static const String businessHolidays = '/business-hours/holidays';
+
   // Settings
   static const String settings = '/settings';
 

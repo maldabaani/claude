@@ -33,6 +33,7 @@ import '../../features/admin/email_inboxes/email_inboxes_screen.dart';
 import '../../features/admin/organizations/organizations_screen.dart';
 import '../../features/admin/issues/issues_screen.dart';
 import '../../features/admin/tags/tags_screen.dart';
+import '../../features/admin/business_hours/business_hours_screen.dart';
 import '../../features/admin/audit_log/audit_log_screen.dart';
 import '../../features/admin/sla_rules/sla_rules_screen.dart';
 import '../../features/admin/tickets/admin_tickets_screen.dart';
@@ -128,6 +129,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/organizations', builder: (_, __) => const OrganizationsScreen()),
           GoRoute(path: '/admin/issues', builder: (_, __) => const IssuesScreen()),
           GoRoute(path: '/admin/tags', builder: (_, __) => const TagsScreen()),
+          GoRoute(path: '/admin/business-hours', builder: (_, __) => const BusinessHoursScreen()),
           GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),

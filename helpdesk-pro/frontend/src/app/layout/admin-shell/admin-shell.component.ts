@@ -178,6 +178,7 @@ export class AdminShellComponent {
     { path: '/admin/organizations', icon: 'pi-building', label: 'Organizations', exact: false },
     { path: '/admin/issues', icon: 'pi-exclamation-circle', label: 'Issues', exact: false },
     { path: '/admin/tags', icon: 'pi-tag', label: 'Tags', exact: false },
+    { path: '/admin/business-hours', icon: 'pi-calendar', label: 'Business Hours', exact: false },
     { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 
