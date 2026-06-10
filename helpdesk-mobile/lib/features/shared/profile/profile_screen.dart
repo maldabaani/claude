@@ -91,7 +91,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _load2FaStatus() async {
     try {
       final resp = await _api.get(ApiEndpoints.twoFaStatus);
-      if (mounted) setState(() => _twoFaEnabled = resp.data['data']?['enabled'] ?? false);
+      if (mounted) setState(() => _twoFaEnabled = resp.data['data']?['totpEnabled'] ?? false);
     } catch (_) {}
   }
 
@@ -100,7 +100,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (name.isEmpty) return;
     setState(() { _savingProfile = true; _profileError = null; _profileSuccess = null; });
     try {
-      await _api.patch(ApiEndpoints.me, data: {'fullName': name});
+      await _api.put(ApiEndpoints.me, data: {'fullName': name});
       if (mounted) setState(() { _profileSuccess = 'Profile updated successfully.'; _savingProfile = false; });
     } catch (_) {
       if (mounted) setState(() { _profileError = 'Failed to update profile.'; _savingProfile = false; });
@@ -119,13 +119,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() => _passwordError = 'Passwords do not match.');
       return;
     }
-    if (next.length < 6) {
-      setState(() => _passwordError = 'Password must be at least 6 characters.');
+    if (next.length < 8) {
+      setState(() => _passwordError = 'Password must be at least 8 characters.');
       return;
     }
     setState(() { _savingPassword = true; _passwordError = null; _passwordSuccess = null; });
     try {
-      await _api.put('${ApiEndpoints.base}/auth/change-password', data: {
+      // Backend handles password change via PUT /users/me (UpdateProfileRequest).
+      await _api.put(ApiEndpoints.me, data: {
         'currentPassword': current,
         'newPassword': next,
       });

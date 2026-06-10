@@ -39,4 +39,11 @@ public class NotificationController {
         notificationService.markAllRead(currentUser.getId());
         return ResponseEntity.ok(ApiResponse.ok("All notifications marked as read", null));
     }
+
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<ApiResponse<Void>> markRead(
+            @AuthenticationPrincipal User currentUser, @PathVariable java.util.UUID id) {
+        notificationService.markRead(currentUser.getId(), id);
+        return ResponseEntity.ok(ApiResponse.ok("Notification marked as read", null));
+    }
 }
