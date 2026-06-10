@@ -326,7 +326,7 @@ import { environment } from '../../../../environments/environment';
                     {{ (ticket()!.createdBy?.fullName || 'C')[0] }}
                   </div>
                   <div class="min-w-0">
-                    <p class="text-sm font-bold text-gray-900 truncate">{{ ticket()!.createdBy?.fullName }}</p>
+                    <a [routerLink]="['/agent/customers', ticket()!.createdBy?.id]" class="text-sm font-bold text-gray-900 hover:text-indigo-600 hover:underline truncate block">{{ ticket()!.createdBy?.fullName }}</a>
                     <p class="text-xs text-slate-400 truncate">{{ ticket()!.createdBy?.email }}</p>
                   </div>
                 </div>

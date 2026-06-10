@@ -36,6 +36,7 @@ import '../../features/admin/audit_log/audit_log_screen.dart';
 import '../../features/admin/sla_rules/sla_rules_screen.dart';
 import '../../features/admin/tickets/admin_tickets_screen.dart';
 import '../../features/shared/profile/profile_screen.dart';
+import '../../features/shared/customer_profile/customer_profile_screen.dart';
 import '../../features/shared/notifications/notifications_screen.dart';
 import '../../features/customer/shell/customer_shell.dart';
 import '../../features/agent/shell/agent_shell.dart';
@@ -97,6 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/agent/queue', builder: (_, __) => const TicketQueueScreen()),
           GoRoute(path: '/agent/tickets/:id', builder: (_, s) => AgentTicketDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/agent/saved-views', builder: (_, __) => const SavedViewsScreen()),
+          GoRoute(path: '/agent/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         ],
@@ -125,6 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/organizations', builder: (_, __) => const OrganizationsScreen()),
           GoRoute(path: '/admin/issues', builder: (_, __) => const IssuesScreen()),
           GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         ],

@@ -49,4 +49,6 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
 
     @Query("SELECT t FROM Ticket t WHERE t.deletedAt IS NULL AND t.status = com.helpdesk.domain.ticket.entity.TicketStatus.SNOOZED AND t.snoozedUntil <= :now")
     List<Ticket> findExpiredSnoozedTickets(@Param("now") LocalDateTime now);
+
+    List<Ticket> findByCreatedByIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID createdById);
 }

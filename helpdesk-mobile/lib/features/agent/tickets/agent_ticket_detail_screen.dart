@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
@@ -571,7 +572,11 @@ class _DetailsTab extends StatelessWidget {
           ]),
           const SizedBox(height: 12),
           _InfoCard(children: [
-            _DetailRow(label: 'Created By', value: createdBy?['fullName'] ?? 'Unknown'),
+            _DetailRow(
+              label: 'Created By',
+              value: createdBy?['fullName'] ?? 'Unknown',
+              onTap: createdBy?['id'] != null ? () => context.push('/agent/customers/\${createdBy!['id']}') : null,
+            ),
             const Divider(height: 16),
             _DetailRow(label: 'Assigned To', value: assignedAgent?['fullName'] ?? 'Unassigned'),
             const Divider(height: 16),
@@ -1250,12 +1255,18 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
-  const _DetailRow({required this.label, required this.value, this.valueColor});
+  final VoidCallback? onTap;
+  const _DetailRow({required this.label, required this.value, this.valueColor, this.onTap});
 
   @override
   Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
     SizedBox(width: 110, child: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary))),
-    Expanded(child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: valueColor ?? AppColors.textPrimary))),
+    Expanded(child: onTap != null
+        ? GestureDetector(
+            onTap: onTap,
+            child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF4F46E5), decoration: TextDecoration.underline)),
+          )
+        : Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: valueColor ?? AppColors.textPrimary))),
   ]);
 }
 

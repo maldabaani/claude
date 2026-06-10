@@ -100,6 +100,11 @@ class ApiEndpoints {
   static String ticketTimeEntries(String id) => '/tickets/$id/time-entries';
   static String ticketTimeEntry(String ticketId, String entryId) => '/tickets/$ticketId/time-entries/$entryId';
 
+  // Customer Profile
+  static String customerProfile(String id) => '/users/$id/profile';
+  static String customerNotes(String id) => '/users/$id/notes';
+  static String customerNote(String userId, String noteId) => '/users/$userId/notes/$noteId';
+
   // Attachments
   static String attachmentDownload(String id) => '/attachments/$id/download';
 

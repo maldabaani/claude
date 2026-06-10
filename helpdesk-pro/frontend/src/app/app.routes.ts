@@ -34,6 +34,7 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./features/agent/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'queue', loadComponent: () => import('./features/agent/ticket-queue/ticket-queue.component').then(m => m.TicketQueueComponent) },
       { path: 'tickets/:id', loadComponent: () => import('./features/agent/ticket-detail/ticket-detail.component').then(m => m.AgentTicketDetailComponent) },
+      { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },
   {
@@ -60,6 +61,7 @@ export const routes: Routes = [
       { path: 'email-inboxes', loadComponent: () => import('./features/admin/email-inboxes/email-inboxes.component').then(m => m.EmailInboxesComponent) },
       { path: 'organizations', loadComponent: () => import('./features/admin/organizations/organizations.component').then(m => m.OrganizationsComponent) },
       { path: 'issues', loadComponent: () => import('./features/admin/issues/issues.component').then(m => m.IssuesComponent) },
+      { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },
   {
