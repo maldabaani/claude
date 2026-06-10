@@ -22,7 +22,9 @@ import { TaskService, TicketTask } from '../../../core/services/task.service';
 import { IssueService, Issue } from '../../../core/services/issue.service';
 import { PresenceService, PresenceViewer } from '../../../core/services/presence.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { DraftService } from '../../../core/services/draft.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -216,6 +218,15 @@ import { environment } from '../../../../environments/environment';
                     <span class="text-sm font-medium text-gray-800">{{ agent.fullName }}</span>
                   </div>
                 </div>
+              </div>
+
+              <!-- Draft indicator -->
+              <div *ngIf="draftSavedAt()" class="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                <span>💾 Draft saved {{ draftSavedAt() | date:'h:mm a' }}</span>
+                <button type="button" (click)="discardDraft()"
+                        class="text-xs text-red-400 hover:text-red-600 underline transition-colors">
+                  Discard draft
+                </button>
               </div>
 
               <!-- Pending files -->
@@ -696,6 +707,11 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   loading = signal(true);
   submitting = false;
 
+  // Draft
+  draftSavedAt = signal<Date | null>(null);
+  private replySubject = new Subject<string>();
+  private draftSubscription: Subscription | null = null;
+
   // Watchers
   watchers = signal<string[]>([]);
 
@@ -830,6 +846,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private issueService: IssueService,
     private presenceService: PresenceService,
     private authService: AuthService,
+    private draftService: DraftService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -907,6 +924,32 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       this.customDateValues.set(dates);
     });
 
+    // Load draft
+    this.draftService.getDraft(id).subscribe(draft => {
+      if (draft) {
+        this.replyControl.setValue(draft.content, { emitEvent: false });
+        this.noteMode = draft.isInternal ? 'internal' : 'public';
+        this.draftSavedAt.set(new Date(draft.updatedAt));
+      }
+    });
+
+    // Auto-save draft with debounce
+    this.draftSubscription = this.replySubject.pipe(
+      debounceTime(3000),
+      distinctUntilChanged(),
+      switchMap(value => {
+        if (!value || !value.trim()) return [];
+        const isInternal = this.noteMode === 'internal';
+        return this.draftService.saveDraft(id, value, isInternal);
+      })
+    ).subscribe(saved => {
+      if (saved) this.draftSavedAt.set(new Date(saved.updatedAt));
+    });
+
+    this.replyControl.valueChanges.subscribe(val => {
+      if (val) this.replySubject.next(val);
+    });
+
     // Presence: join and subscribe to WebSocket updates
     this.presenceService.join(id).subscribe(viewers => this._updatePresence(viewers, id));
     // Subscribe to real-time updates
@@ -933,6 +976,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.presenceService.unsubscribeFromTicket();
     if (this.presenceSubscription) this.presenceSubscription.unsubscribe();
     if (this.presenceInterval) clearInterval(this.presenceInterval);
+    if (this.draftSubscription) this.draftSubscription.unsubscribe();
   }
 
   otherAgentsCount(): number {
@@ -965,10 +1009,20 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
           next: (att) => this.attachments.update(a => [...a, att])
         }));
         this.replyControl.reset();
+        this.draftSavedAt.set(null);
+        this.draftService.deleteDraft(id).subscribe();
         this.submitting = false;
       },
       error: () => { this.submitting = false; },
     });
+  }
+
+  discardDraft() {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.replyControl.reset();
+    this.draftSavedAt.set(null);
+    this.draftService.deleteDraft(id).subscribe();
   }
 
   updateStatus() {
