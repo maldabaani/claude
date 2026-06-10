@@ -83,20 +83,29 @@ class _IssuesScreenState extends ConsumerState<IssuesScreen> {
             itemBuilder: (_, i) {
               final d = _items[i] as Map<String, dynamic>;
               final status = d['status'] ?? 'OPEN';
-              return InkWell(onTap: () => _viewTickets(d), borderRadius: BorderRadius.circular(16), child: Container(padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
-                child: Row(children: [
-                  const Icon(Icons.bug_report_outlined, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    Text('${d['ticketCount'] ?? 0} linked tickets', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  ])),
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                    child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor(status)))),
-                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary), onPressed: () => _showForm(d)),
-                  IconButton(icon: const Icon(Icons.delete_outlined, size: 18, color: AppColors.error), onPressed: () => _delete(d['id'].toString())),
-                ]));
+              return InkWell(
+                onTap: () => _viewTickets(d),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                  child: Row(children: [
+                    const Icon(Icons.bug_report_outlined, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text('${d['ticketCount'] ?? 0} linked tickets', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    ])),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor(status))),
+                    ),
+                    IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary), onPressed: () => _showForm(d)),
+                    IconButton(icon: const Icon(Icons.delete_outlined, size: 18, color: AppColors.error), onPressed: () => _delete(d['id'].toString())),
+                  ]),
+                ),
+              );
             })),
   );
 }

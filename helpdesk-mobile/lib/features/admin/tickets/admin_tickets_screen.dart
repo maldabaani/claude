@@ -113,27 +113,48 @@ class _AdminTicketsScreenState extends ConsumerState<AdminTicketsScreen> {
                 final isSelected = _selected.contains(id);
 
                 return InkWell(
-                  onTap: () { if (_bulkMode) { setState(() { if (isSelected) _selected.remove(id); else _selected.add(id); }); }
-                    else context.push('/agent/tickets/$id'); },
+                  onTap: () {
+                    if (_bulkMode) {
+                      setState(() { if (isSelected) _selected.remove(id); else _selected.add(id); });
+                    } else {
+                      context.push('/agent/tickets/$id');
+                    }
+                  },
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: isSelected ? AppColors.primaryLight : AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? AppColors.primary : AppColors.border)),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primaryLight : AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+                    ),
                     child: Row(children: [
-                      if (_bulkMode) Padding(padding: const EdgeInsets.only(right: 8), child: Checkbox(value: isSelected, onChanged: (v) => setState(() { if (v == true) _selected.add(id); else _selected.remove(id); }))),
+                      if (_bulkMode) Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Checkbox(value: isSelected, onChanged: (v) => setState(() { if (v == true) _selected.add(id); else _selected.remove(id); })),
+                      ),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(t['subject'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
                         Row(children: [
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor(status)))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor(status))),
+                          ),
                           const SizedBox(width: 6),
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _priorityColor(priority).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(priority, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _priorityColor(priority)))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: _priorityColor(priority).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text(priority, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _priorityColor(priority))),
+                          ),
                           const SizedBox(width: 6),
                           Text('#$id', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
                         ]),
                       ])),
-                    ]));
+                    ]),
+                  ),
+                );
               }))),
     ]),
   );
