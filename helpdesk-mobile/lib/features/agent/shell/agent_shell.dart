@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class AgentShell extends ConsumerWidget {
   final Widget child;
@@ -70,6 +71,13 @@ class AgentShell extends ConsumerWidget {
               Text(user?.fullName ?? 'Agent', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
               const Text('Agent', style: TextStyle(color: AppColors.textOnDark, fontSize: 11)),
             ])),
+            IconButton(
+              icon: Icon(
+                ref.watch(themeModeProvider) == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: AppColors.textOnDark, size: 18,
+              ),
+              onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+            ),
             IconButton(icon: const Icon(Icons.logout_outlined, color: AppColors.textOnDark, size: 18),
               onPressed: () async { Navigator.pop(context); await ref.read(authProvider.notifier).logout(); }),
           ])),

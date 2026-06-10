@@ -4,6 +4,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -379,6 +380,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
             ),
             const SizedBox(height: 24),
+
+            // Appearance
+            _SectionCard(
+              title: 'Appearance',
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Dark Mode', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        Text(
+                          ref.watch(themeModeProvider) == ThemeMode.dark
+                              ? 'Dark theme active'
+                              : 'Light theme active',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: ref.watch(themeModeProvider) == ThemeMode.dark,
+                      onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
+                      activeColor: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
 
             // Sign Out
             SizedBox(
