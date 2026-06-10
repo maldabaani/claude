@@ -5,14 +5,14 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/theme/app_colors.dart';
 
-class AdminAnalyticsScreen extends ConsumerStatefulWidget {
-  const AdminAnalyticsScreen({super.key});
+class AnalyticsScreen extends ConsumerStatefulWidget {
+  const AnalyticsScreen({super.key});
 
   @override
-  ConsumerState<AdminAnalyticsScreen> createState() => _AdminAnalyticsScreenState();
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   final _api = ApiClient();
   Map<String, dynamic>? _analytics;
   bool _loading = true;

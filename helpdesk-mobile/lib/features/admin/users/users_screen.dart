@@ -4,14 +4,14 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/theme/app_colors.dart';
 
-class AdminUsersScreen extends ConsumerStatefulWidget {
-  const AdminUsersScreen({super.key});
+class UsersScreen extends ConsumerStatefulWidget {
+  const UsersScreen({super.key});
 
   @override
-  ConsumerState<AdminUsersScreen> createState() => _AdminUsersScreenState();
+  ConsumerState<UsersScreen> createState() => _UsersScreenState();
 }
 
-class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
+class _UsersScreenState extends ConsumerState<UsersScreen> {
   final _api = ApiClient();
   final _searchController = TextEditingController();
   List<dynamic> _users = [];

@@ -4,14 +4,14 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/theme/app_colors.dart';
 
-class AdminSettingsScreen extends ConsumerStatefulWidget {
-  const AdminSettingsScreen({super.key});
+class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key});
 
   @override
-  ConsumerState<AdminSettingsScreen> createState() => _AdminSettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _api = ApiClient();
   List<dynamic> _slaRules = [];
   List<dynamic> _departments = [];
@@ -26,20 +26,21 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final results = await Future.wait([
-        _api.get(ApiEndpoints.slaPolicies).catchError((_) => null),
-        _api.get(ApiEndpoints.departments).catchError((_) => null),
-      ]);
+      final slaFuture = _api.get(ApiEndpoints.slaPolicies).then((r) {
+        final d = r.data['data'];
+        return d is Map ? (d['content'] ?? []) : (d ?? []);
+      }).catchError((_) => <dynamic>[]);
+
+      final deptFuture = _api.get(ApiEndpoints.departments).then((r) {
+        final d = r.data['data'];
+        return d is Map ? (d['content'] ?? []) : (d ?? []);
+      }).catchError((_) => <dynamic>[]);
+
+      final results = await Future.wait([slaFuture, deptFuture]);
       if (mounted) {
         setState(() {
-          if (results[0] != null) {
-            final d = results[0]!.data['data'];
-            _slaRules = d is Map ? (d['content'] ?? []) : (d ?? []);
-          }
-          if (results[1] != null) {
-            final d = results[1]!.data['data'];
-            _departments = d is Map ? (d['content'] ?? []) : (d ?? []);
-          }
+          _slaRules = results[0] as List;
+          _departments = results[1] as List;
           _loading = false;
         });
       }
