@@ -26,6 +26,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   TicketModel? _ticket;
   List<CommentModel> _comments = [];
+  List<dynamic> _tasks = [];
   bool _loading = true;
   bool _sending = false;
   bool _submittingRating = false;
@@ -53,10 +54,16 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     try {
       final ticket = await _ticketService.getTicket(widget.ticketId);
       final comments = await _ticketService.getComments(widget.ticketId);
+      List<dynamic> tasks = [];
+      try {
+        final tasksRes = await _api.get(ApiEndpoints.ticketTasks(widget.ticketId));
+        tasks = tasksRes.data['data'] ?? [];
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _ticket = ticket;
         _comments = comments.where((c) => !c.internal).toList();
+        _tasks = tasks;
         _loading = false;
       });
       _scrollToBottom();
@@ -214,6 +221,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                             ),
                           if (_csatRating != null)
                             _CsatThanksCard(rating: _csatRating!),
+
+                          // ── Tasks (read-only) ─────────────────────────
+                          if (_tasks.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            _TasksSection(tasks: _tasks),
+                          ],
 
                           const SizedBox(height: 8),
 
@@ -930,6 +943,63 @@ class _ReplyBox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Tasks Section (read-only) ───────────────────────────────────────────────
+
+class _TasksSection extends StatelessWidget {
+  final List<dynamic> tasks;
+  const _TasksSection({required this.tasks});
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = tasks.where((t) => t['completed'] == true).length;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.checklist_rounded, size: 16, color: AppColors.textTertiary),
+          const SizedBox(width: 8),
+          const Text('Tasks', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          const Spacer(),
+          Text('$completed/${tasks.length}', style: const TextStyle(fontSize: 12, color: AppColors.textTertiary, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: tasks.isEmpty ? 0 : completed / tasks.length,
+            backgroundColor: AppColors.border,
+            color: AppColors.success,
+            minHeight: 4,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...tasks.map((t) {
+          final done = t['completed'] == true;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              Icon(done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  size: 18, color: done ? AppColors.success : AppColors.textTertiary),
+              const SizedBox(width: 10),
+              Expanded(child: Text(t['title'] ?? '',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: done ? AppColors.textTertiary : AppColors.textPrimary,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                  ))),
+            ]),
+          );
+        }),
+      ]),
     );
   }
 }
