@@ -1,5 +1,7 @@
 package com.helpdesk.domain.slaescalation;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.helpdesk.domain.audit.service.AuditLogService;
 import com.helpdesk.domain.notification.service.NotificationService;
 import com.helpdesk.domain.ticket.entity.Ticket;
@@ -20,91 +22,101 @@ import java.util.*;
 @RequiredArgsConstructor
 public class SlaEscalationService {
 
-    private final SlaEscalationRuleRepository ruleRepository;
-    private final TicketRepository ticketRepository;
-    private final UserRepository userRepository;
-    private final NotificationService notificationService;
-    private final AuditLogService auditLogService;
+private final SlaEscalationRuleRepository ruleRepository;
+private final TicketRepository ticketRepository;
+private final UserRepository userRepository;
+private final NotificationService notificationService;
+private final AuditLogService auditLogService;
+private final ObjectMapper objectMapper;
 
-    // Track which (ticketId, ruleId) combos have already been triggered to avoid duplicate notifications
-    private final Set<String> triggeredKeys = Collections.synchronizedSet(new HashSet<>());
+// Track which (ticketId, ruleId) combos have already been triggered to avoid duplicate notifications
+private final Set<String> triggeredKeys = Collections.synchronizedSet(new HashSet<>());
 
-    @Scheduled(fixedDelay = 60000)
-    @Transactional
-    public void runEscalationCheck() {
-        List<SlaEscalationRule> rules = ruleRepository.findByActiveTrue();
-        if (rules.isEmpty()) return;
+@Scheduled(fixedDelay = 60000)
+@Transactional
+public void runEscalationCheck() {
+List<SlaEscalationRule> rules = ruleRepository.findByActiveTrue();
+if (rules.isEmpty()) return;
 
-        Instant now = Instant.now();
-        List<Ticket> openTickets = ticketRepository.findAll().stream()
-                .filter(t -> t.getDueDate() != null && !t.isDeleted())
-                .filter(t -> {
-                    String status = t.getStatus().name();
-                    return !status.equals("RESOLVED") && !status.equals("CLOSED");
-                })
-                .toList();
+Instant now = Instant.now();
+List<Ticket> openTickets = ticketRepository.findAll().stream()
+.filter(t -> t.getDueDate() != null && !t.isDeleted())
+.filter(t -> {
+String status = t.getStatus().name();
+return !status.equals("RESOLVED") && !status.equals("CLOSED");
+})
+.toList();
 
-        for (Ticket ticket : openTickets) {
-            Instant createdAt = ticket.getCreatedAt();
-            Instant dueAt = ticket.getDueDate();
-            if (createdAt == null || dueAt == null) continue;
+for (Ticket ticket : openTickets) {
+Instant createdAt = ticket.getCreatedAt();
+Instant dueAt = ticket.getDueDate();
+if (createdAt == null || dueAt == null) continue;
 
-            long total = dueAt.toEpochMilli() - createdAt.toEpochMilli();
-            if (total <= 0) continue;
-            long elapsed = now.toEpochMilli() - createdAt.toEpochMilli();
-            int percent = (int) ((elapsed * 100L) / total);
+long total = dueAt.toEpochMilli() - createdAt.toEpochMilli();
+if (total <= 0) continue;
+long elapsed = now.toEpochMilli() - createdAt.toEpochMilli();
+int percent = (int) ((elapsed * 100L) / total);
 
-            for (SlaEscalationRule rule : rules) {
-                if (!rule.getPriority().equals(ticket.getPriority().name())) continue;
-                if (percent < rule.getThresholdPercent()) continue;
+for (SlaEscalationRule rule : rules) {
+if (!rule.getPriority().equals(ticket.getPriority().name())) continue;
+if (percent < rule.getThresholdPercent()) continue;
 
-                String key = ticket.getId() + "_" + rule.getId();
-                if (triggeredKeys.contains(key)) continue;
-                triggeredKeys.add(key);
+String key = ticket.getId() + "_" + rule.getId();
+if (triggeredKeys.contains(key)) continue;
+triggeredKeys.add(key);
 
-                log.info("SLA escalation triggered: ticket={} rule={} percent={}%", ticket.getTicketNumber(), rule.getName(), percent);
-                applyAction(ticket, rule);
-                auditLogService.log("TICKET", ticket.getId(), "SLA_ESCALATION_" + rule.getAction(), null,
-                        null, rule.getName() + " at " + percent + "%");
-            }
-        }
-    }
+log.info("SLA escalation triggered: ticket={} rule={} percent={}%", ticket.getTicketNumber(), rule.getName(), percent);
+applyAction(ticket, rule);
+auditLogService.log("TICKET", ticket.getId(), "SLA_ESCALATION_" + rule.getAction(), null,
+null, toJsonMessage(rule.getName() + " at " + percent + "%"));
+}
+}
+}
 
-    private void applyAction(Ticket ticket, SlaEscalationRule rule) {
-        switch (rule.getAction()) {
-            case "NOTIFY_AGENT" -> {
-                if (ticket.getAssignedAgentId() != null) {
-                    notificationService.notifySlaBreached(ticket);
-                }
-            }
-            case "NOTIFY_ADMIN" -> notificationService.notifySlaBreached(ticket);
-            case "REASSIGN_ADMIN" -> {
-                List<User> admins = userRepository.findAll().stream()
-                        .filter(u -> "ADMIN".equals(u.getRole().name()) && u.isActive())
-                        .toList();
-                if (!admins.isEmpty()) {
-                    ticket.setAssignedAgentId(admins.get(0).getId());
-                    ticketRepository.save(ticket);
-                    notificationService.notifyTicketAssigned(ticket);
-                }
-            }
-        }
-    }
+private String toJsonMessage(String message) {
+try {
+return objectMapper.writeValueAsString(Map.of("message", message));
+} catch (JsonProcessingException e) {
+log.error("Failed to serialize SLA escalation audit message", e);
+return null;
+}
+}
 
-    public List<SlaEscalationRule> getAllRules() {
-        return ruleRepository.findAll();
-    }
+private void applyAction(Ticket ticket, SlaEscalationRule rule) {
+switch (rule.getAction()) {
+case "NOTIFY_AGENT" -> {
+if (ticket.getAssignedAgentId() != null) {
+notificationService.notifySlaBreached(ticket);
+}
+}
+case "NOTIFY_ADMIN" -> notificationService.notifySlaBreached(ticket);
+case "REASSIGN_ADMIN" -> {
+List<User> admins = userRepository.findAll().stream()
+.filter(u -> "ADMIN".equals(u.getRole().name()) && u.isActive())
+.toList();
+if (!admins.isEmpty()) {
+ticket.setAssignedAgentId(admins.get(0).getId());
+ticketRepository.save(ticket);
+notificationService.notifyTicketAssigned(ticket);
+}
+}
+}
+}
 
-    @Transactional
-    public SlaEscalationRule createRule(SlaEscalationRule rule) {
-        return ruleRepository.save(rule);
-    }
+public List<SlaEscalationRule> getAllRules() {
+return ruleRepository.findAll();
+}
 
-    @Transactional
-    public void deleteRule(UUID id) {
-        ruleRepository.findById(id).ifPresent(r -> {
-            r.setActive(false);
-            ruleRepository.save(r);
-        });
-    }
+@Transactional
+public SlaEscalationRule createRule(SlaEscalationRule rule) {
+return ruleRepository.save(rule);
+}
+
+@Transactional
+public void deleteRule(UUID id) {
+ruleRepository.findById(id).ifPresent(r -> {
+r.setActive(false);
+ruleRepository.save(r);
+});
+}
 }
