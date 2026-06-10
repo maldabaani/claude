@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_endpoints.dart';
 
 class ApiClient {
@@ -8,7 +8,6 @@ class ApiClient {
   ApiClient._internal();
 
   late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
 
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
@@ -50,7 +49,7 @@ class ApiClient {
 
   Future<bool> _refreshToken() async {
     try {
-      final refreshToken = await _storage.read(key: _refreshTokenKey);
+      final refreshToken = await getRefreshToken();
       if (refreshToken == null) return false;
       final resp = await Dio().post(
         '${ApiEndpoints.base}${ApiEndpoints.refresh}',
@@ -64,18 +63,27 @@ class ApiClient {
   }
 
   Future<void> saveTokens(String accessToken, String refreshToken) async {
-    await _storage.write(key: _accessTokenKey, value: accessToken);
-    await _storage.write(key: _refreshTokenKey, value: refreshToken);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessTokenKey, accessToken);
+    await prefs.setString(_refreshTokenKey, refreshToken);
   }
 
-  Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
-  Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
+  Future<String?> getAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_accessTokenKey);
+  }
+
+  Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_refreshTokenKey);
+  }
 
   Future<void> clearTokens() async {
-    await _storage.deleteAll();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
   }
 
-  // HTTP methods
   Future<Response> get(String path, {Map<String, dynamic>? queryParams}) =>
       _dio.get(path, queryParameters: queryParams);
 
