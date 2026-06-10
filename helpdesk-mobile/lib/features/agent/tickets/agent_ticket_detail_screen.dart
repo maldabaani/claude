@@ -30,6 +30,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   List<dynamic> _watchers = [];
   List<dynamic> _tasks = [];
   List<dynamic> _timeEntries = [];
+  List<dynamic> _links = [];
   bool _loading = true;
   bool _submitting = false;
   bool _internalNote = false;
@@ -48,7 +49,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _load().then((_) {
       _joinPresence();
       _loadDraft();
@@ -158,6 +159,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         _api.get(ApiEndpoints.ticketTasks(widget.id)),
         _api.get(ApiEndpoints.ticketTimeEntries(widget.id)),
         _api.get(ApiEndpoints.ticketTags(widget.id)),
+        _api.get(ApiEndpoints.ticketLinks(widget.id)),
       ]);
       if (mounted) {
         final commentsData = results[1].data['data'];
@@ -168,6 +170,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
           _tasks = results[3].data['data'] ?? [];
           _timeEntries = results[4].data['data'] ?? [];
           _ticketManagedTags = results[5].data['data'] ?? [];
+          _links = results[6].data['data'] ?? [];
           _loading = false;
         });
       }
@@ -463,6 +466,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
             Tab(text: 'Tasks'),
             Tab(text: 'Activity'),
             Tab(text: 'Time'),
+            Tab(text: 'Links'),
           ],
         ),
       ),
@@ -523,6 +527,12 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                             timeEntries: _timeEntries,
                             api: _api,
                             onEntriesChanged: (entries) => setState(() => _timeEntries = entries),
+                          ),
+                          _LinksTab(
+                            ticketId: widget.id,
+                            links: _links,
+                            api: _api,
+                            onLinksChanged: (links) => setState(() => _links = links),
                           ),
                         ],
                       ),
@@ -1352,6 +1362,319 @@ class _ActivityTab extends StatelessWidget {
           ]),
         );
       },
+    );
+  }
+}
+
+
+// ─── Links Tab ────────────────────────────────────────────────────────────────
+
+class _LinksTab extends StatefulWidget {
+  final String ticketId;
+  final List<dynamic> links;
+  final ApiClient api;
+  final ValueChanged<List<dynamic>> onLinksChanged;
+
+  const _LinksTab({
+    required this.ticketId,
+    required this.links,
+    required this.api,
+    required this.onLinksChanged,
+  });
+
+  @override
+  State<_LinksTab> createState() => _LinksTabState();
+}
+
+class _LinksTabState extends State<_LinksTab> {
+  static const _linkTypes = [
+    {'value': 'RELATED_TO', 'label': 'Related To', 'icon': '🔗'},
+    {'value': 'BLOCKS', 'label': 'Blocks', 'icon': '🚫'},
+    {'value': 'IS_BLOCKED_BY', 'label': 'Is Blocked By', 'icon': '⛔'},
+    {'value': 'DUPLICATES', 'label': 'Duplicates', 'icon': '📋'},
+    {'value': 'IS_DUPLICATED_BY', 'label': 'Is Duplicated By', 'icon': '📄'},
+  ];
+
+  String _selectedLinkType = 'RELATED_TO';
+
+  Map<String, List<dynamic>> _groupLinks() {
+    final map = <String, List<dynamic>>{};
+    for (final link in widget.links) {
+      final type = link['linkType'] as String? ?? 'RELATED_TO';
+      map.putIfAbsent(type, () => []).add(link);
+    }
+    return map;
+  }
+
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'BLOCKS': return const Color(0xFFDC2626);
+      case 'IS_BLOCKED_BY': return const Color(0xFFC2410C);
+      case 'DUPLICATES': return const Color(0xFF15803D);
+      case 'IS_DUPLICATED_BY': return const Color(0xFF57534E);
+      default: return const Color(0xFF1D4ED8);
+    }
+  }
+
+  Color _typeBg(String type) {
+    switch (type) {
+      case 'BLOCKS': return const Color(0xFFFEF2F2);
+      case 'IS_BLOCKED_BY': return const Color(0xFFFFF7ED);
+      case 'DUPLICATES': return const Color(0xFFF0FDF4);
+      case 'IS_DUPLICATED_BY': return const Color(0xFFFAFAF9);
+      default: return const Color(0xFFEFF6FF);
+    }
+  }
+
+  String _typeLabel(String type) {
+    final found = _linkTypes.firstWhere((t) => t['value'] == type, orElse: () => {'label': type, 'icon': '🔗', 'value': type});
+    return '${found['icon']} ${found['label']}';
+  }
+
+  Future<void> _removeLink(String linkId) async {
+    try {
+      await widget.api.delete(ApiEndpoints.ticketLink(widget.ticketId, linkId));
+      final res = await widget.api.get(ApiEndpoints.ticketLinks(widget.ticketId));
+      widget.onLinksChanged(res.data['data'] ?? []);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to remove link'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  void _showAddLinkSheet() {
+    final searchCtrl = TextEditingController();
+    List<dynamic> results = [];
+    bool searching = false;
+    String? selectedTicketId;
+    String? selectedTicketLabel;
+    String selectedType = _selectedLinkType;
+    bool submitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Link Ticket', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Search tickets...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: searching ? const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                onChanged: (q) async {
+                  if (q.trim().length < 2) { setSheet(() { results = []; }); return; }
+                  setSheet(() => searching = true);
+                  try {
+                    final res = await widget.api.get(ApiEndpoints.tickets, queryParameters: {'search': q, 'size': 10});
+                    final data = res.data['data'];
+                    final items = data is Map ? (data['content'] ?? []) : (data ?? []);
+                    setSheet(() {
+                      results = (items as List).where((t) => t['id'].toString() != widget.ticketId).toList();
+                      searching = false;
+                    });
+                  } catch (_) { setSheet(() => searching = false); }
+                },
+              ),
+              if (results.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: results.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
+                    itemBuilder: (_, i) {
+                      final t = results[i] as Map<String, dynamic>;
+                      final id = t['id'].toString();
+                      final isSelected = selectedTicketId == id;
+                      return InkWell(
+                        onTap: () => setSheet(() {
+                          selectedTicketId = id;
+                          selectedTicketLabel = '${t['ticketNumber'] ?? '#$id'} — ${t['title'] ?? t['subject'] ?? ''}';
+                        }),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primaryLight : AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+                          ),
+                          child: Row(children: [
+                            if (isSelected) const Icon(Icons.check_circle, size: 16, color: AppColors.primary) else const Icon(Icons.confirmation_number_outlined, size: 16, color: AppColors.textTertiary),
+                            const SizedBox(width: 8),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(t['title'] ?? t['subject'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text('#${t['ticketNumber'] ?? id}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ])),
+                          ]),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Text('Relationship type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: _linkTypes.map((t) {
+                  final isSelected = selectedType == t['value'];
+                  return FilterChip(
+                    label: Text('${t['icon']} ${t['label']}', style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : AppColors.textPrimary)),
+                    selected: isSelected,
+                    onSelected: (_) => setSheet(() => selectedType = t['value']!),
+                    backgroundColor: AppColors.surface,
+                    selectedColor: AppColors.primary,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(color: isSelected ? AppColors.primary : AppColors.border),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: (selectedTicketId == null || submitting) ? null : () async {
+                    setSheet(() => submitting = true);
+                    try {
+                      await widget.api.post(ApiEndpoints.ticketLinks(widget.ticketId), data: {
+                        'targetTicketId': selectedTicketId,
+                        'linkType': selectedType,
+                      });
+                      final res = await widget.api.get(ApiEndpoints.ticketLinks(widget.ticketId));
+                      widget.onLinksChanged(res.data['data'] ?? []);
+                      if (mounted) Navigator.of(ctx).pop();
+                    } catch (_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(content: Text('Failed to add link'), backgroundColor: AppColors.error),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setSheet(() => submitting = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(submitting ? 'Linking...' : 'Add Link'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = _groupLinks();
+
+    return Stack(
+      children: [
+        widget.links.isEmpty
+            ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.link_off_outlined, size: 40, color: AppColors.textTertiary),
+                SizedBox(height: 8),
+                Text('No linked tickets', style: TextStyle(color: AppColors.textSecondary)),
+              ]))
+            : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: grouped.length,
+                itemBuilder: (_, i) {
+                  final type = grouped.keys.elementAt(i);
+                  final typeLinks = grouped[type]!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8, top: i == 0 ? 0 : 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _typeBg(type),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border(left: BorderSide(color: _typeColor(type), width: 3)),
+                        ),
+                        child: Text(_typeLabel(type), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _typeColor(type))),
+                      ),
+                      ...typeLinks.map((link) {
+                        final linkId = link['id']?.toString() ?? '';
+                        final number = link['linkedTicketNumber'] ?? '';
+                        final subject = link['linkedTicketSubject'] ?? '';
+                        final status = link['linkedTicketStatus'] ?? '';
+                        final linkedId = link['linkedTicketId']?.toString() ?? '';
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(children: [
+                            Text(number, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, fontFamily: 'monospace')),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(subject, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: AppColors.surfaceVariant, borderRadius: BorderRadius.circular(4)),
+                              child: Text(status, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              color: AppColors.textTertiary,
+                              onPressed: () => _removeLink(linkId),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              tooltip: 'Remove link',
+                            ),
+                          ]),
+                        );
+                      }),
+                    ],
+                  );
+                },
+              ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton.small(
+            onPressed: _showAddLinkSheet,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }

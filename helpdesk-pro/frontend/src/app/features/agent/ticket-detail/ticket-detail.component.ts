@@ -28,6 +28,7 @@ import { Subscription, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { DraftService } from '../../../core/services/draft.service';
 import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
+import { TicketLinkService, TicketLink, LinkType } from '../../../core/services/ticket-link.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -562,6 +563,53 @@ import { environment } from '../../../../environments/environment';
           </div>
 
 
+          <!-- Linked Tickets section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">Linked Tickets</h3>
+                <span *ngIf="ticketLinks().length > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ ticketLinks().length }}</span>
+              </div>
+              <button (click)="showAddLinkDialog()"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Add Link
+              </button>
+            </div>
+            <div class="p-4">
+              <div *ngIf="ticketLinks().length === 0" class="text-xs text-slate-400 italic text-center py-2">
+                No linked tickets
+              </div>
+              <ng-container *ngFor="let group of groupedLinks()">
+                <div class="mb-3">
+                  <div class="flex items-center gap-1.5 mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                          [style.background]="linkTypeStyle(group.type).bg"
+                          [style.color]="linkTypeStyle(group.type).color">
+                      {{ linkTypeStyle(group.type).label }}
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <div *ngFor="let link of group.links"
+                         class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer hover:border-blue-300 transition-colors"
+                         style="background:#F8FAFC;border-color:#E2E8F0"
+                         [routerLink]="['/agent/tickets', link.linkedTicketId]">
+                      <span class="font-mono text-blue-600">{{ link.linkedTicketNumber }}</span>
+                      <span class="text-gray-600 truncate max-w-32">{{ link.linkedTicketSubject }}</span>
+                      <button (click)="removeTicketLink($event, link)"
+                              class="ml-1 text-gray-300 hover:text-red-500 transition-colors leading-none">
+                        <i class="pi pi-times" style="font-size:9px"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+
           <!-- Time Tracking section -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -733,6 +781,53 @@ import { environment } from '../../../../environments/environment';
       </ng-template>
     </p-dialog>
 
+    <!-- Add Ticket Link dialog -->
+    <p-dialog [(visible)]="addLinkDialogVisible" [modal]="true" header="Link Ticket"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for a ticket to link and select the relationship type.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Enter subject or ticket number..."
+                 [ngModel]="linkSearch()"
+                 (ngModelChange)="onLinkSearch($event)" />
+        </div>
+        <div *ngIf="linkResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let t of linkResults()"
+               (click)="selectLinkTarget(t)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="linkTargetId() === t.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ t.title }}</span>
+              <span class="text-xs font-mono text-slate-400">{{ t.ticketNumber }}</span>
+            </div>
+            <span class="text-xs text-slate-400">{{ t.status }}</span>
+          </div>
+        </div>
+        <div *ngIf="linkSearch().length > 1 && linkResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No matching tickets found
+        </div>
+        <div *ngIf="linkTargetId()">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Relationship type</label>
+          <p-select [options]="linkTypeOptions" [(ngModel)]="selectedLinkType"
+                    optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="addLinkDialogVisible = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmAddLink()"
+                [disabled]="!linkTargetId() || !selectedLinkType || addingLink"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ addingLink ? 'Linking...' : 'Add Link' }}
+        </button>
+      </ng-template>
+    </p-dialog>
+
     <!-- Link to Issue dialog -->
     <p-dialog [(visible)]="linkIssueDialogVisible" [modal]="true" header="Link to Issue"
               [style]="{width:'480px'}" [closable]="true">
@@ -812,6 +907,44 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   linkingIssue = false;
   linkedIssues = signal<Issue[]>([]);
   private issueSearchTimeout: any;
+
+  // Ticket Links
+  ticketLinks = signal<TicketLink[]>([]);
+  addLinkDialogVisible = false;
+  linkSearch = signal('');
+  linkResults = signal<any[]>([]);
+  linkTargetId = signal<string | null>(null);
+  selectedLinkType: LinkType = 'RELATED_TO';
+  addingLink = false;
+  private linkSearchTimeout: any;
+
+  linkTypeOptions = [
+    { label: '🔗 Related To', value: 'RELATED_TO' },
+    { label: '🚫 Blocks', value: 'BLOCKS' },
+    { label: '⛔ Is Blocked By', value: 'IS_BLOCKED_BY' },
+    { label: '📋 Duplicates', value: 'DUPLICATES' },
+    { label: '📄 Is Duplicated By', value: 'IS_DUPLICATED_BY' },
+  ];
+
+  groupedLinks(): { type: LinkType; links: TicketLink[] }[] {
+    const map = new Map<LinkType, TicketLink[]>();
+    for (const link of this.ticketLinks()) {
+      if (!map.has(link.linkType)) map.set(link.linkType, []);
+      map.get(link.linkType)!.push(link);
+    }
+    return Array.from(map.entries()).map(([type, links]) => ({ type, links }));
+  }
+
+  linkTypeStyle(type: LinkType): { bg: string; color: string; label: string } {
+    const styles: Record<LinkType, { bg: string; color: string; label: string }> = {
+      RELATED_TO: { bg: '#EFF6FF', color: '#1D4ED8', label: '🔗 Related To' },
+      BLOCKS: { bg: '#FEF2F2', color: '#DC2626', label: '🚫 Blocks' },
+      IS_BLOCKED_BY: { bg: '#FFF7ED', color: '#C2410C', label: '⛔ Blocked By' },
+      DUPLICATES: { bg: '#F0FDF4', color: '#15803D', label: '📋 Duplicates' },
+      IS_DUPLICATED_BY: { bg: '#FAFAF9', color: '#57534E', label: '📄 Duplicated By' },
+    };
+    return styles[type];
+  }
 
   // Time tracking
   timeEntries = signal<TimeEntry[]>([]);
@@ -981,6 +1114,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private draftService: DraftService,
     private timeEntryService: TimeEntryService,
     private tagService: TagService,
+    private ticketLinkService: TicketLinkService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -1053,6 +1187,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.taskService.getTasks(id).subscribe(list => this.tasks.set(list));
     this.issueService.getIssuesByTicket(id).subscribe(issues => this.linkedIssues.set(issues));
     this.timeEntryService.getEntries(id).subscribe(entries => this.timeEntries.set(entries));
+    this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};
@@ -1403,6 +1538,55 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.issueService.unlinkTicket(issueId, this.ticket()!.id).subscribe({
       next: () => { this.linkedIssues.update(list => list.filter(i => i.id !== issueId)); },
       error: () => {},
+    });
+  }
+
+  showAddLinkDialog() {
+    this.addLinkDialogVisible = true;
+    this.linkSearch.set('');
+    this.linkResults.set([]);
+    this.linkTargetId.set(null);
+    this.selectedLinkType = 'RELATED_TO';
+  }
+
+  onLinkSearch(query: string) {
+    this.linkSearch.set(query);
+    clearTimeout(this.linkSearchTimeout);
+    if (query.length < 2) { this.linkResults.set([]); return; }
+    this.linkSearchTimeout = setTimeout(() => {
+      this.ticketService.getTickets({ search: query, size: 10 }).subscribe(page => {
+        this.linkResults.set(page.content.filter(t => t.id !== this.ticket()!.id));
+      });
+    }, 300);
+  }
+
+  selectLinkTarget(t: any) {
+    this.linkTargetId.set(t.id);
+  }
+
+  confirmAddLink() {
+    const targetId = this.linkTargetId();
+    if (!targetId || !this.selectedLinkType) return;
+    this.addingLink = true;
+    const id = this.ticket()!.id;
+    this.ticketLinkService.addLink(id, targetId, this.selectedLinkType).subscribe({
+      next: (links) => {
+        this.ticketLinks.set(links);
+        this.addingLink = false;
+        this.addLinkDialogVisible = false;
+      },
+      error: () => { this.addingLink = false; },
+    });
+  }
+
+  removeTicketLink(event: MouseEvent, link: TicketLink) {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = this.ticket()!.id;
+    this.ticketLinkService.removeLink(id, link.id).subscribe({
+      next: () => {
+        this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
+      },
     });
   }
 }
