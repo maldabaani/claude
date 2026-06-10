@@ -5,6 +5,9 @@ import '../../../core/api/api_endpoints.dart';
 import '../../../core/models/kb_article_model.dart';
 import '../../../core/theme/app_colors.dart';
 
+// SharedPreferences-free rated articles tracker using in-memory + static map
+final _ratedArticles = <String>{};
+
 class KnowledgeBaseScreen extends ConsumerStatefulWidget {
   const KnowledgeBaseScreen({super.key});
 
@@ -99,12 +102,28 @@ class _KnowledgeBaseScreenState extends ConsumerState<KnowledgeBaseScreen> {
     _loadArticles();
   }
 
-  void _openArticle(BuildContext context, KbArticleModel article) {
+  Future<KbArticleModel> _trackView(KbArticleModel article) async {
+    try {
+      final resp = await _api.post(ApiEndpoints.kbArticleView(article.id), data: {});
+      final data = resp.data['data'];
+      if (data != null) return KbArticleModel.fromJson(data as Map<String, dynamic>);
+    } catch (_) {}
+    return article.copyWith(viewCount: article.viewCount + 1);
+  }
+
+  void _openArticle(BuildContext context, KbArticleModel article) async {
+    final updated = await _trackView(article);
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ArticleSheet(article: article),
+      builder: (_) => _ArticleSheet(
+        article: updated,
+        api: _api,
+        alreadyRated: _ratedArticles.contains(article.id),
+        onRated: () => _ratedArticles.add(article.id),
+      ),
     );
   }
 
@@ -480,6 +499,16 @@ class _ArticleCard extends StatelessWidget {
                           color: AppColors.textTertiary,
                         ),
                       ),
+                      const SizedBox(width: 10),
+                      const Text('👍', style: TextStyle(fontSize: 11)),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${article.helpfulYes}',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
                       const Spacer(),
                       const Icon(
                         Icons.chevron_right_rounded,
@@ -500,10 +529,71 @@ class _ArticleCard extends StatelessWidget {
 
 // ─── Article Bottom Sheet ─────────────────────────────────────────────────────
 
-class _ArticleSheet extends StatelessWidget {
+class _ArticleSheet extends StatefulWidget {
   final KbArticleModel article;
+  final ApiClient api;
+  final bool alreadyRated;
+  final VoidCallback onRated;
 
-  const _ArticleSheet({required this.article});
+  const _ArticleSheet({
+    required this.article,
+    required this.api,
+    required this.alreadyRated,
+    required this.onRated,
+  });
+
+  @override
+  State<_ArticleSheet> createState() => _ArticleSheetState();
+}
+
+class _ArticleSheetState extends State<_ArticleSheet> {
+  late KbArticleModel _article;
+  late bool _rated;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _article = widget.article;
+    _rated = widget.alreadyRated;
+  }
+
+  Future<void> _submitRating(bool helpful) async {
+    if (_rated || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      final resp = await widget.api.post(
+        ApiEndpoints.kbArticleRate(_article.id),
+        data: {'helpful': helpful},
+      );
+      final data = resp.data['data'];
+      if (mounted) {
+        setState(() {
+          if (data != null) {
+            _article = KbArticleModel.fromJson(data as Map<String, dynamic>);
+          } else {
+            _article = helpful
+                ? _article.copyWith(helpfulYes: _article.helpfulYes + 1)
+                : _article.copyWith(helpfulNo: _article.helpfulNo + 1);
+          }
+          _rated = true;
+          _submitting = false;
+        });
+        widget.onRated();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _article = helpful
+              ? _article.copyWith(helpfulYes: _article.helpfulYes + 1)
+              : _article.copyWith(helpfulNo: _article.helpfulNo + 1);
+          _rated = true;
+          _submitting = false;
+        });
+        widget.onRated();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -541,7 +631,7 @@ class _ArticleSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (article.categoryName != null)
+                        if (_article.categoryName != null)
                           Container(
                             margin: const EdgeInsets.only(bottom: 6),
                             padding: const EdgeInsets.symmetric(
@@ -553,7 +643,7 @@ class _ArticleSheet extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              article.categoryName!,
+                              _article.categoryName!,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -562,7 +652,7 @@ class _ArticleSheet extends StatelessWidget {
                             ),
                           ),
                         Text(
-                          article.title,
+                          _article.title,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
@@ -596,7 +686,27 @@ class _ArticleSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${article.viewCount} views',
+                    '${_article.viewCount} views',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text('👍', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_article.helpfulYes}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('👎', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_article.helpfulNo}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textTertiary,
@@ -610,7 +720,7 @@ class _ArticleSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(article.createdAt),
+                    _formatDate(_article.createdAt),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textTertiary,
@@ -629,58 +739,85 @@ class _ArticleSheet extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _parseContent(article.content),
+                  children: _parseContent(_article.content),
                 ),
               ),
             ),
 
-            // Bottom rating
+            // Bottom rating section
             Container(
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.border)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-              child: Column(
-                children: [
-                  const Text(
-                    'Was this article helpful?',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _HelpfulButton(
-                        icon: Icons.thumb_up_outlined,
-                        label: 'Yes',
-                        color: AppColors.success,
-                        bgColor: AppColors.successBg,
-                        onTap: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Thanks for your feedback!'),
-                              backgroundColor: AppColors.success,
+              child: _rated
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Thank you for your feedback!',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF16A34A),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      _HelpfulButton(
-                        icon: Icons.thumb_down_outlined,
-                        label: 'No',
-                        color: AppColors.error,
-                        bgColor: AppColors.errorBg,
-                        onTap: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    )
+                  : Column(
+                      children: [
+                        Text(
+                          'Was this article helpful?',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_article.helpfulYes} people found this helpful',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _HelpfulButton(
+                              icon: Icons.thumb_up_outlined,
+                              label: 'Yes (${_article.helpfulYes})',
+                              color: AppColors.success,
+                              bgColor: AppColors.successBg,
+                              enabled: !_submitting,
+                              onTap: () => _submitRating(true),
+                            ),
+                            const SizedBox(width: 12),
+                            _HelpfulButton(
+                              icon: Icons.thumb_down_outlined,
+                              label: 'No (${_article.helpfulNo})',
+                              color: AppColors.error,
+                              bgColor: AppColors.errorBg,
+                              enabled: !_submitting,
+                              onTap: () => _submitRating(false),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -714,6 +851,7 @@ class _HelpfulButton extends StatelessWidget {
   final String label;
   final Color color;
   final Color bgColor;
+  final bool enabled;
   final VoidCallback onTap;
 
   const _HelpfulButton({
@@ -721,33 +859,37 @@ class _HelpfulButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.bgColor,
+    required this.enabled,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: color,
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.5,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

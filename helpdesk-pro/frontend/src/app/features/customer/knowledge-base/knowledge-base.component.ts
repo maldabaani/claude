@@ -109,7 +109,7 @@ import { KbService, KbCategory, KbArticle } from '../../../core/services/kb.serv
             </div>
             <div class="flex-1 min-w-0">
               <p class="font-semibold text-gray-900 text-sm truncate">{{ article.title }}</p>
-              <p class="text-xs text-slate-400 mt-0.5">{{ article.viewCount }} views</p>
+              <p class="text-xs text-slate-400 mt-0.5">👁 {{ article.viewCount }} views</p>
             </div>
             <i class="pi pi-chevron-right text-slate-300 shrink-0" style="font-size:16px"></i>
           </div>
@@ -136,7 +136,7 @@ import { KbService, KbCategory, KbArticle } from '../../../core/services/kb.serv
                   style="background:#EFF6FF;color:#1D4ED8">
               {{ selectedArticle()!.categoryName }}
             </span>
-            <span class="text-xs text-slate-400">{{ selectedArticle()!.viewCount }} views</span>
+            <span class="text-xs text-slate-400">👁 {{ selectedArticle()!.viewCount }} views</span>
           </div>
 
           <h1 class="text-2xl font-black text-gray-900 mb-6" style="letter-spacing:-0.03em">
@@ -145,29 +145,37 @@ import { KbService, KbCategory, KbArticle } from '../../../core/services/kb.serv
 
           <div class="text-sm text-gray-700 leading-relaxed" style="white-space:pre-wrap">{{ selectedArticle()!.body }}</div>
 
-          <!-- Helpful -->
+          <!-- Was this helpful? -->
           <div class="mt-10 pt-6 border-t border-gray-100">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Was this article helpful?</p>
-            <div class="flex items-center gap-3">
+            <p class="text-sm font-semibold text-gray-700 mb-1">Was this article helpful?</p>
+            <p class="text-xs text-slate-400 mb-3">
+              👍 {{ selectedArticle()!.helpfulYes }} people found this helpful
+            </p>
+
+            <div *ngIf="!ratedCurrentArticle()" class="flex items-center gap-3">
               <button
                 pButton
-                [label]="'Yes (' + selectedArticle()!.helpfulYes + ')'"
-                icon="pi pi-thumbs-up"
-                [disabled]="helpfulVoted()"
-                (click)="markHelpful(true)"
-                class="p-button-outlined p-button-sm rounded-xl"
-                style="border-color:#22C55E;color:#16A34A"
+                [label]="'👍 Yes (' + selectedArticle()!.helpfulYes + ')'"
+                (click)="submitRating(true)"
+                severity="success"
+                variant="outlined"
+                styleClass="!rounded-xl !text-sm"
               ></button>
               <button
                 pButton
-                [label]="'No (' + selectedArticle()!.helpfulNo + ')'"
-                icon="pi pi-thumbs-down"
-                [disabled]="helpfulVoted()"
-                (click)="markHelpful(false)"
-                class="p-button-outlined p-button-sm rounded-xl"
-                style="border-color:#EF4444;color:#DC2626"
+                [label]="'👎 No (' + selectedArticle()!.helpfulNo + ')'"
+                (click)="submitRating(false)"
+                severity="danger"
+                variant="outlined"
+                styleClass="!rounded-xl !text-sm"
               ></button>
-              <span *ngIf="helpfulVoted()" class="text-xs text-slate-400">Thanks for your feedback!</span>
+            </div>
+
+            <div *ngIf="ratedCurrentArticle()"
+                 class="flex items-center gap-2 px-4 py-3 rounded-xl"
+                 style="background:#F0FDF4;border:1px solid #BBF7D0">
+              <i class="pi pi-check-circle text-green-600"></i>
+              <span class="text-sm font-semibold text-green-700">Thank you for your feedback!</span>
             </div>
           </div>
         </div>
@@ -223,7 +231,7 @@ export class KnowledgeBaseComponent implements OnInit {
   articles = signal<KbArticle[]>([]);
   selectedCategory = signal<KbCategory | null>(null);
   selectedArticle = signal<KbArticle | null>(null);
-  helpfulVoted = signal(false);
+  ratedCurrentArticle = signal(false);
   searchQuery = '';
 
   constructor(private kbService: KbService) {}
@@ -256,22 +264,34 @@ export class KnowledgeBaseComponent implements OnInit {
   }
 
   openArticle(article: KbArticle) {
-    this.helpfulVoted.set(false);
-    this.kbService.getArticle(article.id).subscribe({
-      next: (a) => { this.selectedArticle.set(a); this.view.set('article'); },
+    const alreadyRated = this.kbService.getRatedArticleIds().has(article.id);
+    this.ratedCurrentArticle.set(alreadyRated);
+    // Track view then show article
+    this.kbService.trackView(article.id).subscribe({
+      next: (updated) => { this.selectedArticle.set(updated); this.view.set('article'); },
+      error: () => { this.selectedArticle.set(article); this.view.set('article'); },
     });
   }
 
-  markHelpful(yes: boolean) {
+  submitRating(helpful: boolean) {
     const article = this.selectedArticle();
     if (!article) return;
-    this.kbService.helpful(article.id, yes).subscribe();
-    this.helpfulVoted.set(true);
-    if (yes) {
-      this.selectedArticle.set({ ...article, helpfulYes: article.helpfulYes + 1 });
-    } else {
-      this.selectedArticle.set({ ...article, helpfulNo: article.helpfulNo + 1 });
-    }
+    this.kbService.rate(article.id, helpful).subscribe({
+      next: (updated) => {
+        this.selectedArticle.set(updated);
+        this.ratedCurrentArticle.set(true);
+        this.kbService.markRated(article.id);
+      },
+      error: () => {
+        // Optimistic fallback
+        const updated = helpful
+          ? { ...article, helpfulYes: article.helpfulYes + 1 }
+          : { ...article, helpfulNo: article.helpfulNo + 1 };
+        this.selectedArticle.set(updated);
+        this.ratedCurrentArticle.set(true);
+        this.kbService.markRated(article.id);
+      },
+    });
   }
 
   goToCategories() {

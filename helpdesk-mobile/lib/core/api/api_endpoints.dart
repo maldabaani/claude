@@ -52,6 +52,8 @@ class ApiEndpoints {
   static const String kbCategories = '/kb/categories';
   static const String kbArticles = '/kb/articles';
   static String kbArticle(String id) => '/kb/articles/$id';
+  static String kbArticleView(String id) => '/kb/articles/$id/view';
+  static String kbArticleRate(String id) => '/kb/articles/$id/rate';
 
   // Canned Responses
   static const String cannedResponses = '/canned-responses';
