@@ -114,6 +114,13 @@ class ApiEndpoints {
   // API Keys
   static const String apiKeys = '/api-keys';
 
+  // Tags
+  static const String tags = '/tags';
+  static String tagSearch = '/tags/search';
+  static String tag(String id) => '/tags/\$id';
+  static String tagMerge(String id) => '/tags/\$id/merge';
+  static String ticketTags(String id) => '/tickets/\$id/tags';
+
   // Settings
   static const String settings = '/settings';
 

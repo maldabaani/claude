@@ -61,6 +61,7 @@ export const routes: Routes = [
       { path: 'email-inboxes', loadComponent: () => import('./features/admin/email-inboxes/email-inboxes.component').then(m => m.EmailInboxesComponent) },
       { path: 'organizations', loadComponent: () => import('./features/admin/organizations/organizations.component').then(m => m.OrganizationsComponent) },
       { path: 'issues', loadComponent: () => import('./features/admin/issues/issues.component').then(m => m.IssuesComponent) },
+      { path: 'tags', loadComponent: () => import('./features/admin/tags/tags.component').then(m => m.AdminTagsComponent) },
       { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },

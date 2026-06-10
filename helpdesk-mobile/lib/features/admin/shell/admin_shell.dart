@@ -28,6 +28,7 @@ class AdminShell extends ConsumerWidget {
     _NavItem('/admin/email-inboxes', Icons.email_outlined, 'Email Inboxes'),
     _NavItem('/admin/organizations', Icons.corporate_fare_outlined, 'Organizations'),
     _NavItem('/admin/issues', Icons.bug_report_outlined, 'Issues'),
+    _NavItem('/admin/tags', Icons.label_outlined, 'Tags'),
     _NavItem('/admin/settings', Icons.settings_outlined, 'Settings'),
   ];
 

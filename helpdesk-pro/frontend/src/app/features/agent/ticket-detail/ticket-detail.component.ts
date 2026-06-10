@@ -15,6 +15,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TicketService } from '../../../core/services/ticket.service';
+import { TagService, Tag as ManagedTag } from '../../../core/services/tag.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
@@ -360,27 +361,34 @@ import { environment } from '../../../../environments/environment';
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</label>
                 <div class="flex flex-wrap gap-1.5 mb-2">
-                  <span *ngFor="let tag of ticket()!.tags"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-                        style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">
-                    {{ tag }}
-                    <button (click)="removeTag(tag)" class="hover:text-red-500 transition-colors leading-none">
-                      <i class="pi pi-times" style="font-size:11px"></i>
+                  <span *ngFor="let tag of ticketManagedTags()"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+                        [style.background]="tag.color">
+                    {{ tag.name }}
+                    <button (click)="removeManagedTag(tag)" class="hover:opacity-75 transition-opacity leading-none ml-0.5">
+                      <i class="pi pi-times" style="font-size:10px"></i>
                     </button>
                   </span>
-                  <span *ngIf="ticket()!.tags.length === 0" class="text-xs text-slate-300 italic">No tags</span>
+                  <span *ngIf="ticketManagedTags().length === 0" class="text-xs text-slate-300 italic">No tags</span>
                 </div>
-                <div class="flex gap-1.5">
-                  <input #tagInput
-                         class="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
-                         placeholder="Add tag..."
-                         (keydown.enter)="addTag(tagInput.value); tagInput.value = ''"
+                <!-- Tag autocomplete -->
+                <div class="relative">
+                  <input #tagSearchInput
+                         class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                         placeholder="+ Add tag..."
+                         [(ngModel)]="tagSearchQuery"
+                         (input)="onTagSearch($event)"
+                         (focus)="showTagSuggestions = true"
                          style="font-family:inherit">
-                  <button (click)="addTag(tagInput.value); tagInput.value = ''"
-                          class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white"
-                          style="background:#2563EB">
-                    Add
-                  </button>
+                  <div *ngIf="showTagSuggestions && tagSuggestions().length > 0"
+                       class="absolute left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 max-h-40 overflow-y-auto">
+                    <button *ngFor="let t of tagSuggestions()"
+                            (click)="addManagedTag(t)"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-slate-50 transition-colors text-left">
+                      <span class="w-3 h-3 rounded-full shrink-0" [style.background]="t.color"></span>
+                      <span class="font-medium text-gray-800">{{ t.name }}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -859,6 +867,12 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   mergeSearch = signal('');
   mergeResults = signal<Ticket[]>([]);
   mergeTargetId = signal<string | null>(null);
+
+  // Managed tags
+  ticketManagedTags = signal<ManagedTag[]>([]);
+  tagSuggestions = signal<ManagedTag[]>([]);
+  tagSearchQuery = '';
+  showTagSuggestions = false;
   merging = false;
   private mergeSearchTimeout: any;
   replyControl = new FormControl('', Validators.required);
@@ -966,6 +980,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private draftService: DraftService,
     private timeEntryService: TimeEntryService,
+    private tagService: TagService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -1021,6 +1036,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       if (t.manualDueDate) this.manualDueDateValue = new Date(t.manualDueDate);
       this.loading.set(false);
     });
+    this.tagService.getTicketTags(id).subscribe(tags => this.ticketManagedTags.set(tags));
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
     this.ticketService.getAttachments(id).subscribe(a => this.attachments.set(a));
     this.userService.getUsers('AGENT', 0, 100).subscribe(p => {
@@ -1175,6 +1191,36 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     const ticket = this.ticket()!;
     const newTags = ticket.tags.filter(t => t !== tag);
     this.ticketService.updateTicket(ticket.id, { tags: newTags }).subscribe(t => this.ticket.set(t));
+  }
+
+  // Managed tag methods
+  addManagedTag(tag: ManagedTag) {
+    const current = this.ticketManagedTags();
+    if (current.some(t => t.id === tag.id)) return;
+    const newTags = [...current, tag];
+    this.ticketManagedTags.set(newTags);
+    this.tagService.setTicketTags(this.ticket()!.id, newTags.map(t => t.id)).subscribe();
+    this.tagSearchQuery = '';
+    this.showTagSuggestions = false;
+    this.tagSuggestions.set([]);
+  }
+
+  removeManagedTag(tag: ManagedTag) {
+    const newTags = this.ticketManagedTags().filter(t => t.id !== tag.id);
+    this.ticketManagedTags.set(newTags);
+    this.tagService.setTicketTags(this.ticket()!.id, newTags.map(t => t.id)).subscribe();
+  }
+
+  onTagSearch(event: Event) {
+    const q = (event.target as HTMLInputElement).value;
+    if (!q.trim()) {
+      this.tagSuggestions.set([]);
+      return;
+    }
+    this.tagService.searchTags(q).subscribe(tags => {
+      const currentIds = new Set(this.ticketManagedTags().map(t => t.id));
+      this.tagSuggestions.set(tags.filter(t => !currentIds.has(t.id)));
+    });
   }
 
   addWatcher(value: string) {

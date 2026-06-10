@@ -33,6 +33,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   bool _loading = true;
   bool _submitting = false;
   bool _internalNote = false;
+  List<dynamic> _ticketManagedTags = [];
 
   // Presence
   List<Map<String, dynamic>> _otherViewers = [];
@@ -156,6 +157,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         _api.get(ApiEndpoints.ticketWatchers(widget.id)),
         _api.get(ApiEndpoints.ticketTasks(widget.id)),
         _api.get(ApiEndpoints.ticketTimeEntries(widget.id)),
+        _api.get(ApiEndpoints.ticketTags(widget.id)),
       ]);
       if (mounted) {
         final commentsData = results[1].data['data'];
@@ -165,6 +167,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
           _watchers = results[2].data['data'] ?? [];
           _tasks = results[3].data['data'] ?? [];
           _timeEntries = results[4].data['data'] ?? [];
+          _ticketManagedTags = results[5].data['data'] ?? [];
           _loading = false;
         });
       }
@@ -492,7 +495,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                       child: TabBarView(
                         controller: _tabController,
                         children: [
-                          _DetailsTab(ticket: _ticket!, onAssignToMe: _assignToMe, onStatusChange: _updateStatus),
+                          _DetailsTab(ticket: _ticket!, onAssignToMe: _assignToMe, onStatusChange: _updateStatus, managedTags: _ticketManagedTags, onTagsChanged: (tags) { setState(() => _ticketManagedTags = tags); }),
                           _CommentsTab(
                             comments: _comments,
                             commentController: _commentController,
@@ -532,15 +535,63 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
 
 // ─── Details Tab ─────────────────────────────────────────────────────────────
 
-class _DetailsTab extends StatelessWidget {
+class _DetailsTab extends StatefulWidget {
   final Map<String, dynamic> ticket;
   final VoidCallback onAssignToMe;
   final ValueChanged<String> onStatusChange;
+  final List<dynamic> managedTags;
+  final ValueChanged<List<dynamic>> onTagsChanged;
 
-  const _DetailsTab({required this.ticket, required this.onAssignToMe, required this.onStatusChange});
+  const _DetailsTab({required this.ticket, required this.onAssignToMe, required this.onStatusChange, required this.managedTags, required this.onTagsChanged});
+
+  @override
+  State<_DetailsTab> createState() => _DetailsTabState();
+}
+
+class _DetailsTabState extends State<_DetailsTab> {
+  final _api = ApiClient();
+  final _tagSearchCtrl = TextEditingController();
+  List<dynamic> _tagSuggestions = [];
+  bool _showSuggestions = false;
+
+  @override
+  void dispose() { _tagSearchCtrl.dispose(); super.dispose(); }
+
+  Future<void> _searchTags(String q) async {
+    if (q.isEmpty) { setState(() { _tagSuggestions = []; _showSuggestions = false; }); return; }
+    try {
+      final resp = await _api.get(ApiEndpoints.tagSearch, queryParameters: {'q': q});
+      final data = resp.data['data'];
+      final currentIds = widget.managedTags.map((t) => t['id']).toSet();
+      if (mounted) setState(() {
+        _tagSuggestions = (data is List ? data : []).where((t) => !currentIds.contains(t['id'])).toList();
+        _showSuggestions = _tagSuggestions.isNotEmpty;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _addTag(Map<String, dynamic> tag) async {
+    final ticketId = widget.ticket['id'];
+    final updated = [...widget.managedTags, tag];
+    widget.onTagsChanged(updated);
+    await _api.put(ApiEndpoints.ticketTags(ticketId), data: {'tagIds': updated.map((t) => t['id']).toList()});
+    setState(() { _tagSearchCtrl.clear(); _tagSuggestions = []; _showSuggestions = false; });
+  }
+
+  Future<void> _removeTag(Map<String, dynamic> tag) async {
+    final ticketId = widget.ticket['id'];
+    final updated = widget.managedTags.where((t) => t['id'] != tag['id']).toList();
+    widget.onTagsChanged(updated);
+    await _api.put(ApiEndpoints.ticketTags(ticketId), data: {'tagIds': updated.map((t) => t['id']).toList()});
+  }
+
+  Color _hexToColor(String hex) {
+    try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); } catch (_) { return const Color(0xFF6366F1); }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final ticket = widget.ticket;
     final assignedAgent = ticket['assignedAgent'] as Map<String, dynamic>?;
     final createdBy = ticket['createdBy'] as Map<String, dynamic>?;
     final dueDate = ticket['manualDueDate'] ?? ticket['dueDate'];
@@ -589,17 +640,86 @@ class _DetailsTab extends StatelessWidget {
               const Divider(height: 16),
               _DetailRow(
                 label: 'SLA Deadline',
-                value: _formatDate(dueDate),
+                value: _formatDate(dueDate as String?),
                 valueColor: (ticket['slaBreached'] == true) ? AppColors.error : AppColors.textPrimary,
               ),
             ],
           ]),
+          const SizedBox(height: 12),
+          // Tags section
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Tags', style: TextStyle(fontSize: 12, color: AppColors.textTertiary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              if (widget.managedTags.isNotEmpty)
+                Wrap(spacing: 6, runSpacing: 6, children: widget.managedTags.map((tag) {
+                  final color = _hexToColor(tag['color'] ?? '#6366F1');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(tag['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => _removeTag(tag),
+                        child: const Icon(Icons.close, size: 12, color: Colors.white),
+                      ),
+                    ]),
+                  );
+                }).toList()),
+              if (widget.managedTags.isEmpty)
+                const Text('No tags', style: TextStyle(fontSize: 12, color: AppColors.textTertiary, fontStyle: FontStyle.italic)),
+              const SizedBox(height: 8),
+              Stack(children: [
+                TextField(
+                  controller: _tagSearchCtrl,
+                  decoration: const InputDecoration(
+                    hintText: '+ Add tag...',
+                    hintStyle: TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                  onChanged: _searchTags,
+                ),
+              ]),
+              if (_showSuggestions && _tagSuggestions.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 4))],
+                  ),
+                  child: Column(children: _tagSuggestions.take(6).map((t) => InkWell(
+                    onTap: () => _addTag(t as Map<String, dynamic>),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(children: [
+                        Container(width: 12, height: 12, decoration: BoxDecoration(
+                          color: _hexToColor(t['color'] ?? '#6366F1'), shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        Text(t['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      ]),
+                    ),
+                  )).toList()),
+                ),
+            ]),
+          ),
           const SizedBox(height: 16),
           if (assignedAgent == null)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: onAssignToMe,
+                onPressed: widget.onAssignToMe,
                 icon: const Icon(Icons.person_add_outlined),
                 label: const Text('Assign to Me'),
                 style: ElevatedButton.styleFrom(

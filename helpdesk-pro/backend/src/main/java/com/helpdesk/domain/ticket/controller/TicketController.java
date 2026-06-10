@@ -1,5 +1,7 @@
 package com.helpdesk.domain.ticket.controller;
 
+import com.helpdesk.domain.tag.TagResponse;
+import com.helpdesk.domain.tag.TagService;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
@@ -40,6 +42,7 @@ public class TicketController {
     private final TicketService ticketService;
     private final PresenceService presenceService;
     private final TicketWatcherRepository ticketWatcherRepository;
+    private final TagService tagService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -261,5 +264,22 @@ public class TicketController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> bulkAction(
             @Valid @RequestBody BulkTicketRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(ticketService.bulkAction(request)));
+    }
+
+    // ── Tag taxonomy ──────────────────────────────────────────────────────────
+
+    @PutMapping("/{id}/tags")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<TagResponse>>> setTicketTags(
+            @PathVariable UUID id,
+            @RequestBody Map<String, List<UUID>> body) {
+        List<UUID> tagIds = body.getOrDefault("tagIds", List.of());
+        tagService.setTicketTags(id, tagIds);
+        return ResponseEntity.ok(ApiResponse.ok(tagService.getTicketTags(id)));
+    }
+
+    @GetMapping("/{id}/tags")
+    public ResponseEntity<ApiResponse<List<TagResponse>>> getTicketTags(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(tagService.getTicketTags(id)));
     }
 }
