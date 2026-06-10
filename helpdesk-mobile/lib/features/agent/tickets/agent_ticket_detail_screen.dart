@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
@@ -31,20 +32,64 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   bool _submitting = false;
   bool _internalNote = false;
 
+  // Presence
+  List<Map<String, dynamic>> _otherViewers = [];
+  Timer? _presenceTimer;
+
   static const _statuses = ['NEW', 'OPEN', 'PENDING', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
-    _load();
+    _load().then((_) => _joinPresence());
   }
 
   @override
   void dispose() {
+    _presenceTimer?.cancel();
+    _leavePresence();
     _commentController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _joinPresence() async {
+    try {
+      final res = await _api.post(ApiEndpoints.ticketPresenceJoin(widget.id), data: {});
+      final viewers = (res.data['data'] as List?) ?? [];
+      final currentUserId = ref.read(authProvider).user?.id;
+      if (mounted) {
+        setState(() {
+          _otherViewers = viewers
+              .cast<Map<String, dynamic>>()
+              .where((v) => v['agentId']?.toString() != currentUserId)
+              .toList();
+        });
+      }
+      // Poll presence every 30 seconds
+      _presenceTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollPresence());
+    } catch (_) {}
+  }
+
+  Future<void> _pollPresence() async {
+    try {
+      final res = await _api.get(ApiEndpoints.ticketPresence(widget.id));
+      final viewers = (res.data['data'] as List?) ?? [];
+      final currentUserId = ref.read(authProvider).user?.id;
+      if (mounted) {
+        setState(() {
+          _otherViewers = viewers
+              .cast<Map<String, dynamic>>()
+              .where((v) => v['agentId']?.toString() != currentUserId)
+              .toList();
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _leavePresence() {
+    _api.post(ApiEndpoints.ticketPresenceLeave(widget.id), data: {}).catchError((_) {});
   }
 
   Future<void> _load() async {
@@ -269,30 +314,55 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
           ? const Center(child: CircularProgressIndicator())
           : _ticket == null
               ? const Center(child: Text('Ticket not found.'))
-              : TabBarView(
-                  controller: _tabController,
+              : Column(
                   children: [
-                    _DetailsTab(ticket: _ticket!, onAssignToMe: _assignToMe, onStatusChange: _updateStatus),
-                    _CommentsTab(
-                      comments: _comments,
-                      commentController: _commentController,
-                      internalNote: _internalNote,
-                      submitting: _submitting,
-                      onToggleInternal: (v) => setState(() => _internalNote = v),
-                      onSend: _postComment,
+                    // Collision warning banner
+                    if (_otherViewers.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        color: const Color(0xFFFEF3C7),
+                        child: Row(children: [
+                          const Icon(Icons.visibility_outlined, size: 16, color: Color(0xFFD97706)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(
+                            'Also viewing: ${_otherViewers.map((v) => v['agentName'] ?? v['userName'] ?? 'Agent').join(', ')}',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+                          )),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Replies may conflict',
+                            style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontStyle: FontStyle.italic),
+                          ),
+                        ]),
+                      ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _DetailsTab(ticket: _ticket!, onAssignToMe: _assignToMe, onStatusChange: _updateStatus),
+                          _CommentsTab(
+                            comments: _comments,
+                            commentController: _commentController,
+                            internalNote: _internalNote,
+                            submitting: _submitting,
+                            onToggleInternal: (v) => setState(() => _internalNote = v),
+                            onSend: _postComment,
+                          ),
+                          _WatchersTab(
+                            watchers: _watchers,
+                            onAdd: _addWatcher,
+                            onRemove: _removeWatcher,
+                          ),
+                          _TasksTab(
+                            tasks: _tasks,
+                            onAdd: _addTask,
+                            onToggle: _toggleTask,
+                            onDelete: _deleteTask,
+                          ),
+                          _ActivityTab(activity: _activity),
+                        ],
+                      ),
                     ),
-                    _WatchersTab(
-                      watchers: _watchers,
-                      onAdd: _addWatcher,
-                      onRemove: _removeWatcher,
-                    ),
-                    _TasksTab(
-                      tasks: _tasks,
-                      onAdd: _addTask,
-                      onToggle: _toggleTask,
-                      onDelete: _deleteTask,
-                    ),
-                    _ActivityTab(activity: _activity),
                   ],
                 ),
     );

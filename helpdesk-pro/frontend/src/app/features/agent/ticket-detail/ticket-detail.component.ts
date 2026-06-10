@@ -20,6 +20,9 @@ import { CannedResponseService, CannedResponse as CannedResponseModel } from '..
 import { CustomFieldService, CustomField } from '../../../core/services/custom-field.service';
 import { TaskService, TicketTask } from '../../../core/services/task.service';
 import { IssueService, Issue } from '../../../core/services/issue.service';
+import { PresenceService, PresenceViewer } from '../../../core/services/presence.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { Subscription } from 'rxjs';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -40,11 +43,12 @@ import { environment } from '../../../../environments/environment';
     <div *ngIf="!loading() && ticket()" class="space-y-5">
 
       <!-- Collision warning -->
-      <div *ngIf="otherAgentsCount() > 0"
+      <div *ngIf="otherViewers().length > 0"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
-           style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E">
-        <i class="pi pi-exclamation-triangle" style="font-size:16px;color:#D97706"></i>
-        <span><strong>{{ otherAgentsCount() }}</strong> other agent(s) are viewing this ticket</span>
+           style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E">
+        <i class="pi pi-eye" style="font-size:16px;color:#D97706"></i>
+        <span>Also viewing: <strong>{{ otherViewers()[0].agentName }}<ng-container *ngIf="otherViewers().length > 1">, +{{ otherViewers().length - 1 }} more</ng-container></strong></span>
+        <span class="ml-2 text-xs" style="color:#B45309">Be careful — replies may conflict</span>
       </div>
 
       <!-- Back nav -->
@@ -674,8 +678,10 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   }
 
   // Presence state
-  presenceAgents = signal<{agentId: string; agentName: string}[]>([]);
+  presenceAgents = signal<PresenceViewer[]>([]);
+  otherViewers = signal<PresenceViewer[]>([]);
   private presenceInterval: ReturnType<typeof setInterval> | null = null;
+  private presenceSubscription: Subscription | null = null;
 
   noteModeOptions = [
     { label: 'Public', value: 'public' },
@@ -754,6 +760,8 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private customFieldService: CustomFieldService,
     private taskService: TaskService,
     private issueService: IssueService,
+    private presenceService: PresenceService,
+    private authService: AuthService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -831,21 +839,36 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       this.customDateValues.set(dates);
     });
 
-    // Presence: record and poll
-    this.ticketService.recordPresence(id).subscribe();
-    this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
+    // Presence: join and subscribe to WebSocket updates
+    this.presenceService.join(id).subscribe(viewers => this._updatePresence(viewers, id));
+    // Subscribe to real-time updates
+    this.presenceSubscription = this.presenceService.presence$.subscribe(update => {
+      if (update.ticketId === id) this._updatePresence(update.viewers, id);
+    });
+    // Wire up WebSocket subscription after a brief delay to allow connection
+    setTimeout(() => this.presenceService.subscribeToTicket(id), 1000);
+    // Also poll every 30s as fallback
     this.presenceInterval = setInterval(() => {
-      this.ticketService.recordPresence(id).subscribe();
-      this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
-    }, 15000);
+      this.presenceService.getViewers(id).subscribe(viewers => this._updatePresence(viewers, id));
+    }, 30000);
+  }
+
+  private _updatePresence(viewers: PresenceViewer[], ticketId: string) {
+    this.presenceAgents.set(viewers);
+    const currentUserId = this.authService.currentUser()?.userId;
+    this.otherViewers.set(viewers.filter(v => v.agentId !== currentUserId));
   }
 
   ngOnDestroy() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.presenceService.leave(id).subscribe();
+    this.presenceService.unsubscribeFromTicket();
+    if (this.presenceSubscription) this.presenceSubscription.unsubscribe();
     if (this.presenceInterval) clearInterval(this.presenceInterval);
   }
 
   otherAgentsCount(): number {
-    return Math.max(0, this.presenceAgents().length - 1);
+    return this.otherViewers().length;
   }
 
   onFileSelected(event: Event) {

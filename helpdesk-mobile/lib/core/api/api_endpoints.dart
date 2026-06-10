@@ -91,6 +91,11 @@ class ApiEndpoints {
   // CSAT
   static String csatRating(String ticketId) => '/csat/tickets/$ticketId/rating';
 
+  // Presence
+  static String ticketPresenceJoin(String id) => '/tickets/$id/presence/join';
+  static String ticketPresenceLeave(String id) => '/tickets/$id/presence/leave';
+  static String ticketPresence(String id) => '/tickets/$id/presence';
+
   // Attachments
   static String attachmentDownload(String id) => '/attachments/$id/download';
 
