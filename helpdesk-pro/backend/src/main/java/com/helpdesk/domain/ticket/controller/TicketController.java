@@ -115,6 +115,24 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.ok("Presence recorded", null));
     }
 
+    @PostMapping("/{id}/presence/join")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> joinPresence(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser) {
+        List<PresenceService.AgentPresence> viewers = presenceService.join(id, currentUser.getId(), currentUser.getFullName());
+        return ResponseEntity.ok(ApiResponse.ok(viewers));
+    }
+
+    @PostMapping("/{id}/presence/leave")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> leavePresence(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser) {
+        List<PresenceService.AgentPresence> viewers = presenceService.leave(id, currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.ok(viewers));
+    }
+
     @GetMapping("/{id}/presence")
     @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> getPresence(
