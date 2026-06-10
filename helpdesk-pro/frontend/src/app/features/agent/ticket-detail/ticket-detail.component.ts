@@ -470,19 +470,60 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
-          <!-- Merge ticket / Link to Issue buttons -->
+          <!-- Linked Issues section -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-            <div class="p-4 space-y-2">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">Linked Incidents</h3>
+                <span *ngIf="linkedIssues().length > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#FEF3C7;color:#92400E">{{ linkedIssues().length }}</span>
+              </div>
+              <button (click)="showLinkIssueDialog()"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Link
+              </button>
+            </div>
+            <div class="p-4">
+              <div *ngIf="linkedIssues().length === 0" class="text-xs text-slate-400 italic text-center py-2">
+                No linked incidents
+              </div>
+              <div *ngFor="let issue of linkedIssues(); let last = last"
+                   class="flex items-start gap-3 py-2.5"
+                   [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                     [style.background]="issue.status === 'OPEN' ? '#FEF3C7' : '#F1F5F9'">
+                  <i class="pi pi-exclamation-circle"
+                     [style.color]="issue.status === 'OPEN' ? '#D97706' : '#94A3B8'"
+                     style="font-size:13px"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 truncate">{{ issue.title }}</p>
+                  <span class="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                        [style.background]="issue.status === 'OPEN' ? '#FEF3C7' : '#F1F5F9'"
+                        [style.color]="issue.status === 'OPEN' ? '#92400E' : '#64748B'">
+                    {{ issue.status }}
+                  </span>
+                </div>
+                <button (click)="unlinkIssue(issue.id)"
+                        class="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                        title="Unlink">
+                  <i class="pi pi-times" style="font-size:11px"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Merge ticket button -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="p-4">
               <button (click)="showMergeDialog()"
                       class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 <i class="pi pi-arrow-right-arrow-left" style="font-size:15px"></i>
                 Merge Ticket
-              </button>
-              <button (click)="showLinkIssueDialog()"
-                      class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                <i class="pi pi-exclamation-circle" style="font-size:15px"></i>
-                Link to Issue
               </button>
             </div>
           </div>
@@ -604,6 +645,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   issueResults = signal<Issue[]>([]);
   selectedIssueId = signal<string | null>(null);
   linkingIssue = false;
+  linkedIssues = signal<Issue[]>([]);
   private issueSearchTimeout: any;
 
   // Merge
@@ -781,6 +823,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.ticketService.getWatchers(id).subscribe(w => this.watchers.set(w));
     this.customFieldService.getFields().subscribe(fields => this.customFields.set(fields));
     this.taskService.getTasks(id).subscribe(list => this.tasks.set(list));
+    this.issueService.getIssuesByTicket(id).subscribe(issues => this.linkedIssues.set(issues));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};
@@ -1001,8 +1044,17 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.linkingIssue = false;
         this.linkIssueDialogVisible = false;
+        // Refresh linked issues
+        this.issueService.getIssuesByTicket(this.ticket()!.id).subscribe(issues => this.linkedIssues.set(issues));
       },
       error: () => { this.linkingIssue = false; },
+    });
+  }
+
+  unlinkIssue(issueId: string) {
+    this.issueService.unlinkTicket(issueId, this.ticket()!.id).subscribe({
+      next: () => { this.linkedIssues.update(list => list.filter(i => i.id !== issueId)); },
+      error: () => {},
     });
   }
 }

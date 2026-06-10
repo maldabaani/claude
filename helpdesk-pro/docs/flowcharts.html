@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HelpDesk Pro — System Flowcharts</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0F172A; color: #E2E8F0; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: linear-gradient(135deg, #1E3A5F 0%, #1E1B4B 50%, #0F172A 100%);
+      border-bottom: 1px solid #334155;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .header-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .header-text h1 {
+      font-size: 22px; font-weight: 800;
+      background: linear-gradient(90deg, #60A5FA, #A78BFA);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-text p { font-size: 13px; color: #64748B; margin-top: 2px; }
+    .header-badge {
+      margin-left: auto;
+      background: #1E293B; border: 1px solid #334155;
+      border-radius: 8px; padding: 6px 14px;
+      font-size: 12px; color: #94A3B8;
+    }
+
+    .tabs-wrapper {
+      background: #0F172A;
+      border-bottom: 1px solid #1E293B;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow-x: auto;
+      position: sticky;
+      top: 81px;
+      z-index: 99;
+    }
+    .tab {
+      background: none; border: none; cursor: pointer;
+      padding: 14px 20px;
+      font-size: 14px; font-weight: 600; color: #64748B;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s; white-space: nowrap;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tab:hover { color: #CBD5E1; background: #1E293B20; }
+    .tab.active[data-role="customer"] { color: #22C55E; border-bottom-color: #22C55E; }
+    .tab.active[data-role="agent"]    { color: #3B82F6; border-bottom-color: #3B82F6; }
+    .tab.active[data-role="teamlead"] { color: #A855F7; border-bottom-color: #A855F7; }
+    .tab.active[data-role="admin"]    { color: #F59E0B; border-bottom-color: #F59E0B; }
+    .tab-count {
+      font-size: 11px; background: #1E293B; border-radius: 10px;
+      padding: 2px 7px; color: #94A3B8;
+    }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 14px 28px;
+      background: #0F172A;
+      border-bottom: 1px solid #1E293B;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #CBD5E1;
+      background: #1E293B; border: 1px solid #334155;
+      border-radius: 6px; padding: 4px 10px;
+    }
+    .legend-swatch {
+      width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+    }
+
+    .tab-content { display: block; visibility: hidden; height: 0; overflow: hidden; pointer-events: none; }
+    .tab-content.active { visibility: visible; height: auto; overflow: visible; pointer-events: auto; }
+
+    .section-header {
+      padding: 28px 28px 8px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-badge {
+      font-size: 12px; font-weight: 700; padding: 4px 12px;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .section-header h2 { font-size: 18px; font-weight: 700; }
+    .section-desc { font-size: 13px; color: #64748B; margin-left: auto; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
+      gap: 24px;
+      padding: 16px 28px 40px;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; padding: 12px; }
+    }
+
+    .card {
+      background: #1E293B;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      padding: 24px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      border-color: #475569;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .card-header { margin-bottom: 16px; }
+    .card-num {
+      font-size: 11px; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .card-title { font-size: 16px; font-weight: 700; color: #F8FAFC; }
+    .card-subtitle { font-size: 13px; color: #64748B; margin-top: 4px; }
+
+    .mermaid-wrap {
+      background: #0F172A;
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid #1E293B;
+    }
+    .mermaid { min-width: 100%; }
+
+    .flow-summary {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #0F172A;
+      border-left: 3px solid #334155;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.6;
+    }
+    .flow-summary strong { color: #CBD5E1; }
+
+    footer {
+      background: #0F172A;
+      border-top: 1px solid #1E293B;
+      padding: 24px 28px;
+      text-align: center;
+      font-size: 12px; color: #475569;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">🎫</div>
+  <div class="header-text">
+    <h1>HelpDesk Pro — System Flowcharts</h1>
+    <p>Complete role-based process documentation · 19 diagrams across 4 roles</p>
+  </div>
+  <div class="header-badge">v1.0 · 2026</div>
+</header>
+
+<nav class="tabs-wrapper">
+  <button class="tab active" data-role="customer" onclick="showTab('customer')">👤 Customer <span class="tab-count">4</span></button>
+  <button class="tab" data-role="agent" onclick="showTab('agent')">🎧 Agent <span class="tab-count">5</span></button>
+  <button class="tab" data-role="teamlead" onclick="showTab('teamlead')">👥 Team Lead <span class="tab-count">3</span></button>
+  <button class="tab" data-role="admin" onclick="showTab('admin')">⚙️ Admin <span class="tab-count">7</span></button>
+</nav>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#1E40AF"></div> Start / End</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#1E293B;border:1px solid #334155"></div> Action</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#D97706"></div> Decision</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#5B21B6"></div> System Process</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#0E7490"></div> Database</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#92400E"></div> Notification</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#991B1B"></div> Error</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#166534"></div> Success</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#1E3A5F"></div> Input</div>
+</div>
+
+<!-- ===== CUSTOMER TAB ===== -->
+<div id="tab-customer" class="tab-content active">
+  <div class="section-header">
+    <span class="section-badge" style="background:#052e16;color:#22C55E;border:1px solid #16a34a;">Customer</span>
+    <h2 style="color:#22C55E;">Customer Role Flows</h2>
+    <span class="section-desc">4 diagrams · Portal access, tickets, KB</span>
+  </div>
+  <div class="grid">
+
+    <!-- Card 1 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 1 of 4 · Customer</div>
+        <div class="card-title">Login &amp; Registration Flow</div>
+        <div class="card-subtitle">Authentication, 2FA verification, JWT token generation, and role-based redirect</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([User visits /login]):::start --> B[/Enter email + password/]:::input
+    B --> C{Valid credentials?}:::decision
+    C -->|No| D[Show error message]:::error
+    D --> B
+    C -->|2FA enabled| E[/Enter 6-digit TOTP code/]:::input
+    E --> F{Code valid?}:::decision
+    F -->|No| G[Show 2FA error]:::error
+    G --> E
+    F -->|Yes| H[[Generate JWT tokens]]:::system
+    C -->|Yes, no 2FA| H
+    H --> I[(Save refresh token)]:::database
+    I --> J{User role?}:::decision
+    J -->|CUSTOMER| K([Redirect to Customer Portal]):::terminal
+    J -->|AGENT/TEAM_LEAD| L([Redirect to Agent Dashboard]):::terminal
+    J -->|ADMIN| M([Redirect to Admin Overview]):::terminal
+
+    N([New user? Click Register]):::start --> O[/Fill name, email, password/]:::input
+    O --> P{Form valid?}:::decision
+    P -->|No| Q[Show validation errors]:::error
+    Q --> O
+    P -->|Yes| R[[Create user account]]:::system
+    R --> S((Send welcome email)):::notification
+    S --> K
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Users authenticate via email/password with optional TOTP two-factor verification. Successful login generates a JWT access token and stores a refresh token in the database. After authentication, users are redirected based on their assigned role — customers to the portal, agents to the dashboard, and admins to the overview screen. New users can self-register, triggering an automated welcome email.
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 2 of 4 · Customer</div>
+        <div class="card-title">Submit a Ticket</div>
+        <div class="card-subtitle">Help topic selection, template pre-fill, form validation, and ticket creation</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Customer Portal Home]):::start --> B{Action?}:::decision
+    B -->|Click New Ticket| C[Submit Ticket Screen]:::action
+    B -->|Click My Tickets| Z([My Tickets Screen]):::terminal
+
+    C --> D[/Select Help Topic - optional/]:::input
+    D --> E{Topic selected?}:::decision
+    E -->|Yes| F[[Auto-fill priority and department]]:::system
+    E -->|No| G[Manual selection]:::action
+    F --> H
+    G --> H[/Select template - optional/]:::input
+    H --> I{Template chosen?}:::decision
+    I -->|Yes| J[[Pre-fill subject and description]]:::system
+    I -->|No| K[Type manually]:::action
+    J --> L
+    K --> L[/Fill subject + description/]:::input
+    L --> M[/Choose department and priority/]:::input
+    M --> N{Submit clicked?}:::decision
+    N -->|Form invalid| O[Highlight required fields]:::error
+    O --> L
+    N -->|Valid| P[[Create ticket - status NEW]]:::system
+    P --> Q[(Save to database)]:::database
+    Q --> R((Email confirmation to customer)):::notification
+    R --> S((In-app notification created)):::notification
+    S --> T([Redirect to Ticket Detail]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Customers can submit new support tickets from the portal home screen. Selecting a help topic auto-fills priority and department, while optional templates pre-populate the subject and description fields. Upon valid form submission, the ticket is created with status NEW, persisted to the database, and the customer receives both an email confirmation and an in-app notification.
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 3 of 4 · Customer</div>
+        <div class="card-title">View Ticket &amp; Reply</div>
+        <div class="card-subtitle">Ticket detail view, threaded conversation, CSAT rating, and reply submission</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([My Tickets Screen]):::start --> B[View ticket list]:::action
+    B --> C[/Filter by status/]:::input
+    C --> D{Click a ticket?}:::decision
+    D -->|No| C
+    D -->|Yes| E[Ticket Detail Screen]:::action
+    E --> F[View description + status + agent]:::action
+    F --> G[Read conversation thread]:::action
+    G --> H{Ticket resolved?}:::decision
+    H -->|Yes - no rating yet| I[CSAT Rating Widget appears]:::action
+    I --> J[/Select 1-5 stars/]:::input
+    J --> K[/Optional comment/]:::input
+    K --> L{Submit rating?}:::decision
+    L -->|Yes| M[[Save CSAT rating]]:::system
+    M --> N((Thank you message shown)):::notification
+    H -->|No| O{Write reply?}:::decision
+    O -->|Yes| P[/Type message in reply box/]:::input
+    P --> Q[/Optional: attach file/]:::input
+    Q --> R{Send clicked?}:::decision
+    R -->|Empty| S[Button stays disabled]:::error
+    R -->|Has text| T[[Save public comment]]:::system
+    T --> U[(Store in database)]:::database
+    U --> V((Notify assigned agent)):::notification
+    V --> W[Comment appears in thread]:::action
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Customers browse their ticket list with status filtering and click through to full ticket details showing the conversation thread. On resolved tickets a CSAT widget prompts 1–5 star feedback with an optional comment. For open tickets, customers can type a reply with optional file attachments, which triggers an email notification to the assigned agent and appends the comment to the thread.
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 4 of 4 · Customer</div>
+        <div class="card-title">Knowledge Base</div>
+        <div class="card-subtitle">Article search, category browsing, self-service resolution, and ticket pre-fill</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Click Knowledge Base]):::start --> B[Browse categories]:::action
+    B --> C{User action?}:::decision
+    C -->|Search keywords| D[/Type search query/]:::input
+    D --> E[[Full-text search articles]]:::system
+    E --> F{Results found?}:::decision
+    F -->|No| G[Show no results message]:::error
+    G --> D
+    F -->|Yes| H[Display article list]:::action
+    C -->|Browse category| I[Select category]:::action
+    I --> H
+    H --> J{Click article?}:::decision
+    J -->|No| C
+    J -->|Yes| K[Read article content]:::action
+    K --> L{Issue resolved?}:::decision
+    L -->|Yes| M([No ticket needed - exit]):::terminal
+    L -->|No| N([Submit Ticket - pre-filled]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> The Knowledge Base supports both keyword full-text search and hierarchical category browsing to surface relevant articles. When a customer reads an article that resolves their issue, no ticket needs to be created. If the issue persists, the customer is directed to ticket submission with context pre-filled from the article they were reading.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== AGENT TAB ===== -->
+<div id="tab-agent" class="tab-content">
+  <div class="section-header">
+    <span class="section-badge" style="background:#172554;color:#3B82F6;border:1px solid #2563EB;">Agent</span>
+    <h2 style="color:#3B82F6;">Agent Role Flows</h2>
+    <span class="section-desc">5 diagrams · Queue, replies, management, tasks, merges</span>
+  </div>
+  <div class="grid">
+
+    <!-- Card 5 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 5 of 5 · Agent</div>
+        <div class="card-title">Ticket Queue &amp; Filters</div>
+        <div class="card-subtitle">Dashboard KPIs, queue filtering, saved views, bulk actions, and ticket selection</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Agent logs in]):::start --> B[Agent Dashboard]:::action
+    B --> C[View KPI stats]:::action
+    C --> D{Go to queue?}:::decision
+    D -->|Yes| E[Ticket Queue Screen]:::action
+    E --> F[/Apply status filter/]:::input
+    F --> G[/Apply priority filter/]:::input
+    G --> H[[Load filtered tickets from API]]:::system
+    H --> I[Display ticket table]:::action
+    I --> J{User action?}:::decision
+    J -->|Load saved view| K[Click saved view chip]:::action
+    K --> L[[Apply saved filter JSON]]:::system
+    L --> H
+    J -->|Save current filters| M[/Type view name/]:::input
+    M --> N[[POST /saved-views]]:::system
+    N --> O[(Save to DB)]:::database
+    O --> P[View chip appears]:::action
+    J -->|Select tickets| Q[Check one or more rows]:::action
+    Q --> R[Bulk action toolbar appears]:::action
+    R --> S{Bulk action?}:::decision
+    S -->|Resolve| T[[Set all to RESOLVED]]:::system
+    S -->|Close| U[[Set all to CLOSED]]:::system
+    S -->|Assign| V[[Assign to selected agent]]:::system
+    T --> W[(Update DB)]:::database
+    U --> W
+    V --> W
+    W --> H
+    J -->|Open ticket| X([Ticket Detail Screen]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Agents land on a dashboard showing KPI stats before navigating to the ticket queue, where they can apply status and priority filters. Custom filter combinations can be saved as named views for quick access. Checking multiple rows exposes a bulk action toolbar allowing agents to resolve, close, or reassign tickets in one operation, with all changes persisted and the list refreshed.
+      </div>
+    </div>
+
+    <!-- Card 6 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 6 of 5 · Agent</div>
+        <div class="card-title">Reply &amp; Internal Notes</div>
+        <div class="card-subtitle">Public vs internal replies, canned responses, @mention notifications</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Ticket Detail Screen]):::start --> B[Read thread and details]:::action
+    B --> C{Note type?}:::decision
+    C -->|Public Reply| D[Reply mode = public]:::action
+    C -->|Internal Note| E[Reply mode = internal]:::action
+    E --> F[Yellow banner shown]:::action
+    D --> G
+    F --> G[/Type message/]:::input
+    G --> H{Use canned response?}:::decision
+    H -->|Yes| I[Click Canned button]:::action
+    I --> J[/Search canned responses/]:::input
+    J --> K[Select response]:::action
+    K --> L[[Append text to reply box]]:::system
+    L --> G
+    H -->|No| M{Internal note with @mention?}:::decision
+    M -->|Yes| N[Type @ to trigger dropdown]:::action
+    N --> O[Select agent from list]:::action
+    O --> P[[Insert AgentName in text]]:::system
+    P --> G
+    M -->|No| Q[/Attach files - optional/]:::input
+    Q --> R{Send clicked?}:::decision
+    R -->|Empty reply| S[Button disabled]:::error
+    R -->|Has content| T[[POST /comments]]:::system
+    T --> U[(Save comment + internal flag)]:::database
+    U --> V{Public or internal?}:::decision
+    V -->|Public| W((Email customer)):::notification
+    V -->|Internal| X((Notify mentioned agents only)):::notification
+    W --> Y[Comment in thread]:::action
+    X --> Y
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Agents choose between public replies (visible to the customer) and internal notes (team-only, shown with a yellow banner). Canned responses can be searched and appended to the compose box for efficiency. Typing @ in an internal note triggers an agent mention dropdown; posted comments route email notifications to the customer for public replies, or notify only @mentioned agents for internal notes.
+      </div>
+    </div>
+
+    <!-- Card 7 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 7 of 5 · Agent</div>
+        <div class="card-title">Ticket Management — Status, Assign, Tags</div>
+        <div class="card-subtitle">Sidebar actions: status transitions, agent assignment, tags, due dates, watchers</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Ticket Detail - Right Sidebar]):::start --> B{Agent action?}:::decision
+    B -->|Change status| C[/Select from dropdown/]:::input
+    C --> D{Valid transition?}:::decision
+    D -->|No| E[Transition blocked]:::error
+    D -->|Yes| F[[PATCH /tickets/id/status]]:::system
+    F --> G[(Update status in DB)]:::database
+    G --> H((Notify customer of status change)):::notification
+    H --> I{Status = RESOLVED?}:::decision
+    I -->|Yes| J((Send CSAT survey email)):::notification
+
+    B -->|Assign agent| K[/Select agent from dropdown/]:::input
+    K --> L[[PATCH /tickets/id/assign]]:::system
+    L --> M[(Update assignedAgentId)]:::database
+    M --> N((Notify assigned agent by email)):::notification
+
+    B -->|Add tag| O[/Type tag + press Enter/]:::input
+    O --> P[[PATCH /tickets/id tags array]]:::system
+    P --> Q[(Update tags in DB)]:::database
+
+    B -->|Set due date| R[/Pick date from calendar/]:::input
+    R --> S[[PATCH /tickets/id/due-date]]:::system
+    S --> T[(Save manualDueDate)]:::database
+
+    B -->|Add watcher| U[/Enter email address/]:::input
+    U --> V[[POST /tickets/id/watchers]]:::system
+    V --> W[(Save watcher)]:::database
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> The right sidebar on the ticket detail screen provides five distinct management actions. Status changes are validated against allowed transitions before being applied. When a ticket moves to RESOLVED, a CSAT survey email is automatically triggered. Agent assignment, tag management, manual due dates, and watcher subscriptions each make targeted PATCH/POST API calls that update the database independently.
+      </div>
+    </div>
+
+    <!-- Card 8 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 8 of 5 · Agent</div>
+        <div class="card-title">Tasks &amp; Linked Incidents</div>
+        <div class="card-subtitle">Checklist tasks with progress tracking and bidirectional incident linking</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Ticket Detail - Right Sidebar]):::start --> B{Action?}:::decision
+
+    B -->|Add task| C[/Type task title/]:::input
+    C --> D{Press Enter or Add?}:::decision
+    D -->|Yes| E[[POST /tasks]]:::system
+    E --> F[(Save task - completed=false)]:::database
+    F --> G[Task appears in list]:::action
+    G --> H{Check task?}:::decision
+    H -->|Yes| I[[PATCH /tasks/id/toggle]]:::system
+    I --> J[(Update completed=true)]:::database
+    J --> K[Progress bar updates]:::action
+    H -->|Delete| L[[DELETE /tasks/id]]:::system
+
+    B -->|Link to incident| M[Click + Link button]:::action
+    M --> N[Link to Issue dialog opens]:::action
+    N --> O[/Search issues by title/]:::input
+    O --> P[[GET /issues - filtered]]:::system
+    P --> Q[Display matching issues]:::action
+    Q --> R{Select issue?}:::decision
+    R -->|No| O
+    R -->|Yes| S[[POST /issues/id/tickets]]:::system
+    S --> T[(Create issue_ticket link)]:::database
+    T --> U[Linked Incidents panel refreshes]:::action
+    U --> V{Unlink?}:::decision
+    V -->|Yes| W[[DELETE /issues/id/tickets/ticketId]]:::system
+    W --> X[(Remove link from DB)]:::database
+    X --> U
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Agents can attach a checklist of sub-tasks to any ticket; toggling a task updates a completion flag and refreshes the progress bar. Tickets can also be linked to broader incident records by searching and selecting from existing issues, creating a relational join in the database. Unlinking removes the join entry and the panel refreshes immediately to reflect the change.
+      </div>
+    </div>
+
+    <!-- Card 9 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 9 of 5 · Agent</div>
+        <div class="card-title">Merge Tickets</div>
+        <div class="card-subtitle">Duplicate detection, comment migration, closure of source ticket</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Agent on Ticket A detail]):::start --> B[Click Merge Ticket]:::action
+    B --> C[Merge dialog opens]:::action
+    C --> D[/Search target ticket by subject/]:::input
+    D --> E[[GET /tickets?search=query]]:::system
+    E --> F{Results?}:::decision
+    F -->|No| G[No matching tickets message]:::error
+    G --> D
+    F -->|Yes| H[Display matching tickets]:::action
+    H --> I{Select target Ticket B?}:::decision
+    I -->|No| D
+    I -->|Yes| J[Ticket B highlighted]:::action
+    J --> K{Confirm merge?}:::decision
+    K -->|Cancel| L([Dialog closes]):::terminal
+    K -->|Merge| M[[POST /tickets/A/merge body=targetId B]]:::system
+    M --> N[[Move all comments from A to B]]:::system
+    N --> O[(Set Ticket A status = CLOSED)]:::database
+    O --> P((Notify customer: ticket merged)):::notification
+    P --> Q([Redirect to Ticket B detail]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> When an agent identifies a duplicate ticket, they open the merge dialog and search for the target ticket by subject keyword. After selecting and confirming the target, the system migrates all comments from Ticket A into Ticket B, sets Ticket A to CLOSED, and notifies the customer. The agent is redirected to Ticket B, which now contains the full unified conversation history.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== TEAM LEAD TAB ===== -->
+<div id="tab-teamlead" class="tab-content">
+  <div class="section-header">
+    <span class="section-badge" style="background:#2e1065;color:#A855F7;border:1px solid #7c3aed;">Team Lead</span>
+    <h2 style="color:#A855F7;">Team Lead Role Flows</h2>
+    <span class="section-desc">3 diagrams · SLA, analytics, incidents</span>
+  </div>
+  <div class="grid">
+
+    <!-- Card 10 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 10 of 3 · Team Lead</div>
+        <div class="card-title">SLA Monitoring &amp; Escalation</div>
+        <div class="card-subtitle">Background scheduler breach detection, escalation rules, and analytics view</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Background Scheduler - every 5min]):::start --> B[[Scan all open tickets]]:::system
+    B --> C[(Query: dueDate lt now AND not breached)]:::database
+    C --> D{Breached tickets found?}:::decision
+    D -->|No| E([Sleep until next interval]):::terminal
+    D -->|Yes| F[For each breached ticket]:::action
+    F --> G[[Set slaBreached = true]]:::system
+    G --> H[(Update ticket in DB)]:::database
+    H --> I{Assigned agent exists?}:::decision
+    I -->|Yes| J((In-app notification to agent)):::notification
+    I -->|No| K[Skip agent notification]:::action
+    J --> L((In-app notification to all admins and team leads)):::notification
+    K --> L
+    L --> M{Escalation rule matches?}:::decision
+    M -->|Yes| N[[Auto-reassign or escalate]]:::system
+    N --> O((Email to escalation target)):::notification
+    M -->|No| P[Log breach only]:::action
+
+    Q([Team Lead views Analytics]):::start --> R[SLA Breach chart]:::action
+    R --> S[Filter by agent / department]:::action
+    S --> T[[GET /analytics?days=30]]:::system
+    T --> U[Display avg resolution + breach rate]:::action
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> A background scheduler runs every 5 minutes querying for tickets whose due date has passed without breach flag. Each breached ticket is flagged, triggering in-app notifications to the assigned agent and all admins/team leads. If a matching escalation rule exists, the ticket is auto-reassigned and an escalation email is sent. Team leads can also view historical SLA breach rates filtered by agent or department.
+      </div>
+    </div>
+
+    <!-- Card 11 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 11 of 3 · Team Lead</div>
+        <div class="card-title">Team Analytics Dashboard</div>
+        <div class="card-subtitle">Date-range KPIs, per-agent drill-down, resolution rates and trends</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin/Team Lead opens Analytics]):::start --> B[[GET /analytics?days=30]]:::system
+    B --> C[(Aggregate DB queries)]:::database
+    C --> D[Render dashboard]:::action
+    D --> E[Daily tickets chart]:::action
+    D --> F[Resolution rate gauge]:::action
+    D --> G[Avg resolution time]:::action
+    D --> H[Per-agent stats table]:::action
+    H --> I{Change date range?}:::decision
+    I -->|Yes| J[/Select 7, 30, 60, 90 days/]:::input
+    J --> B
+    I -->|No| K{Drill into agent?}:::decision
+    K -->|Yes| L[Show agent: total, resolved, rate]:::action
+    K -->|No| M([Stay on dashboard]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> The analytics dashboard fetches aggregated statistics for a 30-day default window and renders four parallel widgets: a daily ticket volume chart, a resolution rate gauge, average resolution time, and a per-agent breakdown table. Team leads can switch between 7, 30, 60, and 90-day windows to re-query the API, or drill into individual agent rows to see their personal resolution statistics.
+      </div>
+    </div>
+
+    <!-- Card 12 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 12 of 3 · Team Lead</div>
+        <div class="card-title">Issue / Incident Management</div>
+        <div class="card-subtitle">Create, edit, view linked tickets, and delete incident records</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Team Lead / Admin opens Issues]):::start --> B[List all incidents]:::action
+    B --> C{Action?}:::decision
+    C -->|Create new| D[/Fill title, description, priority/]:::input
+    D --> E[[POST /issues]]:::system
+    E --> F[(Save issue)]:::database
+    F --> B
+    C -->|Edit incident| G[/Update fields/]:::input
+    G --> H[[PUT /issues/id]]:::system
+    H --> F
+    C -->|View linked tickets| I[[GET /issues/id/tickets]]:::system
+    I --> J[Show linked ticket list]:::action
+    J --> K{Unlink ticket?}:::decision
+    K -->|Yes| L[[DELETE /issues/id/tickets/ticketId]]:::system
+    L --> F
+    C -->|Delete| M{Confirm delete?}:::decision
+    M -->|No| B
+    M -->|Yes| N[[DELETE /issues/id]]:::system
+    N --> O[(Remove issue + all links)]:::database
+    O --> B
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Team leads manage incidents as parent records that group related support tickets. CRUD operations cover creating new incidents with title, description, and priority; editing existing ones; viewing and managing linked tickets; and confirming before deletion. Deleting an incident cascades to remove all issue–ticket join records, ensuring referential integrity in the database.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== ADMIN TAB ===== -->
+<div id="tab-admin" class="tab-content">
+  <div class="section-header">
+    <span class="section-badge" style="background:#451a03;color:#F59E0B;border:1px solid #d97706;">Admin</span>
+    <h2 style="color:#F59E0B;">Admin Role Flows</h2>
+    <span class="section-desc">7 diagrams · Users, SLA, email, KB, webhooks, settings, custom fields</span>
+  </div>
+  <div class="grid">
+
+    <!-- Card 13 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 13 of 7 · Admin</div>
+        <div class="card-title">User Management</div>
+        <div class="card-subtitle">Create, edit, deactivate users, and admin-initiated password reset</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Users screen]):::start --> B[[GET /users]]:::system
+    B --> C[Display user table]:::action
+    C --> D{Action?}:::decision
+    D -->|Create user| E[/Fill name, email, role, dept/]:::input
+    E --> F{Email exists?}:::decision
+    F -->|Yes| G[Show duplicate email error]:::error
+    G --> E
+    F -->|No| H[[POST /users]]:::system
+    H --> I[(Create user BCrypt password)]:::database
+    I --> J((Send welcome email)):::notification
+    D -->|Edit user| K[/Update name, role, dept/]:::input
+    K --> L[[PUT /users/id]]:::system
+    L --> M[(Update in DB)]:::database
+    D -->|Deactivate| N{Confirm?}:::decision
+    N -->|No| C
+    N -->|Yes| O[[Set active=false]]:::system
+    O --> P[(Soft delete)]:::database
+    P --> Q[User can no longer login]:::action
+    D -->|Reset password| R[[Admin sets temp password]]:::system
+    R --> S((Email new password to user)):::notification
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Admins manage the full user lifecycle from a paginated table. Creating a user validates email uniqueness, hashes the password with BCrypt, stores the record, and dispatches a welcome email. Deactivation is a soft-delete that sets active=false — the account persists in the database but blocks login. Password resets generate a temporary credential and email it directly to the user.
+      </div>
+    </div>
+
+    <!-- Card 14 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 14 of 7 · Admin</div>
+        <div class="card-title">SLA Policy Management</div>
+        <div class="card-subtitle">Policy creation by priority tier, escalation rules, and policy deletion safety checks</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens SLA Policies]):::start --> B[List all SLA policies]:::action
+    B --> C{Action?}:::decision
+    C -->|Create| D[/Name, response hours, resolution hours/]:::input
+    D --> E[/Select priority targets: LOW MEDIUM HIGH CRITICAL/]:::input
+    E --> F{Valid config?}:::decision
+    F -->|No| G[Show validation error]:::error
+    G --> D
+    F -->|Yes| H[[POST /sla-policies]]:::system
+    H --> I[(Save policy)]:::database
+    C -->|Create escalation rule| J[/Set condition: if unresolved gt N hours/]:::input
+    J --> K[/Set action: reassign or escalate/]:::input
+    K --> L[/Set target: agent or team lead/]:::input
+    L --> M[[POST /sla-escalations]]:::system
+    M --> N[(Save escalation rule)]:::database
+    N --> O[Background scheduler picks it up]:::action
+    C -->|Delete policy| P{In use by tickets?}:::decision
+    P -->|Yes| Q[Warn: X tickets use this policy]:::error
+    P -->|No| R[[DELETE /sla-policies/id]]:::system
+    R --> S[(Remove from DB)]:::database
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Admins define SLA policies by naming them and setting response and resolution hour targets per priority level (LOW through CRITICAL). Escalation rules attach conditional logic — if a ticket remains unresolved beyond N hours, it auto-reassigns or escalates to a designated agent or team lead. Deleting a policy checks for active ticket usage first, warning the admin if any tickets would be left without an SLA.
+      </div>
+    </div>
+
+    <!-- Card 15 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 15 of 7 · Admin</div>
+        <div class="card-title">Email Inbox Configuration</div>
+        <div class="card-subtitle">IMAP setup, connection testing, encrypted storage, and email-to-ticket parsing</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Email Inboxes]):::start --> B[List configured inboxes]:::action
+    B --> C{Action?}:::decision
+    C -->|Add inbox| D[/IMAP host, port, username/]:::input
+    D --> E[/Password - encrypted in DB/]:::input
+    E --> F[/Select department + ticket defaults/]:::input
+    F --> G[[Test connection]]:::system
+    G --> H{Connection ok?}:::decision
+    H -->|No| I[Show SMTP/IMAP error]:::error
+    I --> D
+    H -->|Yes| J[[POST /email-inboxes]]:::system
+    J --> K[(Save AES-256 encrypted password)]:::database
+    K --> L[Inbox polls every N minutes]:::action
+    L --> M[[Email arrives - parse subject+body]]:::system
+    M --> N{From known customer?}:::decision
+    N -->|Yes| O[[Link to existing user]]:::system
+    N -->|No| P[[Create new customer account]]:::system
+    O --> Q[[Create ticket from email]]:::system
+    P --> Q
+    Q --> R[(Save ticket status=NEW)]:::database
+    R --> S((Notify team of new ticket)):::notification
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Admins configure email inboxes by supplying IMAP credentials, which are tested live before saving with AES-256 encryption. Once active, the inbox polls at a configured interval; arriving emails are parsed and matched against existing customers or auto-registered as new accounts. A ticket is then created from the email subject and body with status NEW, and the team receives a notification.
+      </div>
+    </div>
+
+    <!-- Card 16 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 16 of 7 · Admin</div>
+        <div class="card-title">Knowledge Base Management</div>
+        <div class="card-subtitle">Category hierarchy, article drafts vs published, CRUD with visibility control</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Knowledge Base]):::start --> B[List categories + articles]:::action
+    B --> C{Action?}:::decision
+    C -->|Create category| D[/Name, description, parent category?/]:::input
+    D --> E[[POST /kb/categories]]:::system
+    E --> F[(Save category)]:::database
+    F --> B
+    C -->|Create article| G[/Title, category, content/]:::input
+    G --> H[/Set published or draft/]:::input
+    H --> I{Status?}:::decision
+    I -->|Draft| J[(Save as draft - not visible)]:::database
+    I -->|Published| K[[POST /kb/articles]]:::system
+    K --> L[(Save published article)]:::database
+    L --> M[Visible in customer KB search]:::action
+    C -->|Edit article| N[/Update content/]:::input
+    N --> O[[PUT /kb/articles/id]]:::system
+    O --> F
+    C -->|Delete article| P{Confirm?}:::decision
+    P -->|No| B
+    P -->|Yes| Q[[DELETE /kb/articles/id]]:::system
+    Q --> F
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Admins manage a hierarchical knowledge base of categories (with optional parent nesting) and articles. Articles can be saved as drafts — invisible to customers — or published immediately for full-text search visibility in the customer portal. Standard edit and delete operations complete the lifecycle, with delete requiring explicit confirmation before removal.
+      </div>
+    </div>
+
+    <!-- Card 17 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 17 of 7 · Admin</div>
+        <div class="card-title">Webhooks &amp; API Keys</div>
+        <div class="card-subtitle">Outbound webhook delivery with retry logging and API key generation/revocation</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Webhooks]):::start --> B[List webhooks]:::action
+    B --> C{Action?}:::decision
+    C -->|Create webhook| D[/Name, URL, secret, events/]:::input
+    D --> E[[POST /webhooks]]:::system
+    E --> F[(Save webhook config)]:::database
+    F --> G[Active - fires on selected events]:::action
+    G --> H{Ticket event fires?}:::decision
+    H -->|Yes| I[[POST to webhook URL with payload]]:::system
+    I --> J{Response 2xx?}:::decision
+    J -->|No| K[Log delivery failure]:::error
+    J -->|Yes| L[Log delivery success]:::action
+    C -->|Toggle active/inactive| M[[PUT /webhooks/id]]:::system
+    M --> F
+
+    N([Admin opens API Keys]):::start --> O[List existing keys]:::action
+    O --> P{Action?}:::decision
+    P -->|Generate key| Q[/Enter name + expiry/]:::input
+    Q --> R[[POST /api-keys]]:::system
+    R --> S[(Save hashed key)]:::database
+    S --> T[Show key ONCE to admin - copy now]:::action
+    P -->|Revoke key| U{Confirm revoke?}:::decision
+    U -->|Yes| V[[DELETE /api-keys/id]]:::system
+    V --> W[(Mark as revoked)]:::database
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Webhooks are configured with a URL, shared secret, and event subscription list; each matching event triggers a signed HTTP POST, with delivery success or failure logged for debugging. API keys are generated with a name and optional expiry date, stored as a hash, and shown in plaintext exactly once — the admin must copy it immediately. Revocation marks the key record as invalid without deleting it.
+      </div>
+    </div>
+
+    <!-- Card 18 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 18 of 7 · Admin</div>
+        <div class="card-title">System Settings &amp; Audit Log</div>
+        <div class="card-subtitle">Global configuration editing, event audit trail with filtering and CSV export</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Settings]):::start --> B[View all system settings]:::action
+    B --> C[/Edit company name, timezone, defaults/]:::input
+    C --> D[[PUT /settings]]:::system
+    D --> E[(Update settings in DB)]:::database
+    E --> F((Settings applied globally)):::notification
+
+    G([Admin opens Audit Log]):::start --> H[[GET /audit-logs paginated]]:::system
+    H --> I[Display event table]:::action
+    I --> J[/Filter by user, action, date range/]:::input
+    J --> K[[Re-query with filters]]:::system
+    K --> L[Show: who did what, when, on which record]:::action
+    L --> M{Export needed?}:::decision
+    M -->|Yes| N[[Generate CSV download]]:::system
+    M -->|No| O([Continue browsing]):::terminal
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> System settings allow admins to update global configuration like company name, timezone, and ticket defaults, which are applied immediately across all users. The audit log provides a paginated, filterable record of every system action — who performed it, what record was affected, and when. Filtered result sets can be exported as CSV for compliance reporting or external analysis.
+      </div>
+    </div>
+
+    <!-- Card 19 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">Diagram 19 of 7 · Admin</div>
+        <div class="card-title">Custom Fields &amp; Templates</div>
+        <div class="card-subtitle">Dynamic field definitions per ticket, dropdown options, and reusable ticket templates</div>
+      </div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+    classDef start fill:#1E40AF,stroke:#1D4ED8,color:#fff
+    classDef terminal fill:#0F172A,stroke:#334155,color:#fff
+    classDef action fill:#1E293B,stroke:#334155,color:#E2E8F0
+    classDef decision fill:#D97706,stroke:#B45309,color:#fff
+    classDef system fill:#5B21B6,stroke:#4C1D95,color:#fff
+    classDef database fill:#0E7490,stroke:#0369A1,color:#fff
+    classDef success fill:#166534,stroke:#14532D,color:#fff
+    classDef error fill:#991B1B,stroke:#7F1D1D,color:#fff
+    classDef notification fill:#92400E,stroke:#78350F,color:#fff
+    classDef input fill:#1E3A5F,stroke:#1D4ED8,color:#93C5FD
+
+    A([Admin opens Custom Fields]):::start --> B[List existing fields]:::action
+    B --> C{Create field?}:::decision
+    C -->|Yes| D[/Name, type: TEXT DROPDOWN DATE CHECKBOX/]:::input
+    D --> E{Type = DROPDOWN?}:::decision
+    E -->|Yes| F[/Add option values/]:::input
+    F --> G
+    E -->|No| G[/Set required + active flags/]:::input
+    G --> H[[POST /custom-fields]]:::system
+    H --> I[(Save field definition)]:::database
+    I --> J[Field appears on all ticket detail screens]:::action
+    J --> K{Agent fills value?}:::decision
+    K -->|Yes| L[[PUT /custom-field-values]]:::system
+    L --> M[(Store field value per ticket)]:::database
+
+    N([Admin opens Templates]):::start --> O[List ticket templates]:::action
+    O --> P{Action?}:::decision
+    P -->|Create| Q[/Name, subject, description, priority/]:::input
+    Q --> R[[POST /ticket-templates]]:::system
+    R --> S[(Save template)]:::database
+    S --> T[Available in customer Submit Ticket screen]:::action
+    P -->|Delete| U[[DELETE /templates/id]]:::system
+    U --> S
+        </div>
+      </div>
+      <div class="flow-summary">
+        <strong>Flow Summary:</strong> Custom fields let admins extend the ticket schema with TEXT, DROPDOWN, DATE, or CHECKBOX types; DROPDOWN fields require option values to be defined. Once created, fields appear on every ticket detail screen and agents can store per-ticket values. Ticket templates give customers pre-filled subject, description, and priority when submitting — admins create and delete templates, with changes reflected immediately in the submission flow.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  HelpDesk Pro · System Flowcharts · 19 diagrams · 4 roles · Generated 2026
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1E293B',
+      primaryTextColor: '#E2E8F0',
+      primaryBorderColor: '#334155',
+      lineColor: '#94A3B8',
+      secondaryColor: '#1E40AF',
+      tertiaryColor: '#0F172A',
+      background: '#0F172A',
+      mainBkg: '#1E293B',
+      nodeBorder: '#334155',
+      clusterBkg: '#1E293B',
+      titleColor: '#E2E8F0',
+      edgeLabelBackground: '#1E293B',
+      attributeBackgroundColorEven: '#1E293B',
+      attributeBackgroundColorOdd: '#0F172A'
+    },
+    flowchart: {
+      curve: 'basis',
+      padding: 20,
+      useMaxWidth: true
+    },
+    securityLevel: 'loose'
+  });
+
+  // Render all diagrams on load (works even in hidden containers)
+  document.addEventListener('DOMContentLoaded', function() {
+    mermaid.run({ querySelector: '.mermaid' });
+  });
+
+  function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(function(el) {
+      el.classList.remove('active');
+    });
+    document.querySelectorAll('.tab').forEach(function(el) {
+      el.classList.remove('active');
+    });
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelector('[data-role="' + name + '"]').classList.add('active');
+  }
+</script>
+</body>
+</html>

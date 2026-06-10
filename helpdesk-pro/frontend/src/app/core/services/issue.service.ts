@@ -54,4 +54,8 @@ export class IssueService {
   unlinkTicket(issueId: string, ticketId: string): Observable<void> {
     return this.http.delete<ApiResponse<void>>(`${this.base}/${issueId}/tickets/${ticketId}`).pipe(map(() => undefined));
   }
+
+  getIssuesByTicket(ticketId: string): Observable<Issue[]> {
+    return this.http.get<ApiResponse<Issue[]>>(`${this.base}/by-ticket/${ticketId}`).pipe(map(r => r.data ?? []));
+  }
 }

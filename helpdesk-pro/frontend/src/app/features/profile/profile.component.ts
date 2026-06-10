@@ -1,11 +1,13 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormControl, Validators, FormGroup } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { NotificationPreferenceService, NotificationPreference } from '../../core/services/notification-preference.service';
 import { User } from '../../core/models';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
@@ -15,14 +17,15 @@ import { ApiResponse } from '../../core/models';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ButtonModule, InputTextModule, PasswordModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule,
+    ButtonModule, InputTextModule, PasswordModule, ToggleSwitchModule],
   template: `
     <div class="max-w-xl mx-auto py-8 space-y-6">
 
       <!-- Header -->
       <div>
         <h1 class="text-2xl font-black text-gray-900" style="letter-spacing:-0.03em">My Profile</h1>
-        <p class="text-sm text-slate-400 mt-0.5">Update your name and password</p>
+        <p class="text-sm text-slate-400 mt-0.5">Manage your account settings and preferences</p>
       </div>
 
       <!-- Avatar -->
@@ -39,7 +42,7 @@ import { ApiResponse } from '../../core/models';
         </div>
       </div>
 
-      <!-- Form -->
+      <!-- Profile form -->
       <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
            style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
         <h3 class="font-bold text-gray-900 text-sm">Profile Information</h3>
@@ -94,6 +97,54 @@ import { ApiResponse } from '../../core/models';
         </div>
       </div>
 
+      <!-- Notification Preferences -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
+           style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+               style="background:#EFF6FF;border:1px solid #DBEAFE">
+            <i class="pi pi-bell text-blue-600" style="font-size:16px"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-900 text-sm">Notification Preferences</h3>
+            <p class="text-xs text-slate-400">Choose how you want to be notified for each event</p>
+          </div>
+        </div>
+
+        <div *ngIf="prefsLoading()" class="space-y-3">
+          <div *ngFor="let _ of [1,2,3,4,5]"
+               class="h-12 rounded-xl animate-pulse" style="background:#F1F5F9"></div>
+        </div>
+
+        <div *ngIf="!prefsLoading()" class="space-y-1">
+          <!-- Table header -->
+          <div class="grid text-xs font-bold text-slate-400 uppercase tracking-wider pb-2"
+               style="grid-template-columns:1fr 80px 80px;border-bottom:1px solid #F1F5F9">
+            <span>Event</span>
+            <span class="text-center">Email</span>
+            <span class="text-center">In-App</span>
+          </div>
+
+          <div *ngFor="let pref of preferences()"
+               class="grid items-center py-3"
+               style="grid-template-columns:1fr 80px 80px;border-bottom:1px solid #F8FAFC">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{ getEventLabel(pref.eventType) }}</p>
+            </div>
+            <div class="flex justify-center">
+              <p-toggleswitch
+                [ngModel]="pref.emailEnabled"
+                (ngModelChange)="updatePref(pref, 'email', $event)" />
+            </div>
+            <div class="flex justify-center">
+              <p-toggleswitch
+                [ngModel]="pref.inAppEnabled"
+                (ngModelChange)="updatePref(pref, 'inApp', $event)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 2FA Section -->
       <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
            style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -121,12 +172,9 @@ import { ApiResponse } from '../../core/models';
         <div *ngIf="setupSecret() && !twoFaEnabled()" class="space-y-4">
           <div class="p-4 rounded-xl" style="background:#F8FAFC;border:1px solid #E2E8F0">
             <p class="text-xs font-bold text-slate-500 mb-2">Step 1: Scan QR or enter secret key</p>
-            <div class="flex items-start gap-4">
-              <div class="text-xs font-mono bg-white border border-gray-200 rounded-lg px-3 py-2 break-all select-all"
-                   style="max-width:280px">{{ setupSecret() }}</div>
-            </div>
-            <p class="text-xs text-slate-400 mt-2">Copy this key into your authenticator app (Google Authenticator, Authy, etc.)</p>
-            <p class="text-xs text-slate-400 mt-1 break-all">Or use the otpauth URL: <span class="font-mono text-blue-600">{{ setupQrUrl() }}</span></p>
+            <div class="text-xs font-mono bg-white border border-gray-200 rounded-lg px-3 py-2 break-all select-all"
+                 style="max-width:280px">{{ setupSecret() }}</div>
+            <p class="text-xs text-slate-400 mt-2">Copy into Google Authenticator, Authy, etc.</p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Step 2: Enter verification code</label>
@@ -173,6 +221,10 @@ export class ProfileComponent implements OnInit {
   newPasswordControl = new FormControl('');
   confirmPasswordControl = new FormControl('');
 
+  // Notification prefs
+  preferences = signal<NotificationPreference[]>([]);
+  prefsLoading = signal(true);
+
   // 2FA state
   twoFaEnabled = signal(false);
   setupSecret = signal('');
@@ -181,7 +233,12 @@ export class ProfileComponent implements OnInit {
   twoFaSaving = signal(false);
   twoFaError = signal('');
 
-  constructor(private userService: UserService, public auth: AuthService, private http: HttpClient) {}
+  constructor(
+    private userService: UserService,
+    public auth: AuthService,
+    private http: HttpClient,
+    private prefService: NotificationPreferenceService,
+  ) {}
 
   ngOnInit() {
     this.userService.getMe().subscribe(u => {
@@ -189,6 +246,30 @@ export class ProfileComponent implements OnInit {
       this.fullNameControl.setValue(u.fullName);
     });
     this.loadTwoFaStatus();
+    this.loadPreferences();
+  }
+
+  loadPreferences() {
+    this.prefsLoading.set(true);
+    this.prefService.getAll().subscribe({
+      next: prefs => { this.preferences.set(prefs); this.prefsLoading.set(false); },
+      error: () => this.prefsLoading.set(false),
+    });
+  }
+
+  getEventLabel(eventType: string): string {
+    return this.prefService.eventLabels[eventType] || eventType;
+  }
+
+  updatePref(pref: NotificationPreference, channel: 'email' | 'inApp', value: boolean) {
+    const emailEnabled = channel === 'email' ? value : pref.emailEnabled;
+    const inAppEnabled = channel === 'inApp' ? value : pref.inAppEnabled;
+    this.preferences.update(list =>
+      list.map(p => p.eventType === pref.eventType
+        ? { ...p, emailEnabled, inAppEnabled }
+        : p)
+    );
+    this.prefService.update(pref.eventType, emailEnabled, inAppEnabled).subscribe();
   }
 
   loadTwoFaStatus() {
