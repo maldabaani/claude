@@ -60,11 +60,22 @@ public class TicketSpecification {
         return filtered(status, priority, departmentId, agentId, createdById, from, to, null);
     }
 
+    public static Specification<Ticket> excludeSnoozed() {
+        return (r, q, cb) -> cb.notEqual(r.get("status"), TicketStatus.SNOOZED);
+    }
+
     public static Specification<Ticket> filtered(TicketStatus status, Priority priority,
                                                    UUID departmentId, UUID agentId,
                                                    UUID createdById, Instant from, Instant to,
                                                    String search) {
-        return Specification.where(notDeleted())
+        return filtered(status, priority, departmentId, agentId, createdById, from, to, search, false);
+    }
+
+    public static Specification<Ticket> filtered(TicketStatus status, Priority priority,
+                                                   UUID departmentId, UUID agentId,
+                                                   UUID createdById, Instant from, Instant to,
+                                                   String search, boolean includeSnoozed) {
+        Specification<Ticket> spec = Specification.where(notDeleted())
                 .and(withStatus(status))
                 .and(withPriority(priority))
                 .and(withDepartment(departmentId))
@@ -73,5 +84,10 @@ public class TicketSpecification {
                 .and(createdAfter(from))
                 .and(createdBefore(to))
                 .and(withSearch(search));
+        // Exclude SNOOZED tickets by default unless explicitly filtered for SNOOZED or includeSnoozed=true
+        if (!includeSnoozed && status == null) {
+            spec = spec.and(excludeSnoozed());
+        }
+        return spec;
     }
 }

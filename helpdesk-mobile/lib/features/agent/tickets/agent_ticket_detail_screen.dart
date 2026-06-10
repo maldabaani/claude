@@ -253,6 +253,94 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
     }
   }
 
+  Future<void> _snooze(DateTime until) async {
+    try {
+      await _api.patch(ApiEndpoints.ticketSnooze(widget.id), data: {'snoozeUntil': until.toIso8601String()});
+      await _load();
+      if (mounted) {
+        Navigator.of(context).pop(); // close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ticket snoozed until ${until.toString().substring(0, 16)}'), backgroundColor: AppColors.warning),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to snooze ticket'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _unsnooze() async {
+    try {
+      await _api.patch(ApiEndpoints.ticketSnooze(widget.id), data: {'snoozeUntil': null});
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ticket woken up'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (_) {}
+  }
+
+  void _showSnoozeSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Snooze ticket', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _snoozeOptionButton('In 1 hour', () {
+                    final d = DateTime.now().add(const Duration(hours: 1));
+                    _snooze(d);
+                  }),
+                  _snoozeOptionButton('In 4 hours', () {
+                    final d = DateTime.now().add(const Duration(hours: 4));
+                    _snooze(d);
+                  }),
+                  _snoozeOptionButton('Tomorrow 9am', () {
+                    final now = DateTime.now();
+                    final d = DateTime(now.year, now.month, now.day + 1, 9);
+                    _snooze(d);
+                  }),
+                  _snoozeOptionButton('Next Monday 9am', () {
+                    final now = DateTime.now();
+                    final daysUntilMonday = ((1 - now.weekday + 7) % 7).clamp(1, 7);
+                    final d = DateTime(now.year, now.month, now.day + daysUntilMonday, 9);
+                    _snooze(d);
+                  }),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _snoozeOptionButton(String label, VoidCallback onTap) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFFDE68A)),
+        foregroundColor: const Color(0xFF92400E),
+        backgroundColor: const Color(0xFFFFFBEB),
+      ),
+      child: Text(label),
+    );
+  }
+
   void _showMergeDialog() {
     showDialog(
       context: context,
@@ -274,6 +362,11 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         title: Text(_ticket != null ? 'Ticket #${_ticket!['ticketNumber'] ?? _ticket!['id']}' : 'Ticket'),
         actions: [
           if (_ticket != null) ...[
+            IconButton(
+              icon: const Icon(Icons.bedtime_outlined),
+              tooltip: 'Snooze Ticket',
+              onPressed: _showSnoozeSheet,
+            ),
             IconButton(
               icon: const Icon(Icons.merge_type_rounded),
               tooltip: 'Merge Ticket',

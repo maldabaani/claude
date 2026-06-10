@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,4 +46,7 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
 
     @Query(value = "SELECT assigned_agent_id, COUNT(*) as total, SUM(CASE WHEN status IN ('RESOLVED','CLOSED') THEN 1 ELSE 0 END) as resolved FROM tickets WHERE deleted_at IS NULL AND assigned_agent_id IS NOT NULL GROUP BY assigned_agent_id ORDER BY total DESC", nativeQuery = true)
     List<Object[]> agentStats();
+
+    @Query("SELECT t FROM Ticket t WHERE t.deletedAt IS NULL AND t.status = com.helpdesk.domain.ticket.entity.TicketStatus.SNOOZED AND t.snoozedUntil <= :now")
+    List<Ticket> findExpiredSnoozedTickets(@Param("now") LocalDateTime now);
 }

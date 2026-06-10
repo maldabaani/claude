@@ -51,12 +51,32 @@ import { environment } from '../../../../environments/environment';
         <span class="ml-2 text-xs" style="color:#B45309">Be careful — replies may conflict</span>
       </div>
 
+      <!-- Snooze banner -->
+      <div *ngIf="ticket()?.snoozedUntil"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+           style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E">
+        <span style="font-size:16px">💤</span>
+        <span>Snoozed until <strong>{{ ticket()!.snoozedUntil | date:'MMM d, h:mm a' }}</strong></span>
+        <button (click)="unsnooze()"
+                class="ml-auto px-3 py-1 rounded-lg text-xs font-bold border"
+                style="border-color:#D97706;color:#D97706;background:white">
+          Wake up
+        </button>
+      </div>
+
       <!-- Back nav -->
-      <a routerLink="/agent/queue"
-         class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
-        <i class="pi pi-arrow-left" style="font-size:16px"></i>
-        Back to queue
-      </a>
+      <div class="flex items-center justify-between">
+        <a routerLink="/agent/queue"
+           class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
+          <i class="pi pi-arrow-left" style="font-size:16px"></i>
+          Back to queue
+        </a>
+        <button *ngIf="!ticket()?.snoozedUntil" (click)="showSnoozeDialog = true"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">
+          <span>💤</span>
+          Snooze
+        </button>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -535,6 +555,50 @@ import { environment } from '../../../../environments/environment';
       </div>
     </div>
 
+    <!-- Snooze dialog -->
+    <p-dialog [(visible)]="showSnoozeDialog" [modal]="true" header="💤 Snooze Ticket"
+              [style]="{width:'420px'}" [closable]="true">
+      <div class="space-y-3 p-2">
+        <p class="text-sm text-slate-500">Hide this ticket from the queue until a future time. It will automatically reappear when the time arrives.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button (click)="snooze(snoozeIn(1))"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            ⏰ In 1 hour
+          </button>
+          <button (click)="snooze(snoozeIn(4))"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            ⏰ In 4 hours
+          </button>
+          <button (click)="snooze(snoozeTomorrow9am())"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            🌅 Tomorrow 9am
+          </button>
+          <button (click)="snooze(snoozeNextMonday9am())"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            📅 Next Monday 9am
+          </button>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Custom time</label>
+          <input type="datetime-local" [(ngModel)]="customSnoozeDate"
+                 class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-amber-400"
+                 style="font-family:inherit" />
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="showSnoozeDialog = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="snooze(customSnoozeDate ? new Date(customSnoozeDate) : null)"
+                [disabled]="!customSnoozeDate"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#D97706">
+          Snooze
+        </button>
+      </ng-template>
+    </p-dialog>
+
     <!-- Merge dialog -->
     <p-dialog [(visible)]="mergeDialogVisible" [modal]="true" header="Merge Ticket"
               [style]="{width:'480px'}" [closable]="true">
@@ -651,6 +715,10 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   linkingIssue = false;
   linkedIssues = signal<Issue[]>([]);
   private issueSearchTimeout: any;
+
+  // Snooze
+  showSnoozeDialog = false;
+  customSnoozeDate = '';
 
   // Merge
   mergeDialogVisible = false;
@@ -1006,6 +1074,43 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     const id = this.ticket()?.id;
     if (!id) return;
     this.customFieldService.saveValues(id, this.customValues()).subscribe();
+  }
+
+  snoozeIn(hours: number): Date {
+    const d = new Date();
+    d.setHours(d.getHours() + hours);
+    return d;
+  }
+
+  snoozeTomorrow9am(): Date {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+
+  snoozeNextMonday9am(): Date {
+    const d = new Date();
+    const day = d.getDay();
+    const daysUntilMonday = ((1 - day + 7) % 7) || 7;
+    d.setDate(d.getDate() + daysUntilMonday);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+
+  snooze(until: Date | null) {
+    if (!until) return;
+    const id = this.ticket()!.id;
+    this.ticketService.snoozeTicket(id, until.toISOString()).subscribe(t => {
+      this.ticket.set(t);
+      this.showSnoozeDialog = false;
+      this.customSnoozeDate = '';
+    });
+  }
+
+  unsnooze() {
+    const id = this.ticket()!.id;
+    this.ticketService.snoozeTicket(id, null).subscribe(t => this.ticket.set(t));
   }
 
   topBarClass(): string {

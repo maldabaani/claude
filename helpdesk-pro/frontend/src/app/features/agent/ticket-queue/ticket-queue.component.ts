@@ -108,6 +108,15 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <i class="pi pi-refresh" style="font-size:14px"></i>
           Reset
         </button>
+
+        <button (click)="toggleShowSnoozed()"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors"
+                [style.background]="showSnoozed ? '#FFFBEB' : 'white'"
+                [style.border-color]="showSnoozed ? '#FDE68A' : '#E2E8F0'"
+                [style.color]="showSnoozed ? '#92400E' : '#64748B'">
+          <span>💤</span>
+          Show snoozed
+        </button>
       </div>
 
       <!-- Bulk action toolbar -->
@@ -158,8 +167,9 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
             <span class="text-xs font-mono font-bold" style="color:#2563EB">{{ ticket.ticketNumber }}</span>
 
-            <span class="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-              {{ ticket.title }}
+            <span class="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors"
+                  [style.opacity]="ticket.status === 'SNOOZED' ? '0.6' : '1'">
+              <span *ngIf="ticket.status === 'SNOOZED'" class="mr-1">💤</span>{{ ticket.title }}
             </span>
 
             <app-priority-badge [priority]="ticket.priority" />
@@ -217,6 +227,7 @@ export class TicketQueueComponent implements OnInit {
   selectedStatus = '';
   selectedPriority = '';
   searchQuery = signal('');
+  showSnoozed = false;
 
   selectedIds = signal<Set<string>>(new Set());
   bulkAction = signal<string>('');
@@ -266,6 +277,7 @@ export class TicketQueueComponent implements OnInit {
     if (this.selectedStatus) params.status = this.selectedStatus;
     if (this.selectedPriority) params.priority = this.selectedPriority;
     if (this.searchQuery()) params.search = this.searchQuery();
+    if (this.showSnoozed) params.includeSnoozed = 'true';
     this.ticketService.getTickets(params).subscribe({
       next: (page) => { this.tickets.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
       error: () => this.loading.set(false),
@@ -276,7 +288,13 @@ export class TicketQueueComponent implements OnInit {
     this.selectedStatus = '';
     this.selectedPriority = '';
     this.searchQuery.set('');
+    this.showSnoozed = false;
     this.activeViewId.set(null);
+    this.load();
+  }
+
+  toggleShowSnoozed() {
+    this.showSnoozed = !this.showSnoozed;
     this.load();
   }
 

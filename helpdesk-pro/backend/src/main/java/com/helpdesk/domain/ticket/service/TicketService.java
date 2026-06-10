@@ -105,8 +105,14 @@ public class TicketService {
     public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
                                         UUID agentId, UUID createdById, Instant from, Instant to,
                                         String search, Pageable pageable) {
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, false, pageable);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, boolean includeSnoozed, Pageable pageable) {
         return ticketRepository.findAll(
-                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search), pageable)
+                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search, includeSnoozed), pageable)
                 .map(this::toResponse);
     }
 
@@ -114,16 +120,24 @@ public class TicketService {
                                         UUID agentId, UUID createdById, Instant from, Instant to,
                                         String search, UUID organizationId, UUID currentUserId,
                                         boolean isCustomer, Pageable pageable) {
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, organizationId,
+                currentUserId, isCustomer, false, pageable);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, UUID organizationId, UUID currentUserId,
+                                        boolean isCustomer, boolean includeSnoozed, Pageable pageable) {
         if (isCustomer && organizationId != null) {
             List<UUID> orgUserIds = userRepository.findActiveByOrganizationId(organizationId)
                     .stream().map(User::getId).toList();
             org.springframework.data.jpa.domain.Specification<Ticket> baseSpec =
-                TicketSpecification.filtered(status, priority, departmentId, agentId, null, from, to, search);
+                TicketSpecification.filtered(status, priority, departmentId, agentId, null, from, to, search, includeSnoozed);
             org.springframework.data.jpa.domain.Specification<Ticket> orgSpec =
                 baseSpec.and((r, q, cb) -> r.get("createdById").in(orgUserIds));
             return ticketRepository.findAll(orgSpec, pageable).map(this::toResponse);
         }
-        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, pageable);
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, includeSnoozed, pageable);
     }
 
     public TicketResponse findById(UUID id) {
@@ -287,7 +301,29 @@ public class TicketService {
                 ticket.getSlaPolicyId(), ticket.getDueDate(), ticket.getFirstResponseAt(),
                 ticket.getResolvedAt(), ticket.getClosedAt(), ticket.isSlaBreached(),
                 ticket.getTags(), ticket.getCreatedAt(), ticket.getUpdatedAt(),
-                ticket.getManualDueDate()
+                ticket.getManualDueDate(),
+                ticket.getSnoozedUntil(),
+                ticket.getPreSnoozeStatus()
         );
+    }
+
+    @Transactional
+    public TicketResponse snooze(UUID id, java.time.LocalDateTime snoozeUntil, UUID currentUserId) {
+        Ticket ticket = getTicket(id);
+        if (snoozeUntil != null) {
+            ticket.setPreSnoozeStatus(ticket.getStatus().name());
+            ticket.setStatus(TicketStatus.SNOOZED);
+            ticket.setSnoozedUntil(snoozeUntil);
+            ticket.setSnoozedById(currentUserId);
+        } else {
+            String restore = ticket.getPreSnoozeStatus();
+            TicketStatus restoreStatus = (restore != null && !restore.isBlank())
+                    ? TicketStatus.valueOf(restore) : TicketStatus.OPEN;
+            ticket.setStatus(restoreStatus);
+            ticket.setSnoozedUntil(null);
+            ticket.setSnoozedById(null);
+            ticket.setPreSnoozeStatus(null);
+        }
+        return toResponse(ticketRepository.save(ticket));
     }
 }

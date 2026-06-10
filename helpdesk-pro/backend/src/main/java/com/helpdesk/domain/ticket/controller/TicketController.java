@@ -3,6 +3,7 @@ package com.helpdesk.domain.ticket.controller;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
+import com.helpdesk.domain.ticket.dto.SnoozeRequest;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
@@ -50,6 +51,7 @@ public class TicketController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "false") boolean includeSnoozed,
             Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
 
@@ -64,7 +66,7 @@ public class TicketController {
         }
         Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated,
                 from, to, search, currentUser.getOrganizationId(), currentUser.getId(),
-                currentUser.getRole().name().equals("CUSTOMER"), pageable);
+                currentUser.getRole().name().equals("CUSTOMER"), includeSnoozed, pageable);
         return ResponseEntity.ok(ApiResponse.ok(page));
     }
 
@@ -242,6 +244,16 @@ public class TicketController {
         UUID targetTicketId = body.get("targetTicketId");
         TicketResponse result = ticketService.mergeTicket(id, targetTicketId, currentUser.getId());
         return ResponseEntity.ok(ApiResponse.ok("Ticket merged", result));
+    }
+
+    @PatchMapping("/{id}/snooze")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> snooze(
+            @PathVariable UUID id,
+            @RequestBody SnoozeRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok("Ticket snooze updated",
+                ticketService.snooze(id, request.snoozeUntil(), currentUser.getId())));
     }
 
     @PostMapping("/bulk")

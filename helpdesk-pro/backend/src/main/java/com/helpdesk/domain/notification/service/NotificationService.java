@@ -121,6 +121,12 @@ public class NotificationService {
         });
     }
 
+    public void notifySnoozeWakeUp(Ticket ticket) {
+        if (ticket.getAssignedAgentId() == null) return;
+        String msg = "Ticket #" + ticket.getTicketNumber() + " is back from snooze";
+        createAndSend(ticket.getAssignedAgentId(), "TICKET_UNSNOOZED", ticket.getId(), msg);
+    }
+
     public void notifySlaBreached(Ticket ticket) {
         String msg = "SLA breached for ticket " + ticket.getTicketNumber();
         if (ticket.getAssignedAgentId() != null) {
