@@ -6,13 +6,11 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
 
 class TwoFaScreen extends ConsumerStatefulWidget {
-  final String email;
-  final String password;
+  final String tempToken;
 
   const TwoFaScreen({
     super.key,
-    required this.email,
-    required this.password,
+    required this.tempToken,
   });
 
   @override
@@ -70,7 +68,7 @@ class _TwoFaScreenState extends ConsumerState<TwoFaScreen>
     });
     final result = await ref
         .read(authProvider.notifier)
-        .verifyTwoFa(widget.email, widget.password, code);
+        .verifyTwoFa(widget.tempToken, code);
     if (!mounted) return;
     setState(() => _loading = false);
     if (result != null) {
@@ -210,9 +208,9 @@ class _TwoFaScreenState extends ConsumerState<TwoFaScreen>
                               color: AppColors.primary,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              widget.email,
-                              style: const TextStyle(
+                            const Text(
+                              'Enter your authenticator code',
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,

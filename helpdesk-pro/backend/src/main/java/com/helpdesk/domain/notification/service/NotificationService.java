@@ -7,6 +7,7 @@ import com.helpdesk.domain.notification.repository.NotificationRepository;
 import com.helpdesk.domain.ticket.entity.Ticket;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
+import com.helpdesk.shared.exception.ResourceNotFoundException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -141,6 +142,15 @@ public class NotificationService {
     @Transactional
     public void markAllRead(UUID recipientId) {
         notificationRepository.markAllReadByRecipient(recipientId);
+    }
+
+    @Transactional
+    public void markRead(UUID recipientId, UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .filter(n -> n.getRecipientId().equals(recipientId) && n.getDeletedAt() == null)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification", notificationId));
+        notification.setRead(true);
+        notificationRepository.save(notification);
     }
 
     private void createAndSend(UUID recipientId, String event, UUID referenceId, String message) {

@@ -16,7 +16,8 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-    id: json['id'] ?? '',
+    // Auth endpoints return the id as `userId`; /users/me returns `id`.
+    id: (json['id'] ?? json['userId'] ?? '').toString(),
     email: json['email'] ?? '',
     fullName: json['fullName'] ?? '',
     role: json['role'] ?? 'CUSTOMER',

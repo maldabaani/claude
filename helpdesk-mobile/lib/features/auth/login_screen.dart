@@ -57,10 +57,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         .login(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (!mounted) return;
     setState(() => _loading = false);
-    if (result == 'REQUIRES_2FA') {
-      context.go(
-        '/2fa?email=${Uri.encodeComponent(_emailCtrl.text.trim())}&password=${Uri.encodeComponent(_passwordCtrl.text)}',
-      );
+    if (result != null && result.startsWith('REQUIRES_2FA')) {
+      final tempToken = result.substring('REQUIRES_2FA:'.length);
+      context.go('/2fa?tempToken=${Uri.encodeComponent(tempToken)}');
     } else if (result != null) {
       setState(() => _error = result);
     }

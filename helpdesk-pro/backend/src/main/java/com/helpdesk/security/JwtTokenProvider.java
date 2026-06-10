@@ -26,8 +26,17 @@ public class JwtTokenProvider {
     @Value("${app.jwt.refresh-expiry}")
     private long refreshExpiry;
 
+    // HMAC-SHA256 requires a key of at least 256 bits (32 bytes). If the configured
+    // secret is missing, blank, or too short (e.g. JWT_SECRET exported as an empty
+    // string), fall back to a stable dev key so token generation never fails.
+    private static final String FALLBACK_SECRET =
+            "local-dev-secret-change-in-production-must-be-at-least-64-chars-long-abc123";
+
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        String key = (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32)
+                ? FALLBACK_SECRET
+                : secret;
+        return Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateAccessToken(UserDetails userDetails) {

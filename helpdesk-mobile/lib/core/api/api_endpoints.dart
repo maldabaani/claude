@@ -87,7 +87,7 @@ class ApiEndpoints {
   static String savedView(String id) => '/saved-views/$id';
 
   // CSAT
-  static String csatRating(String ticketId) => '/csat/$ticketId';
+  static String csatRating(String ticketId) => '/csat/tickets/$ticketId/rating';
 
   // Attachments
   static String attachmentDownload(String id) => '/attachments/$id/download';

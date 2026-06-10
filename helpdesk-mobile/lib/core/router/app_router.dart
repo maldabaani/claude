@@ -52,8 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/2fa', builder: (_, s) => TwoFaScreen(
-        email: s.uri.queryParameters['email'] ?? '',
-        password: s.uri.queryParameters['password'] ?? '',
+        tempToken: s.uri.queryParameters['tempToken'] ?? '',
       )),
 
       // Customer

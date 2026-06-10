@@ -33,11 +33,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'password': password,
       });
       final data = resp.data['data'];
-      if (data['requiresTwoFa'] == true) {
-        return 'REQUIRES_2FA';
+      if (data['requiresTwoFactor'] == true) {
+        // Pass the temp token back to the caller for the 2FA verify step.
+        return 'REQUIRES_2FA:${data['tempToken']}';
       }
       await _api.saveTokens(data['accessToken'], data['refreshToken']);
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(data);
       state = AuthState(status: AuthStatus.authenticated, user: user);
       return null;
     } catch (e) {
@@ -45,16 +46,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> verifyTwoFa(String email, String password, String code) async {
+  Future<String?> verifyTwoFa(String tempToken, String code) async {
     try {
       final resp = await _api.post(ApiEndpoints.twoFaVerify, data: {
-        'email': email,
-        'password': password,
+        'tempToken': tempToken,
         'code': code,
       });
       final data = resp.data['data'];
       await _api.saveTokens(data['accessToken'], data['refreshToken']);
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(data);
       state = AuthState(status: AuthStatus.authenticated, user: user);
       return null;
     } catch (e) {
@@ -71,7 +71,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       });
       final data = resp.data['data'];
       await _api.saveTokens(data['accessToken'], data['refreshToken']);
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(data);
       state = AuthState(status: AuthStatus.authenticated, user: user);
       return null;
     } catch (e) {
