@@ -13,6 +13,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { DatePickerModule } from 'primeng/datepicker';
 import { CheckboxModule } from 'primeng/checkbox';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -25,6 +26,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Subscription, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { DraftService } from '../../../core/services/draft.service';
+import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -37,7 +39,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
     ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
-    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule,
+    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule, InputNumberModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -551,6 +553,77 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
+
+          <!-- Time Tracking section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">⏱ Time</h3>
+                <span *ngIf="totalTimeMinutes() > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ formatMinutes(totalTimeMinutes()) }}</span>
+              </div>
+              <button (click)="showLogTimeForm = !showLogTimeForm"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Log Time
+              </button>
+            </div>
+            <div class="p-4 space-y-3">
+              <!-- Log form -->
+              <div *ngIf="showLogTimeForm" class="rounded-xl p-3 space-y-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
+                <div class="flex gap-2">
+                  <div class="flex-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hours</label>
+                    <p-inputnumber [(ngModel)]="logHours" [min]="0" [max]="99" class="w-full" inputStyleClass="w-full text-sm" />
+                  </div>
+                  <div class="flex-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Minutes</label>
+                    <p-inputnumber [(ngModel)]="logMins" [min]="0" [max]="59" class="w-full" inputStyleClass="w-full text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Note (optional)</label>
+                  <textarea pTextarea [(ngModel)]="logNote" rows="2" class="w-full text-xs" placeholder="What did you work on?"></textarea>
+                </div>
+                <div class="flex gap-2 justify-end">
+                  <button (click)="showLogTimeForm = false; logHours = 0; logMins = 0; logNote = ''"
+                          class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button (click)="submitTimeEntry()"
+                          [disabled]="(logHours === 0 && logMins === 0) || loggingTime"
+                          class="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 transition-colors"
+                          style="background:#2563EB">
+                    {{ loggingTime ? 'Saving...' : 'Save' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Entries list -->
+              <div *ngIf="timeEntries().length === 0 && !showLogTimeForm" class="text-xs text-slate-400 italic text-center py-2">
+                No time logged yet
+              </div>
+              <div *ngFor="let entry of timeEntries()"
+                   class="flex items-start gap-2 group">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-gray-800">{{ entry.agentName }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+                          style="background:#DBEAFE;color:#1D4ED8">{{ formatMinutes(entry.minutes) }}</span>
+                    <span class="text-xs text-slate-400">{{ entry.loggedAt | date:'MMM d' }}</span>
+                  </div>
+                  <p *ngIf="entry.note" class="text-xs text-slate-500 mt-0.5 truncate">{{ entry.note }}</p>
+                </div>
+                <button (click)="deleteTimeEntry(entry)"
+                        class="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 transition-all shrink-0">
+                  <i class="pi pi-trash" style="font-size:11px"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Merge ticket button -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -732,6 +805,51 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   linkedIssues = signal<Issue[]>([]);
   private issueSearchTimeout: any;
 
+  // Time tracking
+  timeEntries = signal<TimeEntry[]>([]);
+  showLogTimeForm = false;
+  logHours = 0;
+  logMins = 0;
+  logNote = '';
+  loggingTime = false;
+
+  totalTimeMinutes(): number {
+    return this.timeEntries().reduce((sum, e) => sum + e.minutes, 0);
+  }
+
+  formatMinutes(total: number): string {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h > 0 && m > 0) return h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h';
+    return m + 'm';
+  }
+
+  submitTimeEntry() {
+    const minutes = (this.logHours * 60) + this.logMins;
+    if (minutes <= 0) return;
+    this.loggingTime = true;
+    const id = this.ticket()!.id;
+    this.timeEntryService.logTime(id, { minutes, note: this.logNote || undefined }).subscribe({
+      next: (entry) => {
+        this.timeEntries.update(list => [entry, ...list]);
+        this.showLogTimeForm = false;
+        this.logHours = 0;
+        this.logMins = 0;
+        this.logNote = '';
+        this.loggingTime = false;
+      },
+      error: () => { this.loggingTime = false; }
+    });
+  }
+
+  deleteTimeEntry(entry: TimeEntry) {
+    const id = this.ticket()!.id;
+    this.timeEntryService.deleteEntry(id, entry.id).subscribe(() => {
+      this.timeEntries.update(list => list.filter(e => e.id !== entry.id));
+    });
+  }
+
   // Snooze
   showSnoozeDialog = false;
   customSnoozeDate = '';
@@ -847,6 +965,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private presenceService: PresenceService,
     private authService: AuthService,
     private draftService: DraftService,
+    private timeEntryService: TimeEntryService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -917,6 +1036,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.customFieldService.getFields().subscribe(fields => this.customFields.set(fields));
     this.taskService.getTasks(id).subscribe(list => this.tasks.set(list));
     this.issueService.getIssuesByTicket(id).subscribe(issues => this.linkedIssues.set(issues));
+    this.timeEntryService.getEntries(id).subscribe(entries => this.timeEntries.set(entries));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};

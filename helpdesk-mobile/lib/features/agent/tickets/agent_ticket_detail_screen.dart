@@ -28,6 +28,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   List<dynamic> _activity = [];
   List<dynamic> _watchers = [];
   List<dynamic> _tasks = [];
+  List<dynamic> _timeEntries = [];
   bool _loading = true;
   bool _submitting = false;
   bool _internalNote = false;
@@ -45,7 +46,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _load().then((_) {
       _joinPresence();
       _loadDraft();
@@ -153,6 +154,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         _api.get(ApiEndpoints.ticketComments(widget.id)),
         _api.get(ApiEndpoints.ticketWatchers(widget.id)),
         _api.get(ApiEndpoints.ticketTasks(widget.id)),
+        _api.get(ApiEndpoints.ticketTimeEntries(widget.id)),
       ]);
       if (mounted) {
         final commentsData = results[1].data['data'];
@@ -161,6 +163,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
           _comments = commentsData is Map ? (commentsData['content'] ?? []) : (commentsData ?? []);
           _watchers = results[2].data['data'] ?? [];
           _tasks = results[3].data['data'] ?? [];
+          _timeEntries = results[4].data['data'] ?? [];
           _loading = false;
         });
       }
@@ -455,6 +458,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
             Tab(text: 'Watchers'),
             Tab(text: 'Tasks'),
             Tab(text: 'Activity'),
+            Tab(text: 'Time'),
           ],
         ),
       ),
@@ -510,6 +514,12 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                             onDelete: _deleteTask,
                           ),
                           _ActivityTab(activity: _activity),
+                          _TimeTab(
+                            ticketId: widget.id,
+                            timeEntries: _timeEntries,
+                            api: _api,
+                            onEntriesChanged: (entries) => setState(() => _timeEntries = entries),
+                          ),
                         ],
                       ),
                     ),
@@ -1247,4 +1257,257 @@ class _DetailRow extends StatelessWidget {
     SizedBox(width: 110, child: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary))),
     Expanded(child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: valueColor ?? AppColors.textPrimary))),
   ]);
+}
+
+// ─── Time Tab ─────────────────────────────────────────────────────────────────
+
+class _TimeTab extends StatefulWidget {
+  final String ticketId;
+  final List<dynamic> timeEntries;
+  final ApiClient api;
+  final ValueChanged<List<dynamic>> onEntriesChanged;
+
+  const _TimeTab({
+    required this.ticketId,
+    required this.timeEntries,
+    required this.api,
+    required this.onEntriesChanged,
+  });
+
+  @override
+  State<_TimeTab> createState() => _TimeTabState();
+}
+
+class _TimeTabState extends State<_TimeTab> {
+  bool _submitting = false;
+  int _hours = 0;
+  int _mins = 0;
+  String _note = '';
+
+  int get _totalMinutes => widget.timeEntries.fold<int>(
+      0, (sum, e) => sum + ((e['minutes'] as num?)?.toInt() ?? 0));
+
+  String _fmtMinutes(int total) {
+    final h = total ~/ 60;
+    final m = total % 60;
+    if (h > 0 && m > 0) return '${h}h ${m}m';
+    if (h > 0) return '${h}h';
+    return '${m}m';
+  }
+
+  Future<void> _logTime() async {
+    final minutes = _hours * 60 + _mins;
+    if (minutes <= 0) return;
+    setState(() => _submitting = true);
+    try {
+      final res = await widget.api.post(
+        ApiEndpoints.ticketTimeEntries(widget.ticketId),
+        data: {'minutes': minutes, if (_note.isNotEmpty) 'note': _note},
+      );
+      final entry = res.data['data'];
+      widget.onEntriesChanged([entry, ...widget.timeEntries]);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Time logged: ${_fmtMinutes(minutes)}'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to log time'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _deleteEntry(String entryId) async {
+    try {
+      await widget.api.delete(ApiEndpoints.ticketTimeEntry(widget.ticketId, entryId));
+      widget.onEntriesChanged(widget.timeEntries.where((e) => e['id'].toString() != entryId).toList());
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete entry'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  void _showLogSheet() {
+    _hours = 0;
+    _mins = 0;
+    _note = '';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Log Time', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Hours', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    initialValue: '0',
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    onChanged: (v) => setModalState(() => _hours = int.tryParse(v) ?? 0),
+                  ),
+                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Minutes', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    initialValue: '0',
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    onChanged: (v) => setModalState(() => _mins = (int.tryParse(v) ?? 0).clamp(0, 59)),
+                  ),
+                ])),
+              ]),
+              const SizedBox(height: 12),
+              const Text('Note (optional)', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const SizedBox(height: 4),
+              TextFormField(
+                maxLines: 2,
+                decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'What did you work on?', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                onChanged: (v) => setModalState(() => _note = v),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: (_hours == 0 && _mins == 0) || _submitting ? null : _logTime,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(_submitting ? 'Saving...' : 'Save Entry'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.timeEntries.isEmpty
+            ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.timer_outlined, size: 40, color: AppColors.textTertiary),
+                SizedBox(height: 8),
+                Text('No time logged yet', style: TextStyle(color: AppColors.textSecondary)),
+              ]))
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: widget.timeEntries.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  if (i == 0) {
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.timer_outlined, color: Color(0xFF1D4ED8), size: 18),
+                        const SizedBox(width: 8),
+                        Text('Total: ${_fmtMinutes(_totalMinutes)}',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                      ]),
+                    );
+                  }
+                  final entry = widget.timeEntries[i - 1] as Map<String, dynamic>;
+                  final agentName = entry['agentName'] ?? 'Agent';
+                  final minutes = (entry['minutes'] as num?)?.toInt() ?? 0;
+                  final note = entry['note'] as String?;
+                  final loggedAt = entry['loggedAt'] as String?;
+                  final entryId = entry['id']?.toString() ?? '';
+
+                  return Dismissible(
+                    key: Key(entryId),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.delete_outline, color: Colors.white),
+                    ),
+                    onDismissed: (_) => _deleteEntry(entryId),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Text(agentName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(8)),
+                              child: Text(_fmtMinutes(minutes), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                            ),
+                            if (loggedAt != null) ...[
+                              const SizedBox(width: 8),
+                              Text(loggedAt.substring(0, 10), style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                            ],
+                          ]),
+                          if (note != null && note.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(note, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ])),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          color: AppColors.textTertiary,
+                          onPressed: () => _deleteEntry(entryId),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton.small(
+            onPressed: _showLogSheet,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
 }
