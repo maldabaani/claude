@@ -6,7 +6,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../features/shared/utils/time_ago.dart';
+import '../../../shared/utils/time_ago.dart';
 import '../../../features/shared/widgets/status_badge.dart';
 import '../../../features/shared/widgets/priority_badge.dart';
 
@@ -660,7 +660,7 @@ class _DetailsTabState extends State<_DetailsTab> {
   Future<void> _searchTags(String q) async {
     if (q.isEmpty) { setState(() { _tagSuggestions = []; _showSuggestions = false; }); return; }
     try {
-      final resp = await _api.get(ApiEndpoints.tagSearch, queryParameters: {'q': q});
+      final resp = await _api.get(ApiEndpoints.tagSearch, queryParams: {'q': q});
       final data = resp.data['data'];
       final currentIds = widget.managedTags.map((t) => t['id']).toSet();
       if (mounted) setState(() {
@@ -726,7 +726,7 @@ class _DetailsTabState extends State<_DetailsTab> {
             _DetailRow(
               label: 'Created By',
               value: createdBy?['fullName'] ?? 'Unknown',
-              onTap: createdBy?['id'] != null ? () => context.push('/agent/customers/\${createdBy!['id']}') : null,
+              onTap: createdBy?['id'] != null ? () => context.push('/agent/customers/${createdBy!['id']}') : null,
             ),
             const Divider(height: 16),
             _DetailRow(label: 'Assigned To', value: assignedAgent?['fullName'] ?? 'Unassigned'),
@@ -1138,7 +1138,7 @@ class _MergeDialogState extends State<_MergeDialog> {
     if (query.trim().isEmpty) return;
     setState(() => _searching = true);
     try {
-      final res = await widget.api.get(ApiEndpoints.tickets, queryParameters: {'search': query, 'size': 10});
+      final res = await widget.api.get(ApiEndpoints.tickets, queryParams: {'search': query, 'size': '10'});
       final data = res.data['data'];
       final items = data is Map ? (data['content'] ?? []) : (data ?? []);
       setState(() {
@@ -1576,7 +1576,7 @@ class _LinksTabState extends State<_LinksTab> {
                   if (q.trim().length < 2) { setSheet(() { results = []; }); return; }
                   setSheet(() => searching = true);
                   try {
-                    final res = await widget.api.get(ApiEndpoints.tickets, queryParameters: {'search': q, 'size': 10});
+                    final res = await widget.api.get(ApiEndpoints.tickets, queryParams: {'search': q, 'size': '10'});
                     final data = res.data['data'];
                     final items = data is Map ? (data['content'] ?? []) : (data ?? []);
                     setSheet(() {
@@ -1706,7 +1706,7 @@ class _LinksTabState extends State<_LinksTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        margin: const EdgeInsets.only(bottom: 8, top: i == 0 ? 0 : 12),
+                        margin: EdgeInsets.only(bottom: 8, top: i == 0 ? 0 : 12),
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: _typeBg(type),
