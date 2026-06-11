@@ -349,6 +349,79 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
     } catch (_) {}
   }
 
+
+  Future<void> _showMacroSheet() async {
+    List<dynamic> macros = [];
+    try {
+      final resp = await _api.get(ApiEndpoints.macros);
+      final data = resp.data['data'];
+      macros = data is List ? data : [];
+    } catch (_) {}
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        maxChildSize: 0.85,
+        builder: (_, scrollCtrl) => Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), child: Row(children: [
+            const Icon(Icons.flash_on_outlined, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('Run Macro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          ])),
+          const Divider(height: 1),
+          if (macros.isEmpty)
+            const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No macros available', style: TextStyle(color: AppColors.textSecondary))))
+          else
+            Expanded(child: ListView.separated(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.all(12),
+              itemCount: macros.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (_, i) {
+                final m = macros[i] as Map<String, dynamic>;
+                final actions = m['actions'];
+                List<dynamic> actionList = actions is List ? actions : [];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    try {
+                      await _api.post(ApiEndpoints.applyMacro(m['id'].toString(), widget.id), data: {});
+                      await _load();
+                    } catch (_) {}
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(m['name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      if ((m['description'] ?? '').isNotEmpty)
+                        Text(m['description'], style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      if (actionList.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(spacing: 4, runSpacing: 4, children: actionList.map((a) {
+                          final type = (a['type'] as String?) ?? '';
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
+                            child: Text(type, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF4338CA))));
+                        }).toList()),
+                      ],
+                    ])),
+                );
+              })),
+        ]),
+      ),
+    );
+  }
+
   void _showSnoozeSheet() {
     showModalBottomSheet(
       context: context,
@@ -427,6 +500,11 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         title: Text(_ticket != null ? 'Ticket #${_ticket!['ticketNumber'] ?? _ticket!['id']}' : 'Ticket'),
         actions: [
           if (_ticket != null) ...[
+            IconButton(
+              icon: const Icon(Icons.flash_on_outlined),
+              tooltip: 'Run Macro',
+              onPressed: _showMacroSheet,
+            ),
             IconButton(
               icon: const Icon(Icons.bedtime_outlined),
               tooltip: 'Snooze Ticket',
@@ -540,8 +618,6 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                   ],
                 ),
     );
-  }
-}
 
 // ─── Details Tab ─────────────────────────────────────────────────────────────
 
@@ -1962,6 +2038,23 @@ class _TimeTabState extends State<_TimeTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+  void _showMacroSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _MacroSheet(
+        ticketId: widget.id,
+        onApplied: () {
+          Navigator.pop(context);
+          _load();
+        },
+      ),
     );
   }
 }

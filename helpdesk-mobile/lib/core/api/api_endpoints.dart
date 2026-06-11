@@ -147,4 +147,8 @@ class ApiEndpoints {
   // Agent Availability
   static const String agentAvailability = '/agents/availability';
   static const String agentAvailabilityMe = '/agents/availability/me';
+
+  // Macros
+  static const String macros = '/macros';
+  static String applyMacro(String macroId, String ticketId) => '/macros/$macroId/apply/$ticketId';
 }

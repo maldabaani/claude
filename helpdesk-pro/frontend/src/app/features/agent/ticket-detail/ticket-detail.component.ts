@@ -29,6 +29,7 @@ import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { DraftService } from '../../../core/services/draft.service';
 import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
 import { TicketLinkService, TicketLink, LinkType } from '../../../core/services/ticket-link.service';
+import { MacroService, Macro } from '../../../core/services/macro.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -81,6 +82,11 @@ import { environment } from '../../../../environments/environment';
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">
           <span>💤</span>
           Snooze
+        </button>
+        <button (click)="openMacroOverlay()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors">
+          <i class="pi pi-bolt" style="font-size:12px"></i>
+          Run Macro
         </button>
       </div>
 
@@ -695,6 +701,26 @@ import { environment } from '../../../../environments/environment';
       </div>
     </div>
 
+    <!-- Macro overlay -->
+    <p-dialog [(visible)]="macroOverlayVisible" [modal]="true" header="⚡ Run Macro"
+              [style]="{width:'420px'}" [draggable]="false">
+      <div class="space-y-2 pt-1">
+        <p class="text-sm text-slate-500 mb-3">Select a macro to apply multiple actions to this ticket at once.</p>
+        <div *ngIf="macros().length === 0" class="text-center py-6 text-slate-400 text-sm">No macros available</div>
+        <div *ngFor="let m of macros()"
+             (click)="applyMacro(m)"
+             class="flex flex-col gap-1 px-4 py-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+          <span class="font-semibold text-gray-900 text-sm">{{ m.name }}</span>
+          <span *ngIf="m.description" class="text-xs text-slate-400">{{ m.description }}</span>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <span *ngFor="let a of m.actions"
+                  class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style="background:#EEF2FF;color:#4338CA">{{ a.type }}: {{ a.value }}</span>
+          </div>
+        </div>
+      </div>
+    </p-dialog>
+
     <!-- Snooze dialog -->
     <p-dialog [(visible)]="showSnoozeDialog" [modal]="true" header="💤 Snooze Ticket"
               [style]="{width:'420px'}" [closable]="true">
@@ -910,6 +936,9 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
 
   // Ticket Links
   ticketLinks = signal<TicketLink[]>([]);
+  macros = signal<Macro[]>([]);
+  macroOverlayVisible = false;
+  applyingMacro = false;
   addLinkDialogVisible = false;
   linkSearch = signal('');
   linkResults = signal<any[]>([]);
@@ -1115,6 +1144,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private timeEntryService: TimeEntryService,
     private tagService: TagService,
     private ticketLinkService: TicketLinkService,
+    private macroService: MacroService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -1587,6 +1617,32 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
       },
+    });
+  }
+
+  loadMacros() {
+    this.macroService.getAll().subscribe({
+      next: ms => this.macros.set(ms),
+      error: () => {}
+    });
+  }
+
+  openMacroOverlay() {
+    if (this.macros().length === 0) { this.loadMacros(); }
+    this.macroOverlayVisible = true;
+  }
+
+  applyMacro(m: Macro) {
+    const ticketId = this.ticket()?.id;
+    if (!ticketId) return;
+    this.applyingMacro = true;
+    this.macroService.apply(m.id, ticketId).subscribe({
+      next: () => {
+        this.applyingMacro = false;
+        this.macroOverlayVisible = false;
+        this.load();
+      },
+      error: () => { this.applyingMacro = false; }
     });
   }
 }

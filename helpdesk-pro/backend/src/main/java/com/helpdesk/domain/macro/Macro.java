@@ -34,7 +34,7 @@ public class Macro {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean isActive = true;
+    private boolean active = true;
 
     @Column(name = "created_by")
     private UUID createdBy;

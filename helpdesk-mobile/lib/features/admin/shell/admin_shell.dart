@@ -22,6 +22,7 @@ class AdminShell extends ConsumerWidget {
     _NavItem('/admin/custom-fields', Icons.input_outlined, 'Custom Fields'),
     _NavItem('/admin/sla-rules', Icons.rule_outlined, 'SLA Rules'),
     _NavItem('/admin/templates', Icons.description_outlined, 'Templates'),
+    _NavItem('/admin/macros', Icons.flash_on_outlined, 'Macros'),
     _NavItem('/admin/webhooks', Icons.webhook_outlined, 'Webhooks'),
     _NavItem('/admin/api-keys', Icons.key_outlined, 'API Keys'),
     _NavItem('/admin/help-topics', Icons.help_outline_rounded, 'Help Topics'),

@@ -27,6 +27,7 @@ import '../../features/admin/templates/templates_screen.dart';
 import '../../features/admin/kb/admin_kb_screen.dart';
 import '../../features/admin/custom_fields/custom_fields_screen.dart';
 import '../../features/admin/webhooks/webhooks_screen.dart';
+import '../../features/admin/macros/macros_screen.dart';
 import '../../features/admin/api_keys/api_keys_screen.dart';
 import '../../features/admin/help_topics/help_topics_screen.dart';
 import '../../features/admin/email_inboxes/email_inboxes_screen.dart';
@@ -125,6 +126,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/sla-rules', builder: (_, __) => const SlaRulesScreen()),
           GoRoute(path: '/admin/templates', builder: (_, __) => const TemplatesScreen()),
           GoRoute(path: '/admin/webhooks', builder: (_, __) => const WebhooksScreen()),
+          GoRoute(path: '/admin/macros', builder: (_, __) => const MacrosScreen()),
           GoRoute(path: '/admin/api-keys', builder: (_, __) => const ApiKeysScreen()),
           GoRoute(path: '/admin/help-topics', builder: (_, __) => const HelpTopicsScreen()),
           GoRoute(path: '/admin/email-inboxes', builder: (_, __) => const EmailInboxesScreen()),
