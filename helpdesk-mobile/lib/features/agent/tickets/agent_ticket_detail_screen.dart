@@ -619,6 +619,8 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                 ),
     );
 
+  }
+}
 // ─── Details Tab ─────────────────────────────────────────────────────────────
 
 class _DetailsTab extends StatefulWidget {
