@@ -129,6 +129,9 @@ class ApiEndpoints {
   static const String businessHours = '/business-hours';
   static const String businessHolidays = '/business-hours/holidays';
 
+  // Round Robin
+  static const String roundRobin = '/round-robin/config';
+
   // Settings
   static const String settings = '/settings';
 

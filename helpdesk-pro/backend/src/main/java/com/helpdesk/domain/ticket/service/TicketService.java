@@ -36,6 +36,7 @@ import com.helpdesk.domain.comment.entity.Comment;
 import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.helptopic.HelpTopic;
 import com.helpdesk.domain.helptopic.HelpTopicRepository;
+import com.helpdesk.domain.roundrobin.RoundRobinService;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +54,7 @@ public class TicketService {
     private final SystemSettingRepository systemSettingRepository;
     private final WebhookService webhookService;
     private final HelpTopicRepository helpTopicRepository;
+    private final RoundRobinService roundRobinService;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -90,6 +92,7 @@ public class TicketService {
         });
 
         autoAssign(ticket);
+        roundRobinAssign(ticket);
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketCreated(saved);
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
@@ -276,6 +279,15 @@ public class TicketService {
         if (leastLoadedAgent == null) return;
         ticket.setAssignedAgentId(leastLoadedAgent);
         ticket.setStatus(TicketStatus.OPEN);
+    }
+
+
+    private void roundRobinAssign(Ticket ticket) {
+        if (ticket.getAssignedAgentId() != null) return;
+        roundRobinService.getNextAgent(ticket.getDepartmentId()).ifPresent(agentId -> {
+            ticket.setAssignedAgentId(agentId);
+            ticket.setStatus(TicketStatus.OPEN);
+        });
     }
 
     @Transactional
