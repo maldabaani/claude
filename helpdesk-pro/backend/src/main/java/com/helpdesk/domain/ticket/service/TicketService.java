@@ -55,6 +55,7 @@ public class TicketService {
     private final WebhookService webhookService;
     private final HelpTopicRepository helpTopicRepository;
     private final RoundRobinService roundRobinService;
+    private final com.helpdesk.domain.team.TeamRepository teamRepository;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -169,6 +170,21 @@ public class TicketService {
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketAssigned(saved);
         auditLogService.log("TICKET", saved.getId(), "ASSIGNED", agentId);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TicketResponse assignTeam(UUID id, UUID teamId) {
+        Ticket ticket = getTicket(id);
+        if (teamId != null) {
+            com.helpdesk.domain.team.Team team = teamRepository.findById(teamId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
+            ticket.setTeam(team);
+        } else {
+            ticket.setTeam(null);
+        }
+        Ticket saved = ticketRepository.save(ticket);
+        auditLogService.log("TICKET", saved.getId(), "TEAM_ASSIGNED", null);
         return toResponse(saved);
     }
 
@@ -303,6 +319,7 @@ public class TicketService {
     }
 
     public TicketResponse toResponse(Ticket ticket) {
+        com.helpdesk.domain.team.Team team = ticket.getTeam();
         return new TicketResponse(
                 ticket.getId(), ticket.getTicketNumber(), ticket.getTitle(), ticket.getDescription(),
                 ticket.getStatus(), ticket.getPriority(), ticket.getCategory(), ticket.getDepartmentId(),
@@ -315,7 +332,10 @@ public class TicketService {
                 ticket.getTags(), ticket.getCreatedAt(), ticket.getUpdatedAt(),
                 ticket.getManualDueDate(),
                 ticket.getSnoozedUntil(),
-                ticket.getPreSnoozeStatus()
+                ticket.getPreSnoozeStatus(),
+                team != null ? team.getId() : null,
+                team != null ? team.getName() : null,
+                team != null ? team.getColor() : null
         );
     }
 

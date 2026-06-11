@@ -181,6 +181,7 @@ export class AdminShellComponent {
     { path: '/admin/business-hours', icon: 'pi-calendar', label: 'Business Hours', exact: false },
     { path: '/admin/agent-performance', icon: 'pi-chart-bar', label: 'Performance', exact: false },
         { path: '/admin/macros', icon: 'pi-bolt', label: 'Macros', exact: false },
+        { path: '/admin/teams', icon: 'pi-users', label: 'Teams', exact: false },
         { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 

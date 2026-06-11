@@ -155,4 +155,11 @@ class ApiEndpoints {
   // Parent-child tickets
   static String ticketChildren(String id) => '/tickets/$id/children';
   static String ticketParent(String id) => '/tickets/$id/parent';
+
+  // Teams
+  static const String teams = '/teams';
+  static String team(String id) => '/teams/$id';
+  static String teamMembers(String id) => '/teams/$id/members';
+  static String teamMember(String teamId, String userId) => '/teams/$teamId/members/$userId';
+  static String ticketTeam(String id) => '/tickets/$id/team';
 }
