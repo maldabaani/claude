@@ -140,4 +140,8 @@ class ApiEndpoints {
 
   // Email Inboxes
   static const String emailInboxes = '/email-inboxes';
+
+  // Agent Availability
+  static const String agentAvailability = '/agents/availability';
+  static const String agentAvailabilityMe = '/agents/availability/me';
 }
