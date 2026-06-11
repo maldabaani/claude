@@ -31,7 +31,8 @@ class AdminShell extends ConsumerWidget {
     _NavItem('/admin/tags', Icons.label_outlined, 'Tags'),
     _NavItem('/admin/business-hours', Icons.schedule_outlined, 'Business Hours'),
     _NavItem('/admin/round-robin', Icons.autorenew_outlined, 'Round Robin'),
-    _NavItem('/admin/settings', Icons.settings_outlined, 'Settings'),
+    _NavItem('/admin/agent-performance', Icons.bar_chart_outlined, 'Performance'),
+        _NavItem('/admin/settings', Icons.settings_outlined, 'Settings'),
   ];
 
   @override

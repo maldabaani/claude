@@ -51,4 +51,14 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
     List<Ticket> findExpiredSnoozedTickets(@Param("now") LocalDateTime now);
 
     List<Ticket> findByCreatedByIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID createdById);
+
+    @Query(value = "SELECT COUNT(*) FROM tickets WHERE deleted_at IS NULL AND assigned_agent_id = :agentId AND status = 'RESOLVED' AND resolved_at >= :from AND resolved_at <= :to", nativeQuery = true)
+    long countResolvedByAgentInRange(@Param("agentId") UUID agentId, @Param("from") Instant from, @Param("to") Instant to);
+
+    @Query(value = "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (first_response_at - created_at))/60.0), 0) FROM tickets WHERE deleted_at IS NULL AND assigned_agent_id = :agentId AND first_response_at IS NOT NULL AND created_at >= :from AND created_at <= :to", nativeQuery = true)
+    Double avgFirstResponseMinutesByAgent(@Param("agentId") UUID agentId, @Param("from") Instant from, @Param("to") Instant to);
+
+    @Query(value = "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/60.0), 0) FROM tickets WHERE deleted_at IS NULL AND assigned_agent_id = :agentId AND resolved_at IS NOT NULL AND created_at >= :from AND created_at <= :to", nativeQuery = true)
+    Double avgResolutionMinutesByAgent(@Param("agentId") UUID agentId, @Param("from") Instant from, @Param("to") Instant to);
+
 }

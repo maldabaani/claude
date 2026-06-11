@@ -63,6 +63,7 @@ export const routes: Routes = [
       { path: 'issues', loadComponent: () => import('./features/admin/issues/issues.component').then(m => m.IssuesComponent) },
       { path: 'tags', loadComponent: () => import('./features/admin/tags/tags.component').then(m => m.AdminTagsComponent) },
       { path: 'business-hours', loadComponent: () => import('./features/admin/business-hours/business-hours.component').then(m => m.BusinessHoursComponent) },
+      { path: 'agent-performance', loadComponent: () => import('./features/admin/agent-performance/agent-performance.component').then(m => m.AgentPerformanceComponent) },
       { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },

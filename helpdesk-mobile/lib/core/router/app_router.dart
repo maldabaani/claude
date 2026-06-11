@@ -44,6 +44,7 @@ import '../../features/shared/notifications/notifications_screen.dart';
 import '../../features/customer/shell/customer_shell.dart';
 import '../../features/agent/shell/agent_shell.dart';
 import '../../features/admin/shell/admin_shell.dart';
+import '../../features/admin/agent_performance/agent_performance_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -132,7 +133,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/tags', builder: (_, __) => const TagsScreen()),
           GoRoute(path: '/admin/business-hours', builder: (_, __) => const BusinessHoursScreen()),
           GoRoute(path: '/admin/round-robin', builder: (_, __) => const RoundRobinScreen()),
-          GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/admin/agent-performance', builder: (_, __) => const AgentPerformanceScreen()),
+                    GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
