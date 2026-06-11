@@ -95,3 +95,4 @@ class _AppColorSet {
   Color get textSecondary => isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
   Color get textTertiary => isDark ? AppColors.textTertiaryDark : AppColors.textTertiary;
   Color get sidebar => isDark ? AppColors.sidebarDark : AppColors.sidebar;
+}
