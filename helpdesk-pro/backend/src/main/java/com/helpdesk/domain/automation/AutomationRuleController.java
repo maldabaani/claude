@@ -31,6 +31,11 @@ public class AutomationRuleController {
         return ResponseEntity.ok(ApiResponse.ok("Automation rule updated", service.update(id, rule)));
     }
 
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<ApiResponse<AutomationRule>> toggle(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Automation rule toggled", service.toggle(id)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         service.delete(id);

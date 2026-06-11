@@ -41,6 +41,15 @@ public class AutomationRuleService {
     }
 
     @Transactional
+    public AutomationRule toggle(Long id) {
+        AutomationRule rule = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Automation rule not found: " + id));
+        rule.setActive(!rule.isActive());
+        rule.setUpdatedAt(Instant.now());
+        return repository.save(rule);
+    }
+
+    @Transactional
     public void delete(Long id) {
         repository.findById(id).ifPresent(r -> {
             r.setDeleted(true);

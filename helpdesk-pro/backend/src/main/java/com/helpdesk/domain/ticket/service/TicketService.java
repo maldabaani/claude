@@ -392,8 +392,7 @@ public class TicketService {
                 .build();
         commentRepository.save(noteOnNew);
 
-        auditLogService.log("TICKET", sourceId, "SPLIT", actorId, null, "{"newTicketId":"" + saved.getId() + ""}");
-        return toResponse(saved);
+        auditLogService.log("TICKET", sourceId, "SPLIT", actorId, null, "{\"newTicketId\":\"" + saved.getId() + "\"}");        return toResponse(saved);
     }
 
     @Transactional
