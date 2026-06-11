@@ -45,14 +45,14 @@ interface AutomationRule {
         </button>
       </div>
 
-      <!-- Add/Edit Form -->
+      <!-- Add Form -->
       <div *ngIf="showForm()" class="bg-white rounded-2xl border border-gray-100 p-6"
            style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-        <h3 class="font-bold text-gray-900 mb-4 text-sm">{{ editingRule ? 'Edit' : 'New' }} Automation Rule</h3>
+        <h3 class="font-bold text-gray-900 mb-4 text-sm">New Automation Rule</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Rule Name</label>
-            <input pInputText [(ngModel)]="newRule.name" class="w-full" placeholder="e.g. Auto-close after 7 days" />
+            <input pInputText [(ngModel)]="newRule.name" class="w-full" placeholder="e.g. Auto-close resolved tickets" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trigger Type</label>
@@ -61,11 +61,11 @@ interface AutomationRule {
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trigger Event</label>
-            <input pInputText [(ngModel)]="newRule.triggerEvent" class="w-full" placeholder="e.g. TICKET_CREATED" />
+            <input pInputText [(ngModel)]="newRule.triggerEvent" class="w-full" placeholder="e.g. ticket.created" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trigger Hours</label>
-            <input pInputText type="number" [(ngModel)]="newRule.triggerHours" class="w-full" placeholder="e.g. 24" />
+            <input pInputText type="number" [(ngModel)]="newRule.triggerHours" class="w-full" placeholder="24" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Run Order</label>
@@ -76,7 +76,7 @@ interface AutomationRule {
           <button (click)="saveRule()"
                   class="px-5 py-2 rounded-xl text-sm font-bold text-white"
                   style="background:#6366F1">
-            {{ editingRule ? 'Update' : 'Save' }} Rule
+            Save Rule
           </button>
           <button (click)="toggleForm()"
                   class="px-5 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -99,7 +99,6 @@ interface AutomationRule {
               <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Name</th>
               <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Trigger</th>
               <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Event</th>
-              <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Hours</th>
               <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Order</th>
               <th class="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
               <th class="px-5 py-3"></th>
@@ -111,12 +110,11 @@ interface AutomationRule {
               <td class="px-5 py-3.5 text-sm font-semibold text-gray-800">{{ rule.name }}</td>
               <td class="px-5 py-3.5">
                 <span class="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style="background:#EEF2FF;color:#4F46E5">
+                      style="background:#EDE9FE;color:#6D28D9">
                   {{ rule.triggerType }}
                 </span>
               </td>
-              <td class="px-5 py-3.5 text-sm text-gray-700">{{ rule.triggerEvent || '—' }}</td>
-              <td class="px-5 py-3.5 text-sm text-gray-700">{{ rule.triggerHours != null ? rule.triggerHours + 'h' : '—' }}</td>
+              <td class="px-5 py-3.5 text-sm text-gray-600">{{ rule.triggerEvent || (rule.triggerHours ? rule.triggerHours + 'h' : '—') }}</td>
               <td class="px-5 py-3.5 text-sm text-gray-700">{{ rule.runOrder }}</td>
               <td class="px-5 py-3.5">
                 <span *ngIf="rule.active"
@@ -125,11 +123,7 @@ interface AutomationRule {
                 <span *ngIf="!rule.active"
                       class="text-xs font-medium text-slate-400">Inactive</span>
               </td>
-              <td class="px-5 py-3.5 text-right flex items-center justify-end gap-1">
-                <button (click)="editRule(rule)"
-                        class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors">
-                  <i class="pi pi-pencil" style="font-size:14px"></i>
-                </button>
+              <td class="px-5 py-3.5 text-right">
                 <button (click)="deleteRule(rule)"
                         class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                   <i class="pi pi-trash" style="font-size:14px"></i>
@@ -146,7 +140,6 @@ export class AutomationRulesComponent implements OnInit {
   rules = signal<AutomationRule[]>([]);
   loading = signal(true);
   showForm = signal(false);
-  editingRule: AutomationRule | null = null;
 
   newRule: Partial<AutomationRule> = {
     name: '', triggerType: 'EVENT', triggerEvent: '', triggerHours: undefined, runOrder: 0
@@ -174,14 +167,7 @@ export class AutomationRulesComponent implements OnInit {
 
   toggleForm() {
     this.showForm.update(v => !v);
-    this.editingRule = null;
     this.newRule = { name: '', triggerType: 'EVENT', triggerEvent: '', triggerHours: undefined, runOrder: 0 };
-  }
-
-  editRule(rule: AutomationRule) {
-    this.editingRule = rule;
-    this.newRule = { ...rule };
-    this.showForm.set(true);
   }
 
   saveRule() {
@@ -189,29 +175,20 @@ export class AutomationRulesComponent implements OnInit {
       this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Name is required' });
       return;
     }
-    if (this.editingRule) {
-      this.http.put<ApiResponse<AutomationRule>>(`${environment.apiUrl}/automation-rules/${this.editingRule.id}`, this.newRule)
-        .pipe(map(r => r.data))
-        .subscribe({
-          next: rule => {
-            this.rules.update(list => list.map(r => r.id === rule.id ? rule : r));
-            this.messageService.add({ severity: 'success', summary: 'Updated', detail: 'Rule updated' });
-            this.toggleForm();
-          },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to update rule' }),
-        });
-    } else {
-      this.http.post<ApiResponse<AutomationRule>>(`${environment.apiUrl}/automation-rules`, this.newRule)
-        .pipe(map(r => r.data))
-        .subscribe({
-          next: rule => {
-            this.rules.update(list => [...list, rule]);
-            this.messageService.add({ severity: 'success', summary: 'Created', detail: 'Rule created' });
-            this.toggleForm();
-          },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to create rule' }),
-        });
+    if (!this.newRule.triggerType) {
+      this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Trigger type is required' });
+      return;
     }
+    this.http.post<ApiResponse<AutomationRule>>(`${environment.apiUrl}/automation-rules`, this.newRule)
+      .pipe(map(r => r.data))
+      .subscribe({
+        next: rule => {
+          this.rules.update(list => [...list, rule]);
+          this.messageService.add({ severity: 'success', summary: 'Created', detail: 'Automation rule created' });
+          this.toggleForm();
+        },
+        error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to create rule' }),
+      });
   }
 
   deleteRule(rule: AutomationRule) {

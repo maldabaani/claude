@@ -14,20 +14,4 @@ public record AutomationRuleDto(
         int runOrder,
         Instant createdAt,
         Instant updatedAt
-) {
-    public static AutomationRuleDto from(AutomationRule rule) {
-        return new AutomationRuleDto(
-                rule.getId(),
-                rule.getName(),
-                rule.isActive(),
-                rule.getTriggerType(),
-                rule.getTriggerEvent(),
-                rule.getTriggerHours(),
-                rule.getConditions(),
-                rule.getActions(),
-                rule.getRunOrder(),
-                rule.getCreatedAt(),
-                rule.getUpdatedAt()
-        );
-    }
-}
+) {}

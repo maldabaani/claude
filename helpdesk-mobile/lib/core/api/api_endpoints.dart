@@ -168,4 +168,9 @@ class ApiEndpoints {
   static const String npsScore = '/nps/score';
   static const String npsResponses = '/nps/responses';
   static String npsTicket(String ticketId) => '/nps/tickets/$ticketId';
+
+  // Automation Rules
+  static const String automationRules = '/automation-rules';
+  static String automationRule(String id) => '/automation-rules/$id';
+  static String automationRuleToggle(String id) => '/automation-rules/$id/toggle';
 }

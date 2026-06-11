@@ -21,41 +21,31 @@ public class AutomationRuleService {
     public AutomationRule create(AutomationRule rule) {
         rule.setCreatedAt(Instant.now());
         rule.setUpdatedAt(Instant.now());
-        rule.setDeleted(false);
         return repository.save(rule);
     }
 
     @Transactional
     public AutomationRule update(Long id, AutomationRule updated) {
-        AutomationRule existing = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Automation rule not found: " + id));
-        existing.setName(updated.getName());
-        existing.setActive(updated.isActive());
-        existing.setTriggerType(updated.getTriggerType());
-        existing.setTriggerEvent(updated.getTriggerEvent());
-        existing.setTriggerHours(updated.getTriggerHours());
-        existing.setConditions(updated.getConditions());
-        existing.setActions(updated.getActions());
-        existing.setRunOrder(updated.getRunOrder());
-        existing.setUpdatedAt(Instant.now());
-        return repository.save(existing);
+        AutomationRule rule = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Automation rule not found: " + id));
+        rule.setName(updated.getName());
+        rule.setActive(updated.isActive());
+        rule.setTriggerType(updated.getTriggerType());
+        rule.setTriggerEvent(updated.getTriggerEvent());
+        rule.setTriggerHours(updated.getTriggerHours());
+        rule.setConditions(updated.getConditions());
+        rule.setActions(updated.getActions());
+        rule.setRunOrder(updated.getRunOrder());
+        rule.setUpdatedAt(Instant.now());
+        return repository.save(rule);
     }
 
     @Transactional
     public void delete(Long id) {
-        repository.findById(id).ifPresent(rule -> {
-            rule.setDeleted(true);
-            rule.setUpdatedAt(Instant.now());
-            repository.save(rule);
+        repository.findById(id).ifPresent(r -> {
+            r.setDeleted(true);
+            r.setUpdatedAt(Instant.now());
+            repository.save(r);
         });
-    }
-
-    @Transactional
-    public AutomationRule toggle(Long id) {
-        AutomationRule rule = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Automation rule not found: " + id));
-        rule.setActive(!rule.isActive());
-        rule.setUpdatedAt(Instant.now());
-        return repository.save(rule);
     }
 }

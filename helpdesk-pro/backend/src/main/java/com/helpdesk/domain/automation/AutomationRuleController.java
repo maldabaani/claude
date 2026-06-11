@@ -14,31 +14,26 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AutomationRuleController {
 
-    private final AutomationRuleService automationRuleService;
+    private final AutomationRuleService service;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<AutomationRule>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(automationRuleService.getAll()));
+        return ResponseEntity.ok(ApiResponse.ok(service.getAll()));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<AutomationRule>> create(@RequestBody AutomationRule rule) {
-        return ResponseEntity.ok(ApiResponse.ok("Automation rule created", automationRuleService.create(rule)));
+        return ResponseEntity.ok(ApiResponse.ok("Automation rule created", service.create(rule)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AutomationRule>> update(@PathVariable Long id, @RequestBody AutomationRule rule) {
-        return ResponseEntity.ok(ApiResponse.ok("Automation rule updated", automationRuleService.update(id, rule)));
+        return ResponseEntity.ok(ApiResponse.ok("Automation rule updated", service.update(id, rule)));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        automationRuleService.delete(id);
+        service.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Automation rule deleted", null));
-    }
-
-    @PatchMapping("/{id}/toggle")
-    public ResponseEntity<ApiResponse<AutomationRule>> toggle(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok("Automation rule toggled", automationRuleService.toggle(id)));
     }
 }
