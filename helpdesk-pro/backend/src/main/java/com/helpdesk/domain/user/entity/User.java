@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -56,6 +57,14 @@ public class User extends AuditableEntity implements UserDetails {
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "availability_status", nullable = false, length = 20)
+    @Builder.Default
+    private AvailabilityStatus availabilityStatus = AvailabilityStatus.OFFLINE;
+
+    @Column(name = "availability_updated_at")
+    private Instant availabilityUpdatedAt;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
