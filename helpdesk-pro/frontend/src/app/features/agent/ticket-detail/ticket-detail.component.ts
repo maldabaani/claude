@@ -15,6 +15,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TicketService } from '../../../core/services/ticket.service';
+import { KeyboardShortcutService } from '../../../core/services/keyboard-shortcut.service';
 import { TagService, Tag as ManagedTag } from '../../../core/services/tag.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -80,7 +81,9 @@ import { environment } from '../../../../environments/environment';
           Back to queue
         </a>
         <button *ngIf="!ticket()?.snoozedUntil" (click)="showSnoozeDialog = true"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors"
+                pTooltip="Snooze ticket (S)"
+                tooltipPosition="bottom">
           <span>💤</span>
           Snooze
         </button>
@@ -266,7 +269,9 @@ import { environment } from '../../../../environments/environment';
                         [disabled]="replyControl.invalid || submitting"
                         class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         [style.background]="noteMode === 'internal' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : 'linear-gradient(135deg,#2563EB,#1D4ED8)'"
-                        style="box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+                        style="box-shadow:0 2px 8px rgba(0,0,0,0.15)"
+                        pTooltip="Focus reply textarea (R)"
+                        tooltipPosition="top">
                   <i class="pi pi-send" style="font-size:16px"></i>
                   {{ submitting ? 'Sending...' : (noteMode === 'internal' ? 'Add Note' : 'Send Reply') }}
                 </button>
@@ -288,7 +293,10 @@ import { environment } from '../../../../environments/environment';
 
               <!-- Status -->
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Status
+                  <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(E) resolve</span>
+                </label>
                 <p-select [options]="statusOptions" [(ngModel)]="currentStatus" (onChange)="updateStatus()"
                           optionLabel="label" optionValue="value" class="w-full" />
               </div>
@@ -343,7 +351,10 @@ import { environment } from '../../../../environments/environment';
 
               <!-- Assigned Agent -->
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned To</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Assigned To
+                  <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(A) assign me</span>
+                </label>
                 <p-select [options]="agentOptions" [(ngModel)]="currentAgentId" (onChange)="assignAgent()"
                           optionLabel="label" optionValue="value" class="w-full"
                           placeholder="Unassigned" />
@@ -1315,6 +1326,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private ticketLinkService: TicketLinkService,
     private macroService: MacroService,
     private ticketParentService: TicketParentService,
+    private shortcutService: KeyboardShortcutService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -1434,6 +1446,29 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.presenceInterval = setInterval(() => {
       this.presenceService.getViewers(id).subscribe(viewers => this._updatePresence(viewers, id));
     }, 30000);
+
+    // Register ticket-action keyboard shortcuts
+    this.shortcutService.register('r', 'Focus reply textarea', 'Ticket Actions', () => {
+      if (this.replyTextarea?.nativeElement) {
+        this.replyTextarea.nativeElement.focus();
+      }
+    });
+    this.shortcutService.register('e', 'Resolve ticket', 'Ticket Actions', () => {
+      this.currentStatus = 'RESOLVED';
+      this.updateStatus();
+    });
+    this.shortcutService.register('s', 'Snooze ticket', 'Ticket Actions', () => {
+      this.showSnoozeDialog = true;
+    });
+    this.shortcutService.register('a', 'Assign ticket to me', 'Ticket Actions', () => {
+      const me = this.authService.currentUser();
+      if (!me) return;
+      const myAgent = this.agents().find(ag => ag.id === me.userId);
+      if (myAgent) {
+        this.currentAgentId = myAgent.id;
+        this.assignAgent();
+      }
+    });
   }
 
   private _updatePresence(viewers: PresenceViewer[], ticketId: string) {
@@ -1449,6 +1484,11 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     if (this.presenceSubscription) this.presenceSubscription.unsubscribe();
     if (this.presenceInterval) clearInterval(this.presenceInterval);
     if (this.draftSubscription) this.draftSubscription.unsubscribe();
+    // Unregister ticket-action shortcuts
+    this.shortcutService.unregister('r');
+    this.shortcutService.unregister('e');
+    this.shortcutService.unregister('s');
+    this.shortcutService.unregister('a');
   }
 
   otherAgentsCount(): number {

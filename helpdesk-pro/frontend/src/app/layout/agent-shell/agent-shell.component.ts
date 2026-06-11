@@ -1,4 +1,4 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,12 +14,15 @@ import { NotificationService } from '../../core/services/notification.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { AvailabilityService, AvailabilityStatus } from '../../core/services/availability.service';
+import { KeyboardShortcutService } from '../../core/services/keyboard-shortcut.service';
+import { KeyboardShortcutsHelpComponent } from '../../shared/keyboard-shortcuts-help/keyboard-shortcuts-help.component';
 
 @Component({
   selector: 'app-agent-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FormsModule,
-    ButtonModule, MenuModule, BadgeModule, TooltipModule, InputTextModule, OverlayPanelModule],
+    ButtonModule, MenuModule, BadgeModule, TooltipModule, InputTextModule, OverlayPanelModule,
+    KeyboardShortcutsHelpComponent],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -102,13 +105,21 @@ import { AvailabilityService, AvailabilityStatus } from '../../core/services/ava
           <div class="flex-1 max-w-md mx-6">
             <div class="relative">
               <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:14px"></i>
-              <input pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
-                     placeholder="Search tickets..."
+              <input #searchInput pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
+                     placeholder="Search tickets... (/)"
                      class="w-full pl-9 text-sm" style="height:36px;border-radius:8px" />
             </div>
           </div>
 
           <div class="flex items-center gap-1">
+            <!-- Keyboard shortcuts help button -->
+            <button (click)="showShortcutsHelp = true"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                    pTooltip="Keyboard shortcuts (?)"
+                    tooltipPosition="bottom">
+              <i class="pi pi-question-circle" style="font-size:18px"></i>
+            </button>
+
             <!-- Dark mode toggle -->
             <button (click)="themeService.toggle()"
                     class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
@@ -175,6 +186,10 @@ import { AvailabilityService, AvailabilityStatus } from '../../core/services/ava
         </main>
       </div>
     </div>
+
+    <!-- Keyboard Shortcuts Help Dialog -->
+    <app-keyboard-shortcuts-help
+      [(visible)]="showShortcutsHelp" />
   `,
   styles: [`
     .sidebar-nav-item {
@@ -205,9 +220,10 @@ import { AvailabilityService, AvailabilityStatus } from '../../core/services/ava
     }
   `],
 })
-export class AgentShellComponent implements OnInit {
+export class AgentShellComponent implements OnInit, OnDestroy {
   collapsed = signal(false);
   searchQuery = signal('');
+  showShortcutsHelp = false;
   private searchTimeout: any;
 
   navItems = [
@@ -241,6 +257,7 @@ export class AgentShellComponent implements OnInit {
     public availService: AvailabilityService,
     private ws: WebSocketService,
     private router: Router,
+    private shortcutService: KeyboardShortcutService,
   ) {}
 
   ngOnInit() {
@@ -256,6 +273,41 @@ export class AgentShellComponent implements OnInit {
       { separator: true },
       { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
     ];
+
+    // Register navigation keyboard shortcuts
+    this.shortcutService.register('?', 'Show keyboard shortcuts', 'General', () => {
+      this.showShortcutsHelp = true;
+    });
+    this.shortcutService.register('g t', 'Go to tickets queue', 'Navigation', () => {
+      this.router.navigate(['/agent/queue']);
+    });
+    this.shortcutService.register('g d', 'Go to dashboard', 'Navigation', () => {
+      this.router.navigate(['/agent']);
+    });
+    this.shortcutService.register('g q', 'Go to queue', 'Navigation', () => {
+      this.router.navigate(['/agent/queue']);
+    });
+    this.shortcutService.register('n', 'New ticket (submit)', 'Navigation', () => {
+      this.router.navigate(['/submit']);
+    });
+    this.shortcutService.register('/', 'Focus search', 'General', () => {
+      const searchEl = document.querySelector('input[placeholder*="Search tickets"]') as HTMLInputElement | null;
+      if (searchEl) searchEl.focus();
+    });
+    this.shortcutService.register('Escape', 'Close modal / blur focus', 'General', () => {
+      this.showShortcutsHelp = false;
+      (document.activeElement as HTMLElement)?.blur?.();
+    });
+  }
+
+  ngOnDestroy() {
+    this.shortcutService.unregister('?');
+    this.shortcutService.unregister('g t');
+    this.shortcutService.unregister('g d');
+    this.shortcutService.unregister('g q');
+    this.shortcutService.unregister('n');
+    this.shortcutService.unregister('/');
+    this.shortcutService.unregister('Escape');
   }
 
   setStatus(status: AvailabilityStatus) {
