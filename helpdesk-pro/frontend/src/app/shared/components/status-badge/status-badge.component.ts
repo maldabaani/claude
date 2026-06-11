@@ -33,6 +33,7 @@ export class StatusBadgeComponent {
       ON_HOLD: 'bg-slate-400',
       RESOLVED: 'bg-green-500',
       CLOSED: 'bg-slate-400',
+      SNOOZED: 'bg-amber-300',
     };
     return map[this.status] || 'bg-gray-400';
   }

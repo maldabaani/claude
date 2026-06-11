@@ -159,7 +159,7 @@ export class NpsDashboardComponent implements OnInit {
     return 'Detractor';
   }
 
-  severity(score: number): string {
+  severity(score: number): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined {
     if (score >= 9) return 'success';
     if (score >= 7) return 'warn';
     return 'danger';

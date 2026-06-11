@@ -775,7 +775,7 @@ import { environment } from '../../../../environments/environment';
                    class="text-xs font-mono font-bold text-blue-600 hover:underline shrink-0">
                   {{ child.ticketNumber }}
                 </a>
-                <span class="flex-1 text-xs text-gray-700 truncate min-w-0">{{ child.subject || child.title }}</span>
+                <span class="flex-1 text-xs text-gray-700 truncate min-w-0">{{ child.subject }}</span>
                 <span class="shrink-0 px-1.5 py-0.5 rounded-full text-xs font-semibold"
                       [ngStyle]="statusChipStyle(child.status)">
                   {{ child.status }}
@@ -818,7 +818,7 @@ import { environment } from '../../../../environments/environment';
           <span class="font-semibold text-gray-900 text-sm">{{ m.name }}</span>
           <span *ngIf="m.description" class="text-xs text-slate-400">{{ m.description }}</span>
           <div class="flex flex-wrap gap-1 mt-1">
-            <span *ngFor="let a of m.actions"
+            <span *ngFor="let a of $any(m.actions)"
                   class="text-xs px-2 py-0.5 rounded-full font-medium"
                   style="background:#EEF2FF;color:#4338CA">{{ a.type }}: {{ a.value }}</span>
           </div>
@@ -861,7 +861,7 @@ import { environment } from '../../../../environments/environment';
                 class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
           Cancel
         </button>
-        <button (click)="snooze(customSnoozeDate ? new Date(customSnoozeDate) : null)"
+        <button (click)="snoozeCustom(customSnoozeDate)"
                 [disabled]="!customSnoozeDate"
                 class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
                 style="background:#D97706">
@@ -1692,6 +1692,10 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     d.setDate(d.getDate() + daysUntilMonday);
     d.setHours(9, 0, 0, 0);
     return d;
+  }
+
+  snoozeCustom(dateStr: string) {
+    this.snooze(dateStr ? new Date(dateStr) : null);
   }
 
   snooze(until: Date | null) {
