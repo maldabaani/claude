@@ -34,6 +34,7 @@ class AdminShell extends ConsumerWidget {
     _NavItem('/admin/round-robin', Icons.autorenew_outlined, 'Round Robin'),
     _NavItem('/admin/agent-performance', Icons.bar_chart_outlined, 'Performance'),
     _NavItem('/admin/teams', Icons.group_work_outlined, 'Teams'),
+    _NavItem('/admin/nps', Icons.thumb_up_outlined, 'NPS'),
     _NavItem('/admin/settings', Icons.settings_outlined, 'Settings'),
   ];
 
