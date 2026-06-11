@@ -142,7 +142,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/business-hours', builder: (_, __) => const BusinessHoursScreen()),
           GoRoute(path: '/admin/round-robin', builder: (_, __) => const RoundRobinScreen()),
           GoRoute(path: '/admin/agent-performance', builder: (_, __) => const AgentPerformanceScreen()),
-          GoRoute(path: '/admin/automation-rules', builder: (_, __) => const AutomationRulesScreen()),
           GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
