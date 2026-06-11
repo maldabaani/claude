@@ -1,5 +1,5 @@
 export type Role = 'CUSTOMER' | 'AGENT' | 'TEAM_LEAD' | 'ADMIN';
-export type TicketStatus = 'NEW' | 'OPEN' | 'PENDING' | 'ON_HOLD' | 'RESOLVED' | 'CLOSED';
+export type TicketStatus = 'NEW' | 'OPEN' | 'PENDING' | 'ON_HOLD' | 'RESOLVED' | 'CLOSED' | 'SNOOZED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface User {
@@ -36,6 +36,9 @@ export interface Ticket {
   manualDueDate?: string;
   snoozedUntil?: string;
   preSnoozeStatus?: string;
+  parentTicketId?: string | null;
+  parentTicketNumber?: string | null;
+  parentTicketTitle?: string | null;
 }
 
 export interface Comment {

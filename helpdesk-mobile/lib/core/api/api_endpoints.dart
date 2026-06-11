@@ -162,4 +162,9 @@ class ApiEndpoints {
   static String teamMembers(String id) => '/teams/$id/members';
   static String teamMember(String teamId, String userId) => '/teams/$teamId/members/$userId';
   static String ticketTeam(String id) => '/tickets/$id/team';
+
+  // NPS
+  static const String npsScore = '/nps/score';
+  static const String npsResponses = '/nps/responses';
+  static String npsTicket(String ticketId) => '/nps/tickets/$ticketId';
 }

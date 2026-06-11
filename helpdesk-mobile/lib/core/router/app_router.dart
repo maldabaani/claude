@@ -37,6 +37,7 @@ import '../../features/admin/tags/tags_screen.dart';
 import '../../features/admin/business_hours/business_hours_screen.dart';
 import '../../features/admin/round_robin/round_robin_screen.dart';
 import '../../features/admin/teams/teams_screen.dart';
+import '../../features/admin/nps/nps_screen.dart';
 import '../../features/admin/audit_log/audit_log_screen.dart';
 import '../../features/admin/sla_rules/sla_rules_screen.dart';
 import '../../features/admin/tickets/admin_tickets_screen.dart';
@@ -129,6 +130,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/webhooks', builder: (_, __) => const WebhooksScreen()),
           GoRoute(path: '/admin/macros', builder: (_, __) => const MacrosScreen()),
           GoRoute(path: '/admin/teams', builder: (_, __) => const TeamsScreen()),
+          GoRoute(path: '/admin/nps', builder: (_, __) => const NpsScreen()),
           GoRoute(path: '/admin/api-keys', builder: (_, __) => const ApiKeysScreen()),
           GoRoute(path: '/admin/help-topics', builder: (_, __) => const HelpTopicsScreen()),
           GoRoute(path: '/admin/email-inboxes', builder: (_, __) => const EmailInboxesScreen()),

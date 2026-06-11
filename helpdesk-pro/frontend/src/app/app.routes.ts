@@ -66,6 +66,7 @@ export const routes: Routes = [
       { path: 'agent-performance', loadComponent: () => import('./features/admin/agent-performance/agent-performance.component').then(m => m.AgentPerformanceComponent) },
       { path: 'macros', loadComponent: () => import('./features/admin/macros/macros.component').then(m => m.MacrosComponent) },
       { path: 'teams', loadComponent: () => import('./features/admin/teams/teams.component').then(m => m.TeamsComponent) },
+      { path: 'nps', loadComponent: () => import('./features/admin/nps/nps-dashboard.component').then(m => m.NpsDashboardComponent) },
       { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },

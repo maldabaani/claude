@@ -182,6 +182,7 @@ export class AdminShellComponent {
     { path: '/admin/agent-performance', icon: 'pi-chart-bar', label: 'Performance', exact: false },
         { path: '/admin/macros', icon: 'pi-bolt', label: 'Macros', exact: false },
         { path: '/admin/teams', icon: 'pi-users', label: 'Teams', exact: false },
+        { path: '/admin/nps', icon: 'pi-heart', label: 'NPS', exact: false },
         { path: '/admin/settings', icon: 'pi-cog', label: 'Settings', exact: false },
   ];
 
