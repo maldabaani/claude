@@ -92,6 +92,14 @@ public class Ticket extends AuditableEntity {
     @Column(name = "pre_snooze_status")
     private String preSnoozeStatus;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_ticket_id")
+    private Ticket parent;
+
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Ticket> children = new ArrayList<>();
+
     @Version
     private Long version;
 }
