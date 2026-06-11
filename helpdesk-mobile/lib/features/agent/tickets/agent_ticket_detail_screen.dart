@@ -31,6 +31,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   List<dynamic> _tasks = [];
   List<dynamic> _timeEntries = [];
   List<dynamic> _links = [];
+  List<dynamic> _children = [];
   bool _loading = true;
   bool _submitting = false;
   bool _internalNote = false;
@@ -49,7 +50,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _load().then((_) {
       _joinPresence();
       _loadDraft();
@@ -160,6 +161,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
         _api.get(ApiEndpoints.ticketTimeEntries(widget.id)),
         _api.get(ApiEndpoints.ticketTags(widget.id)),
         _api.get(ApiEndpoints.ticketLinks(widget.id)),
+        _api.get(ApiEndpoints.ticketChildren(widget.id)),
       ]);
       if (mounted) {
         final commentsData = results[1].data['data'];
@@ -171,6 +173,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
           _timeEntries = results[4].data['data'] ?? [];
           _ticketManagedTags = results[5].data['data'] ?? [];
           _links = results[6].data['data'] ?? [];
+          _children = results[7].data['data'] ?? [];
           _loading = false;
         });
       }
@@ -545,6 +548,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
             Tab(text: 'Activity'),
             Tab(text: 'Time'),
             Tab(text: 'Links'),
+            Tab(text: 'Sub-tickets'),
           ],
         ),
       ),
@@ -611,6 +615,14 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                             links: _links,
                             api: _api,
                             onLinksChanged: (links) => setState(() => _links = links),
+                          ),
+                          _SubTicketsTab(
+                            ticketId: widget.id,
+                            ticket: _ticket!,
+                            children: _children,
+                            api: _api,
+                            onChildrenChanged: (children) => setState(() => _children = children),
+                            onRefresh: _load,
                           ),
                         ],
                       ),
@@ -2044,3 +2056,251 @@ class _TimeTabState extends State<_TimeTab> {
   }
 }
 
+
+// ─── Sub-tickets Tab ──────────────────────────────────────────────────────────
+
+class _SubTicketsTab extends ConsumerStatefulWidget {
+  final String ticketId;
+  final Map<String, dynamic> ticket;
+  final List<dynamic> children;
+  final ApiClient api;
+  final ValueChanged<List<dynamic>> onChildrenChanged;
+  final Future<void> Function() onRefresh;
+
+  const _SubTicketsTab({
+    required this.ticketId,
+    required this.ticket,
+    required this.children,
+    required this.api,
+    required this.onChildrenChanged,
+    required this.onRefresh,
+  });
+
+  @override
+  ConsumerState<_SubTicketsTab> createState() => _SubTicketsTabState();
+}
+
+class _SubTicketsTabState extends ConsumerState<_SubTicketsTab> {
+  bool _submitting = false;
+
+  static const _priorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
+  void _showAddSheet() {
+    String subject = '';
+    String description = '';
+    String priority = 'MEDIUM';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Add Sub-ticket', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 16),
+              const Text('Subject', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const SizedBox(height: 4),
+              TextFormField(
+                decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Sub-ticket subject', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                onChanged: (v) => setSheet(() => subject = v),
+              ),
+              const SizedBox(height: 12),
+              const Text('Description', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const SizedBox(height: 4),
+              TextFormField(
+                maxLines: 3,
+                decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Describe the issue...', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                onChanged: (v) => setSheet(() => description = v),
+              ),
+              const SizedBox(height: 12),
+              const Text('Priority', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: priority,
+                decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                onChanged: (v) => setSheet(() => priority = v ?? 'MEDIUM'),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: subject.trim().isEmpty || _submitting ? null : () async {
+                    setSheet(() => _submitting = true);
+                    try {
+                      final res = await widget.api.post(
+                        ApiEndpoints.ticketChildren(widget.ticketId),
+                        data: {
+                          'subject': subject.trim(),
+                          'description': description.trim().isEmpty ? subject.trim() : description.trim(),
+                          'priority': priority,
+                        },
+                      );
+                      final child = res.data['data'] as Map<String, dynamic>;
+                      widget.onChildrenChanged([...widget.children, child]);
+                      if (mounted) Navigator.of(ctx).pop();
+                    } catch (_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(content: Text('Failed to create sub-ticket'), backgroundColor: AppColors.error),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setSheet(() => _submitting = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(_submitting ? 'Creating...' : 'Create Sub-ticket'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'NEW': return const Color(0xFF1D4ED8);
+      case 'OPEN': return const Color(0xFF5B21B6);
+      case 'PENDING': return const Color(0xFF92400E);
+      case 'RESOLVED': return const Color(0xFF15803D);
+      case 'CLOSED': return const Color(0xFF64748B);
+      default: return AppColors.textSecondary;
+    }
+  }
+
+  Color _statusBg(String status) {
+    switch (status) {
+      case 'NEW': return const Color(0xFFDBEAFE);
+      case 'OPEN': return const Color(0xFFEDE9FE);
+      case 'PENDING': return const Color(0xFFFEF3C7);
+      case 'RESOLVED': return const Color(0xFFDCFCE7);
+      case 'CLOSED': return const Color(0xFFF1F5F9);
+      default: return AppColors.surfaceVariant;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final parentId = widget.ticket['parentTicketId']?.toString();
+    final parentNumber = widget.ticket['parentTicketNumber']?.toString();
+    final parentTitle = widget.ticket['parentTicketTitle']?.toString();
+
+    return Stack(
+      children: [
+        ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          children: [
+            // Parent ticket card
+            if (parentId != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.arrow_upward, size: 16, color: Color(0xFF166534)),
+                  const SizedBox(width: 8),
+                  const Text('Parent: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => context.push('/agent/tickets/$parentId'),
+                      child: Text(
+                        '#${parentNumber ?? parentId}${parentTitle != null ? ' — $parentTitle' : ''}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534), decoration: TextDecoration.underline),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Children list header
+            Row(children: [
+              const Text('Sub-tickets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              if (widget.children.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(10)),
+                  child: Text('${widget.children.length}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                ),
+              ],
+            ]),
+            const SizedBox(height: 8),
+
+            if (widget.children.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.account_tree_outlined, size: 32, color: AppColors.textTertiary),
+                  SizedBox(height: 8),
+                  Text('No sub-tickets', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                ]),
+              )
+            else
+              ...widget.children.map((child) {
+                final childMap = child as Map<String, dynamic>;
+                final childId = childMap['id']?.toString() ?? '';
+                final number = childMap['ticketNumber']?.toString() ?? '';
+                final subject = childMap['subject']?.toString() ?? childMap['title']?.toString() ?? '';
+                final status = childMap['status']?.toString() ?? 'NEW';
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    onTap: () => context.push('/agent/tickets/$childId'),
+                    title: Row(children: [
+                      Text(number, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, fontFamily: 'monospace')),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(subject, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ]),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(color: _statusBg(status), borderRadius: BorderRadius.circular(6)),
+                      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor(status))),
+                    ),
+                  ),
+                );
+              }),
+          ],
+        ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton.small(
+            onPressed: _showAddSheet,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+}

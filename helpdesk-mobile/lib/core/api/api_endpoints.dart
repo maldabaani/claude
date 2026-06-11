@@ -151,4 +151,8 @@ class ApiEndpoints {
   // Macros
   static const String macros = '/macros';
   static String applyMacro(String macroId, String ticketId) => '/macros/$macroId/apply/$ticketId';
+
+  // Parent-child tickets
+  static String ticketChildren(String id) => '/tickets/$id/children';
+  static String ticketParent(String id) => '/tickets/$id/parent';
 }

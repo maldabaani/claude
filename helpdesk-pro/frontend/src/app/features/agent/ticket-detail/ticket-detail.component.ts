@@ -29,6 +29,7 @@ import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { DraftService } from '../../../core/services/draft.service';
 import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
 import { TicketLinkService, TicketLink, LinkType } from '../../../core/services/ticket-link.service';
+import { TicketParentService, TicketSummary } from '../../../core/services/ticket-parent.service';
 import { MacroService, Macro } from '../../../core/services/macro.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -686,6 +687,99 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
+          <!-- Sub-tickets section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">Sub-tickets</h3>
+                <span *ngIf="childTickets().length > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ childTickets().length }}</span>
+              </div>
+              <button (click)="showAddSubTicketForm = !showAddSubTicketForm"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Add
+              </button>
+            </div>
+            <div class="p-4 space-y-3">
+
+              <!-- Parent link -->
+              <div *ngIf="ticket()?.parentTicketId" class="flex items-center gap-2 px-3 py-2 rounded-lg"
+                   style="background:#F0FDF4;border:1px solid #BBF7D0">
+                <i class="pi pi-arrow-up" style="font-size:11px;color:#166534"></i>
+                <span class="text-xs font-semibold text-gray-600">Parent:</span>
+                <a [routerLink]="['/agent/tickets', ticket()!.parentTicketId]"
+                   class="text-xs font-bold text-green-700 hover:underline truncate">
+                  #{{ ticket()!.parentTicketNumber || ticket()!.parentTicketId }}
+                  <ng-container *ngIf="ticket()!.parentTicketTitle"> — {{ ticket()!.parentTicketTitle }}</ng-container>
+                </a>
+                <button (click)="unlinkParent()"
+                        class="ml-auto text-gray-300 hover:text-red-500 transition-colors leading-none"
+                        title="Remove parent link">
+                  <i class="pi pi-times" style="font-size:10px"></i>
+                </button>
+              </div>
+
+              <!-- Add sub-ticket inline form -->
+              <div *ngIf="showAddSubTicketForm" class="rounded-xl p-3 space-y-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Subject</label>
+                  <input pInputText class="w-full text-sm" placeholder="Sub-ticket subject..."
+                         [(ngModel)]="newSubSubject" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                  <textarea pTextarea [(ngModel)]="newSubDescription" rows="2" class="w-full text-xs"
+                            placeholder="Describe the issue..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Priority</label>
+                  <p-select [options]="priorityOptions" [(ngModel)]="newSubPriority"
+                            optionLabel="label" optionValue="value" class="w-full" />
+                </div>
+                <div class="flex gap-2 justify-end">
+                  <button (click)="showAddSubTicketForm = false; newSubSubject = ''; newSubDescription = ''"
+                          class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button (click)="createSubTicket()"
+                          [disabled]="!newSubSubject.trim() || creatingSubTicket"
+                          class="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 transition-colors"
+                          style="background:#2563EB">
+                    {{ creatingSubTicket ? 'Creating...' : 'Create' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Child tickets list -->
+              <div *ngIf="childTickets().length === 0 && !showAddSubTicketForm" class="text-xs text-slate-400 italic text-center py-2">
+                No sub-tickets
+              </div>
+              <div *ngFor="let child of childTickets(); let last = last"
+                   class="flex items-center gap-2 py-1.5"
+                   [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'">
+                <a [routerLink]="['/agent/tickets', child.id]"
+                   class="text-xs font-mono font-bold text-blue-600 hover:underline shrink-0">
+                  {{ child.ticketNumber }}
+                </a>
+                <span class="flex-1 text-xs text-gray-700 truncate min-w-0">{{ child.subject || child.title }}</span>
+                <span class="shrink-0 px-1.5 py-0.5 rounded-full text-xs font-semibold"
+                      [ngStyle]="statusChipStyle(child.status)">
+                  {{ child.status }}
+                </span>
+              </div>
+
+              <!-- Set parent button -->
+              <button *ngIf="!ticket()?.parentTicketId" (click)="showSetParentDialog = true"
+                      class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors mt-1">
+                <i class="pi pi-link" style="font-size:11px"></i>
+                Set parent ticket
+              </button>
+            </div>
+          </div>
+
           <!-- Merge ticket button -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -854,6 +948,48 @@ import { environment } from '../../../../environments/environment';
       </ng-template>
     </p-dialog>
 
+    <!-- Set Parent dialog -->
+    <p-dialog [(visible)]="showSetParentDialog" [modal]="true" header="Set Parent Ticket"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for a ticket to set as the parent of this ticket.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Enter subject or ticket number..."
+                 [ngModel]="parentSearch()"
+                 (ngModelChange)="onParentSearch($event)" />
+        </div>
+        <div *ngIf="parentResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let t of parentResults()"
+               (click)="selectParentTarget(t)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="parentTargetId() === t.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ t.title }}</span>
+              <span class="text-xs font-mono text-slate-400">{{ t.ticketNumber }}</span>
+            </div>
+            <span class="text-xs text-slate-400">{{ t.status }}</span>
+          </div>
+        </div>
+        <div *ngIf="parentSearch().length > 1 && parentResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No matching tickets found
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="showSetParentDialog = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmSetParent()"
+                [disabled]="!parentTargetId() || settingParent"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ settingParent ? 'Setting...' : 'Set Parent' }}
+        </button>
+      </ng-template>
+    </p-dialog>
+
     <!-- Link to Issue dialog -->
     <p-dialog [(visible)]="linkIssueDialogVisible" [modal]="true" header="Link to Issue"
               [style]="{width:'480px'}" [closable]="true">
@@ -938,6 +1074,39 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   ticketLinks = signal<TicketLink[]>([]);
   macros = signal<Macro[]>([]);
   macroOverlayVisible = false;
+
+  // Sub-tickets
+  childTickets = signal<TicketSummary[]>([]);
+  showAddSubTicketForm = false;
+  newSubSubject = '';
+  newSubDescription = '';
+  newSubPriority = 'MEDIUM';
+  creatingSubTicket = false;
+  showSetParentDialog = false;
+  parentSearch = signal('');
+  parentResults = signal<any[]>([]);
+  parentTargetId = signal<string | null>(null);
+  settingParent = false;
+  private parentSearchTimeout: any;
+
+  priorityOptions = [
+    { label: 'LOW', value: 'LOW' },
+    { label: 'MEDIUM', value: 'MEDIUM' },
+    { label: 'HIGH', value: 'HIGH' },
+    { label: 'URGENT', value: 'URGENT' },
+  ];
+
+  statusChipStyle(status: string): Record<string, string> {
+    const map: Record<string, Record<string, string>> = {
+      NEW: { background: '#DBEAFE', color: '#1D4ED8' },
+      OPEN: { background: '#EDE9FE', color: '#5B21B6' },
+      PENDING: { background: '#FEF3C7', color: '#92400E' },
+      ON_HOLD: { background: '#F1F5F9', color: '#475569' },
+      RESOLVED: { background: '#DCFCE7', color: '#15803D' },
+      CLOSED: { background: '#F1F5F9', color: '#64748B' },
+    };
+    return map[status] ?? { background: '#F1F5F9', color: '#475569' };
+  }
   applyingMacro = false;
   addLinkDialogVisible = false;
   linkSearch = signal('');
@@ -1145,6 +1314,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private tagService: TagService,
     private ticketLinkService: TicketLinkService,
     private macroService: MacroService,
+    private ticketParentService: TicketParentService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -1218,6 +1388,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.issueService.getIssuesByTicket(id).subscribe(issues => this.linkedIssues.set(issues));
     this.timeEntryService.getEntries(id).subscribe(entries => this.timeEntries.set(entries));
     this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
+    this.ticketParentService.getChildren(id).subscribe(children => this.childTickets.set(children));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};
@@ -1640,9 +1811,77 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.applyingMacro = false;
         this.macroOverlayVisible = false;
-        this.load();
+        const id = this.route.snapshot.paramMap.get('id')!;
+        this.ticketService.getTicket(id).subscribe(t => this.ticket.set(t));
       },
       error: () => { this.applyingMacro = false; }
+    });
+  }
+
+  createSubTicket() {
+    const subject = this.newSubSubject.trim();
+    if (!subject) return;
+    const id = this.ticket()!.id;
+    this.creatingSubTicket = true;
+    this.ticketParentService.createChild(id, {
+      subject,
+      description: this.newSubDescription.trim() || subject,
+      priority: this.newSubPriority,
+    }).subscribe({
+      next: (child) => {
+        this.childTickets.update(list => [...list, child]);
+        this.showAddSubTicketForm = false;
+        this.newSubSubject = '';
+        this.newSubDescription = '';
+        this.newSubPriority = 'MEDIUM';
+        this.creatingSubTicket = false;
+      },
+      error: () => { this.creatingSubTicket = false; },
+    });
+  }
+
+  unlinkParent() {
+    const id = this.ticket()!.id;
+    this.ticketParentService.removeParent(id).subscribe({
+      next: () => {
+        this.ticket.update(t => t ? { ...t, parentTicketId: null, parentTicketNumber: null, parentTicketTitle: null } : t);
+      },
+    });
+  }
+
+  onParentSearch(query: string) {
+    this.parentSearch.set(query);
+    clearTimeout(this.parentSearchTimeout);
+    if (query.length < 2) { this.parentResults.set([]); return; }
+    this.parentSearchTimeout = setTimeout(() => {
+      this.ticketService.getTickets({ search: query, size: 10 }).subscribe(page => {
+        this.parentResults.set(page.content.filter((t: any) => t.id !== this.ticket()!.id));
+      });
+    }, 300);
+  }
+
+  selectParentTarget(t: any) {
+    this.parentTargetId.set(t.id);
+  }
+
+  confirmSetParent() {
+    const parentId = this.parentTargetId();
+    if (!parentId) return;
+    this.settingParent = true;
+    const id = this.ticket()!.id;
+    const target = this.parentResults().find((t: any) => t.id === parentId);
+    this.ticketParentService.setParent(id, parentId).subscribe({
+      next: () => {
+        this.settingParent = false;
+        this.showSetParentDialog = false;
+        this.ticket.update(t => t ? {
+          ...t,
+          parentTicketId: parentId,
+          parentTicketNumber: target?.ticketNumber ?? null,
+          parentTicketTitle: target?.title ?? null,
+        } : t);
+      },
+      error: () => { this.settingParent = false; },
     });
   }
 }
