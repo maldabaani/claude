@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
+import '../availability/availability_provider.dart';
 
-class AgentShell extends ConsumerWidget {
+class AgentShell extends ConsumerStatefulWidget {
   final Widget child;
   const AgentShell({super.key, required this.child});
+
+  @override
+  ConsumerState<AgentShell> createState() => _AgentShellState();
 
   static const _navItems = [
     _NavItem('/agent', Icons.dashboard_outlined, 'Dashboard'),
@@ -14,9 +19,35 @@ class AgentShell extends ConsumerWidget {
     _NavItem('/notifications', Icons.notifications_outlined, 'Notifications'),
     _NavItem('/profile', Icons.person_outline_rounded, 'Profile'),
   ];
+}
+
+class _AgentShellState extends ConsumerState<AgentShell> {
+  static const _navItems = AgentShell._navItems;
+
+  void _showAvailabilitySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AvailabilitySheet(
+        onSelect: (status) {
+          ref.read(availabilityProvider.notifier).updateStatus(status);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  Color _statusColor(AvailabilityStatus status) {
+    switch (status) {
+      case AvailabilityStatus.online: return const Color(0xFF22C55E);
+      case AvailabilityStatus.busy: return const Color(0xFFF59E0B);
+      case AvailabilityStatus.away: return const Color(0xFF94A3B8);
+      case AvailabilityStatus.offline: return const Color(0xFFEF4444);
+    }
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final user = ref.watch(authProvider).user;
 
@@ -62,20 +93,51 @@ class AgentShell extends ConsumerWidget {
             return _DrawerItem(item: item, isActive: isActive, onTap: () { context.go(item.route); Navigator.pop(context); });
           })),
           const Divider(color: AppColors.sidebarSurface, height: 1),
-          Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-            CircleAvatar(radius: 18, backgroundColor: AppColors.primary,
-              child: Text(user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'A', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(user?.fullName ?? 'Agent', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-              const Text('Agent', style: TextStyle(color: AppColors.textOnDark, fontSize: 11)),
-            ])),
-            IconButton(icon: const Icon(Icons.logout_outlined, color: AppColors.textOnDark, size: 18),
-              onPressed: () async { Navigator.pop(context); await ref.read(authProvider.notifier).logout(); }),
+          Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+            Row(children: [
+              CircleAvatar(radius: 18, backgroundColor: AppColors.primary,
+                child: Text(user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'A', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(user?.fullName ?? 'Agent', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                const Text('Agent', style: TextStyle(color: AppColors.textOnDark, fontSize: 11)),
+              ])),
+              IconButton(
+                icon: Icon(
+                  ref.watch(themeModeProvider) == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  color: AppColors.textOnDark, size: 18,
+                ),
+                onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+              ),
+              IconButton(icon: const Icon(Icons.logout_outlined, color: AppColors.textOnDark, size: 18),
+                onPressed: () async { Navigator.pop(context); await ref.read(authProvider.notifier).logout(); }),
+            ]),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _showAvailabilitySheet(context),
+              child: Builder(builder: (ctx) {
+                final avail = ref.watch(availabilityProvider);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: AppColors.sidebarSurface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(children: [
+                    Container(width: 10, height: 10, decoration: BoxDecoration(color: _statusColor(avail.status), shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Text(avail.status.label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    const Icon(Icons.expand_more_rounded, color: AppColors.textOnDark, size: 16),
+                  ]),
+                );
+              }),
+            ),
           ])),
         ])),
       ),
-      body: child,
+      body: widget.child,
     );
   }
 }
@@ -111,4 +173,42 @@ class _DrawerItem extends StatelessWidget {
       ]),
     )),
   );
+}
+
+class _AvailabilitySheet extends StatelessWidget {
+  final void Function(AvailabilityStatus) onSelect;
+  const _AvailabilitySheet({required this.onSelect});
+
+  Color _color(AvailabilityStatus s) {
+    switch (s) {
+      case AvailabilityStatus.online: return const Color(0xFF22C55E);
+      case AvailabilityStatus.busy: return const Color(0xFFF59E0B);
+      case AvailabilityStatus.away: return const Color(0xFF94A3B8);
+      case AvailabilityStatus.offline: return const Color(0xFFEF4444);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 36, height: 4, margin: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Row(children: [
+            const Text('Set Status', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+          ])),
+        const Divider(height: 1),
+        ...AvailabilityStatus.values.map((s) => ListTile(
+          leading: Container(width: 12, height: 12, decoration: BoxDecoration(color: _color(s), shape: BoxShape.circle)),
+          title: Text(s.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          onTap: () => onSelect(s),
+          dense: true,
+        )),
+        const SizedBox(height: 8),
+      ]),
+    );
+  }
 }

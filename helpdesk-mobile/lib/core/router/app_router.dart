@@ -27,19 +27,26 @@ import '../../features/admin/templates/templates_screen.dart';
 import '../../features/admin/kb/admin_kb_screen.dart';
 import '../../features/admin/custom_fields/custom_fields_screen.dart';
 import '../../features/admin/webhooks/webhooks_screen.dart';
+import '../../features/admin/macros/macros_screen.dart';
 import '../../features/admin/api_keys/api_keys_screen.dart';
 import '../../features/admin/help_topics/help_topics_screen.dart';
 import '../../features/admin/email_inboxes/email_inboxes_screen.dart';
 import '../../features/admin/organizations/organizations_screen.dart';
 import '../../features/admin/issues/issues_screen.dart';
+import '../../features/admin/tags/tags_screen.dart';
+import '../../features/admin/business_hours/business_hours_screen.dart';
+import '../../features/admin/round_robin/round_robin_screen.dart';
+import '../../features/admin/teams/teams_screen.dart';
 import '../../features/admin/audit_log/audit_log_screen.dart';
 import '../../features/admin/sla_rules/sla_rules_screen.dart';
 import '../../features/admin/tickets/admin_tickets_screen.dart';
 import '../../features/shared/profile/profile_screen.dart';
+import '../../features/shared/customer_profile/customer_profile_screen.dart';
 import '../../features/shared/notifications/notifications_screen.dart';
 import '../../features/customer/shell/customer_shell.dart';
 import '../../features/agent/shell/agent_shell.dart';
 import '../../features/admin/shell/admin_shell.dart';
+import '../../features/admin/agent_performance/agent_performance_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -97,6 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/agent/queue', builder: (_, __) => const TicketQueueScreen()),
           GoRoute(path: '/agent/tickets/:id', builder: (_, s) => AgentTicketDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/agent/saved-views', builder: (_, __) => const SavedViewsScreen()),
+          GoRoute(path: '/agent/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         ],
@@ -119,12 +127,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/sla-rules', builder: (_, __) => const SlaRulesScreen()),
           GoRoute(path: '/admin/templates', builder: (_, __) => const TemplatesScreen()),
           GoRoute(path: '/admin/webhooks', builder: (_, __) => const WebhooksScreen()),
+          GoRoute(path: '/admin/macros', builder: (_, __) => const MacrosScreen()),
+          GoRoute(path: '/admin/teams', builder: (_, __) => const TeamsScreen()),
           GoRoute(path: '/admin/api-keys', builder: (_, __) => const ApiKeysScreen()),
           GoRoute(path: '/admin/help-topics', builder: (_, __) => const HelpTopicsScreen()),
           GoRoute(path: '/admin/email-inboxes', builder: (_, __) => const EmailInboxesScreen()),
           GoRoute(path: '/admin/organizations', builder: (_, __) => const OrganizationsScreen()),
           GoRoute(path: '/admin/issues', builder: (_, __) => const IssuesScreen()),
-          GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/admin/tags', builder: (_, __) => const TagsScreen()),
+          GoRoute(path: '/admin/business-hours', builder: (_, __) => const BusinessHoursScreen()),
+          GoRoute(path: '/admin/round-robin', builder: (_, __) => const RoundRobinScreen()),
+          GoRoute(path: '/admin/agent-performance', builder: (_, __) => const AgentPerformanceScreen()),
+                    GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         ],

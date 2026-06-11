@@ -65,4 +65,14 @@ class AppColors {
   // Gradient
   static const gradientStart = Color(0xFF2563EB);
   static const gradientEnd = Color(0xFF4F46E5);
+
+  // ─── Dark Mode Palette ───────────────────────────────────────────────────────
+  static const backgroundDark = Color(0xFF0F172A);
+  static const surfaceDark = Color(0xFF1E293B);
+  static const borderDark = Color(0xFF334155);
+  static const textPrimaryDark = Color(0xFFF1F5F9);
+  static const textSecondaryDark = Color(0xFF94A3B8);
+  static const textTertiaryDark = Color(0xFF64748B);
+  static const surfaceVariantDark = Color(0xFF1E293B);
+  static const sidebarDark = Color(0xFF020617);
 }

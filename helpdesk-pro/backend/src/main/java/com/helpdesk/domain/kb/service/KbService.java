@@ -3,8 +3,11 @@ package com.helpdesk.domain.kb.service;
 import com.helpdesk.domain.kb.dto.KbArticleRequest;
 import com.helpdesk.domain.kb.dto.KbArticleResponse;
 import com.helpdesk.domain.kb.dto.KbCategoryResponse;
+import com.helpdesk.domain.kb.dto.RateRequest;
 import com.helpdesk.domain.kb.entity.KbArticle;
+import com.helpdesk.domain.kb.entity.KbArticleRating;
 import com.helpdesk.domain.kb.entity.KbCategory;
+import com.helpdesk.domain.kb.repository.KbArticleRatingRepository;
 import com.helpdesk.domain.kb.repository.KbArticleRepository;
 import com.helpdesk.domain.kb.repository.KbCategoryRepository;
 import com.helpdesk.domain.user.entity.User;
@@ -22,6 +25,7 @@ public class KbService {
 
     private final KbCategoryRepository categoryRepository;
     private final KbArticleRepository articleRepository;
+    private final KbArticleRatingRepository ratingRepository;
 
     public List<KbCategoryResponse> getCategories() {
         return categoryRepository.findByDeletedAtIsNullOrderBySortOrderAsc().stream()
@@ -58,22 +62,68 @@ public class KbService {
         KbArticle article = articleRepository.findById(id)
                 .filter(a -> a.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Article not found: " + id));
-        article.setViewCount(article.getViewCount() + 1);
-        return toResponse(articleRepository.save(article));
+        return toResponse(article);
     }
 
     @Transactional
     public KbArticleResponse getArticleBySlug(String slug) {
         KbArticle article = articleRepository.findBySlugAndDeletedAtIsNull(slug)
                 .orElseThrow(() -> new EntityNotFoundException("Article not found: " + slug));
-        article.setViewCount(article.getViewCount() + 1);
-        return toResponse(articleRepository.save(article));
+        return toResponse(article);
     }
 
     public List<KbArticleResponse> search(String q) {
         return articleRepository.search(q).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public KbArticleResponse trackView(UUID id) {
+        KbArticle article = articleRepository.findById(id)
+                .filter(a -> a.getDeletedAt() == null)
+                .orElseThrow(() -> new EntityNotFoundException("Article not found: " + id));
+        article.setViewCount(article.getViewCount() + 1);
+        return toResponse(articleRepository.save(article));
+    }
+
+    @Transactional
+    public KbArticleResponse rate(UUID id, boolean helpful, User currentUser) {
+        KbArticle article = articleRepository.findById(id)
+                .filter(a -> a.getDeletedAt() == null)
+                .orElseThrow(() -> new EntityNotFoundException("Article not found: " + id));
+
+        UUID userId = currentUser.getId();
+        ratingRepository.findByArticleIdAndUserId(id, userId).ifPresentOrElse(
+            existing -> {
+                // If changing vote, adjust counts
+                if (existing.isHelpful() != helpful) {
+                    if (existing.isHelpful()) {
+                        article.setHelpfulYes(Math.max(0, article.getHelpfulYes() - 1));
+                        article.setHelpfulNo(article.getHelpfulNo() + 1);
+                    } else {
+                        article.setHelpfulNo(Math.max(0, article.getHelpfulNo() - 1));
+                        article.setHelpfulYes(article.getHelpfulYes() + 1);
+                    }
+                    existing.setHelpful(helpful);
+                    ratingRepository.save(existing);
+                }
+            },
+            () -> {
+                KbArticleRating rating = new KbArticleRating();
+                rating.setArticleId(id);
+                rating.setUserId(userId);
+                rating.setHelpful(helpful);
+                ratingRepository.save(rating);
+                if (helpful) {
+                    article.setHelpfulYes(article.getHelpfulYes() + 1);
+                } else {
+                    article.setHelpfulNo(article.getHelpfulNo() + 1);
+                }
+            }
+        );
+
+        return toResponse(articleRepository.save(article));
     }
 
     @Transactional

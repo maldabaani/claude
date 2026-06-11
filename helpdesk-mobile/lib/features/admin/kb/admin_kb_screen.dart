@@ -102,21 +102,51 @@ class _AdminKbScreenState extends ConsumerState<AdminKbScreen> with SingleTicker
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
           final d = _articles[i] as Map<String, dynamic>;
+          final viewCount = d['viewCount'] ?? 0;
+          final helpfulYes = d['helpfulYes'] ?? 0;
+          final helpfulNo = d['helpfulNo'] ?? 0;
           return Container(padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
-            child: Row(children: [
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Icon(Icons.article_outlined, color: AppColors.primary),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 Text(d['categoryName'] ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 8, children: [
+                  _StatBadge(icon: Icons.remove_red_eye_outlined, label: '$viewCount views', color: AppColors.textTertiary),
+                  _StatBadge(emoji: '👍', label: '$helpfulYes', color: const Color(0xFF16A34A)),
+                  _StatBadge(emoji: '👎', label: '$helpfulNo', color: AppColors.error),
+                ]),
               ])),
-              IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary), onPressed: () => _showArticleForm(d)),
-              IconButton(icon: const Icon(Icons.delete_outlined, size: 18, color: AppColors.error), onPressed: () => _deleteArticle(d['id'].toString())),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary), onPressed: () => _showArticleForm(d)),
+                IconButton(icon: const Icon(Icons.delete_outlined, size: 18, color: AppColors.error), onPressed: () => _deleteArticle(d['id'].toString())),
+              ]),
             ]));
         })),
     ]),
   );
+}
+
+class _StatBadge extends StatelessWidget {
+  final IconData? icon;
+  final String? emoji;
+  final String label;
+  final Color color;
+
+  const _StatBadge({this.icon, this.emoji, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (icon != null) Icon(icon, size: 12, color: color),
+      if (emoji != null) Text(emoji!, style: const TextStyle(fontSize: 11)),
+      const SizedBox(width: 3),
+      Text(label, style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w500)),
+    ]);
+  }
 }
 
 class _SimpleNameDialog extends StatefulWidget {

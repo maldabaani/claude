@@ -52,6 +52,8 @@ class ApiEndpoints {
   static const String kbCategories = '/kb/categories';
   static const String kbArticles = '/kb/articles';
   static String kbArticle(String id) => '/kb/articles/$id';
+  static String kbArticleView(String id) => '/kb/articles/$id/view';
+  static String kbArticleRate(String id) => '/kb/articles/$id/rate';
 
   // Canned Responses
   static const String cannedResponses = '/canned-responses';
@@ -89,6 +91,20 @@ class ApiEndpoints {
   // CSAT
   static String csatRating(String ticketId) => '/csat/tickets/$ticketId/rating';
 
+  // Presence
+  static String ticketPresenceJoin(String id) => '/tickets/$id/presence/join';
+  static String ticketPresenceLeave(String id) => '/tickets/$id/presence/leave';
+  static String ticketPresence(String id) => '/tickets/$id/presence';
+  static String ticketSnooze(String id) => '/tickets/$id/snooze';
+  static String ticketDraft(String id) => '/tickets/$id/draft';
+  static String ticketTimeEntries(String id) => '/tickets/$id/time-entries';
+  static String ticketTimeEntry(String ticketId, String entryId) => '/tickets/$ticketId/time-entries/$entryId';
+
+  // Customer Profile
+  static String customerProfile(String id) => '/users/$id/profile';
+  static String customerNotes(String id) => '/users/$id/notes';
+  static String customerNote(String userId, String noteId) => '/users/$userId/notes/$noteId';
+
   // Attachments
   static String attachmentDownload(String id) => '/attachments/$id/download';
 
@@ -98,6 +114,24 @@ class ApiEndpoints {
   // API Keys
   static const String apiKeys = '/api-keys';
 
+  // Tags
+  static const String tags = '/tags';
+  static String tagSearch = '/tags/search';
+  static String tag(String id) => '/tags/\$id';
+  static String tagMerge(String id) => '/tags/\$id/merge';
+  static String ticketTags(String id) => '/tickets/\$id/tags';
+
+  // Ticket Links
+  static String ticketLinks(String id) => '/tickets/$id/links';
+  static String ticketLink(String ticketId, String linkId) => '/tickets/$ticketId/links/$linkId';
+
+  // Business Hours
+  static const String businessHours = '/business-hours';
+  static const String businessHolidays = '/business-hours/holidays';
+
+  // Round Robin
+  static const String roundRobin = '/round-robin/config';
+
   // Settings
   static const String settings = '/settings';
 
@@ -106,4 +140,26 @@ class ApiEndpoints {
 
   // Email Inboxes
   static const String emailInboxes = '/email-inboxes';
+
+  // Agent Performance
+  static const String agentPerformance = '/analytics/agents';
+
+  // Agent Availability
+  static const String agentAvailability = '/agents/availability';
+  static const String agentAvailabilityMe = '/agents/availability/me';
+
+  // Macros
+  static const String macros = '/macros';
+  static String applyMacro(String macroId, String ticketId) => '/macros/$macroId/apply/$ticketId';
+
+  // Parent-child tickets
+  static String ticketChildren(String id) => '/tickets/$id/children';
+  static String ticketParent(String id) => '/tickets/$id/parent';
+
+  // Teams
+  static const String teams = '/teams';
+  static String team(String id) => '/teams/$id';
+  static String teamMembers(String id) => '/teams/$id/members';
+  static String teamMember(String teamId, String userId) => '/teams/$teamId/members/$userId';
+  static String ticketTeam(String id) => '/tickets/$id/team';
 }

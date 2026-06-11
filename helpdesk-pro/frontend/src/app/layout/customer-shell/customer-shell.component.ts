@@ -6,6 +6,7 @@ import { MenuModule } from 'primeng/menu';
 import { TooltipModule } from 'primeng/tooltip';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-customer-shell',
@@ -107,6 +108,11 @@ import { AuthService } from '../../core/auth/auth.service';
           <div class="flex items-center gap-2 flex-1 min-w-0">
             <h2 class="text-sm font-bold text-gray-900 truncate">{{ pageTitle() }}</h2>
           </div>
+          <button (click)="themeService.toggle()"
+                  class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                  title="Toggle dark mode">
+            <i [class]="'pi ' + (themeService.isDark() ? 'pi-sun' : 'pi-moon')" style="font-size:18px"></i>
+          </button>
         </header>
 
         <!-- Scrollable content -->
@@ -149,7 +155,7 @@ export class CustomerShellComponent {
     { path: '/profile', label: 'My Profile', icon: 'pi-user' },
   ];
 
-  constructor(public auth: AuthService, private router: Router) {
+  constructor(public auth: AuthService, public themeService: ThemeService, private router: Router) {
     this.menuItems = [
       { label: this.displayName(), disabled: true, styleClass: 'font-semibold text-gray-800' },
       { separator: true },

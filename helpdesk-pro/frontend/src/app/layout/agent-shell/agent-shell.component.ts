@@ -1,4 +1,4 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,17 +7,22 @@ import { MenuModule } from 'primeng/menu';
 import { BadgeModule } from 'primeng/badge';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { AvailabilityService, AvailabilityStatus } from '../../core/services/availability.service';
+import { KeyboardShortcutService } from '../../core/services/keyboard-shortcut.service';
+import { KeyboardShortcutsHelpComponent } from '../../shared/keyboard-shortcuts-help/keyboard-shortcuts-help.component';
 
 @Component({
   selector: 'app-agent-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FormsModule,
-    ButtonModule, MenuModule, BadgeModule, TooltipModule, InputTextModule],
+    ButtonModule, MenuModule, BadgeModule, TooltipModule, InputTextModule, OverlayPanelModule,
+    KeyboardShortcutsHelpComponent],
   template: `
     <div class="flex h-screen overflow-hidden" style="background:#F8FAFC">
 
@@ -100,13 +105,21 @@ import { ThemeService } from '../../core/services/theme.service';
           <div class="flex-1 max-w-md mx-6">
             <div class="relative">
               <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:14px"></i>
-              <input pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
-                     placeholder="Search tickets..."
+              <input #searchInput pInputText [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
+                     placeholder="Search tickets... (/)"
                      class="w-full pl-9 text-sm" style="height:36px;border-radius:8px" />
             </div>
           </div>
 
           <div class="flex items-center gap-1">
+            <!-- Keyboard shortcuts help button -->
+            <button (click)="showShortcutsHelp = true"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                    pTooltip="Keyboard shortcuts (?)"
+                    tooltipPosition="bottom">
+              <i class="pi pi-question-circle" style="font-size:18px"></i>
+            </button>
+
             <!-- Dark mode toggle -->
             <button (click)="themeService.toggle()"
                     class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
@@ -127,6 +140,34 @@ import { ThemeService } from '../../core/services/theme.service';
             <div class="w-px h-5 mx-1" style="background:#E2E8F0"></div>
 
             <!-- User menu -->
+            <!-- Availability status selector -->
+            <button (click)="availPanel.toggle($event)"
+                    class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors border"
+                    style="border-color:#E2E8F0">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                    [style.background]="availService.statusColor(availService.myStatus())"></span>
+              <span class="text-xs font-medium text-gray-600">{{ availService.statusLabel(availService.myStatus()) }}</span>
+              <i class="pi pi-chevron-down text-gray-400" style="font-size:11px"></i>
+            </button>
+            <p-overlayPanel #availPanel>
+              <div class="flex flex-col gap-0.5" style="min-width:160px">
+                <p class="text-xs font-semibold text-gray-500 px-2 pt-1 pb-1.5 uppercase tracking-wide">Set Status</p>
+                <button *ngFor="let s of statusOptions"
+                        (click)="setStatus(s.value); availPanel.hide()"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 text-gray-700"
+                        [class.bg-blue-50]="availService.myStatus() === s.value">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                        [style.background]="availService.statusColor(s.value)"></span>
+                  {{ s.label }}
+                </button>
+                <div class="mt-1.5 pt-1.5 border-t border-gray-100 px-2 pb-1">
+                  <p class="text-xs text-gray-400">
+                    <span class="font-semibold text-gray-600">{{ availService.onlineCount() }}</span> agents online
+                  </p>
+                </div>
+              </div>
+            </p-overlayPanel>
+
             <button (click)="headerUserMenu.toggle($event)" class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
               <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                    style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -145,6 +186,10 @@ import { ThemeService } from '../../core/services/theme.service';
         </main>
       </div>
     </div>
+
+    <!-- Keyboard Shortcuts Help Dialog -->
+    <app-keyboard-shortcuts-help
+      [(visible)]="showShortcutsHelp" />
   `,
   styles: [`
     .sidebar-nav-item {
@@ -175,9 +220,10 @@ import { ThemeService } from '../../core/services/theme.service';
     }
   `],
 })
-export class AgentShellComponent implements OnInit {
+export class AgentShellComponent implements OnInit, OnDestroy {
   collapsed = signal(false);
   searchQuery = signal('');
+  showShortcutsHelp = false;
   private searchTimeout: any;
 
   navItems = [
@@ -197,18 +243,29 @@ export class AgentShellComponent implements OnInit {
 
   headerMenuItems: MenuItem[] = [];
 
+  statusOptions: { value: AvailabilityStatus; label: string }[] = [
+    { value: 'ONLINE', label: 'Online' },
+    { value: 'BUSY', label: 'Busy' },
+    { value: 'AWAY', label: 'Away' },
+    { value: 'OFFLINE', label: 'Offline' },
+  ];
+
   constructor(
     public auth: AuthService,
     public notifService: NotificationService,
     public themeService: ThemeService,
+    public availService: AvailabilityService,
     private ws: WebSocketService,
     private router: Router,
+    private shortcutService: KeyboardShortcutService,
   ) {}
 
   ngOnInit() {
     this.ws.connect();
     this.notifService.refreshCount();
     this.ws.notification$.subscribe(() => this.notifService.refreshCount());
+    this.availService.loadMyStatus();
+    this.availService.loadAllAgents();
     this.headerMenuItems = [
       { label: this.displayName(), disabled: true, styleClass: 'font-semibold' },
       { separator: true },
@@ -216,6 +273,45 @@ export class AgentShellComponent implements OnInit {
       { separator: true },
       { label: 'Sign out', icon: 'pi pi-sign-out', command: () => this.auth.logout() }
     ];
+
+    // Register navigation keyboard shortcuts
+    this.shortcutService.register('?', 'Show keyboard shortcuts', 'General', () => {
+      this.showShortcutsHelp = true;
+    });
+    this.shortcutService.register('g t', 'Go to tickets queue', 'Navigation', () => {
+      this.router.navigate(['/agent/queue']);
+    });
+    this.shortcutService.register('g d', 'Go to dashboard', 'Navigation', () => {
+      this.router.navigate(['/agent']);
+    });
+    this.shortcutService.register('g q', 'Go to queue', 'Navigation', () => {
+      this.router.navigate(['/agent/queue']);
+    });
+    this.shortcutService.register('n', 'New ticket (submit)', 'Navigation', () => {
+      this.router.navigate(['/submit']);
+    });
+    this.shortcutService.register('/', 'Focus search', 'General', () => {
+      const searchEl = document.querySelector('input[placeholder*="Search tickets"]') as HTMLInputElement | null;
+      if (searchEl) searchEl.focus();
+    });
+    this.shortcutService.register('Escape', 'Close modal / blur focus', 'General', () => {
+      this.showShortcutsHelp = false;
+      (document.activeElement as HTMLElement)?.blur?.();
+    });
+  }
+
+  ngOnDestroy() {
+    this.shortcutService.unregister('?');
+    this.shortcutService.unregister('g t');
+    this.shortcutService.unregister('g d');
+    this.shortcutService.unregister('g q');
+    this.shortcutService.unregister('n');
+    this.shortcutService.unregister('/');
+    this.shortcutService.unregister('Escape');
+  }
+
+  setStatus(status: AvailabilityStatus) {
+    this.availService.updateStatus(status).subscribe();
   }
 
   toggleCollapsed() { this.collapsed.update(v => !v); }

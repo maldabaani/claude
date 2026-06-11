@@ -26,6 +26,7 @@ class _TicketQueueScreenState extends ConsumerState<TicketQueueScreen> {
   bool _hasMore = true;
   String? _error;
   String _statusFilter = 'ALL';
+  bool _showSnoozed = false;
   String _sortBy = 'newest';
   int _page = 0;
   static const _pageSize = 20;
@@ -64,6 +65,7 @@ class _TicketQueueScreenState extends ConsumerState<TicketQueueScreen> {
     };
     if (_statusFilter != 'ALL') params['status'] = _statusFilter;
     if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
+    if (_showSnoozed) params['includeSnoozed'] = 'true';
     switch (_sortBy) {
       case 'newest':
         params['sortBy'] = 'createdAt';
@@ -193,24 +195,39 @@ class _TicketQueueScreenState extends ConsumerState<TicketQueueScreen> {
           // Filter chips
           SizedBox(
             height: 48,
-            child: ListView.separated(
+            child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: _statusOptions.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final s = _statusOptions[i];
-                final selected = _statusFilter == s;
-                return FilterChip(
-                  label: Text(s, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary)),
-                  selected: selected,
-                  selectedColor: AppColors.primary,
+              children: [
+                ..._statusOptions.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final s = entry.value;
+                  final selected = _statusFilter == s;
+                  return Padding(
+                    padding: EdgeInsets.only(right: i < _statusOptions.length - 1 ? 8.0 : 0),
+                    child: FilterChip(
+                      label: Text(s, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary)),
+                      selected: selected,
+                      selectedColor: AppColors.primary,
+                      backgroundColor: AppColors.surface,
+                      side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+                      showCheckmark: false,
+                      onSelected: (_) { setState(() => _statusFilter = s); _load(reset: true); },
+                    ),
+                  );
+                }),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('💤 Snoozed', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  selected: _showSnoozed,
+                  selectedColor: const Color(0xFFFDE68A),
                   backgroundColor: AppColors.surface,
-                  side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+                  side: BorderSide(color: _showSnoozed ? const Color(0xFFD97706) : AppColors.border),
+                  labelStyle: TextStyle(color: _showSnoozed ? const Color(0xFF92400E) : AppColors.textSecondary),
                   showCheckmark: false,
-                  onSelected: (_) { setState(() => _statusFilter = s); _load(reset: true); },
-                );
-              },
+                  onSelected: (_) { setState(() => _showSnoozed = !_showSnoozed); _load(reset: true); },
+                ),
+              ],
             ),
           ),
 
@@ -313,11 +330,23 @@ class _TicketQueueCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              ticket['title'] ?? ticket['subject'] ?? '',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Opacity(
+              opacity: ticket['status'] == 'SNOOZED' ? 0.6 : 1.0,
+              child: Row(
+                children: [
+                  if (ticket['status'] == 'SNOOZED') ...[
+                    const Text('💤 ', style: TextStyle(fontSize: 12)),
+                  ],
+                  Expanded(
+                    child: Text(
+                      ticket['title'] ?? ticket['subject'] ?? '',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 6),
             Row(

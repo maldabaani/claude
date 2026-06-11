@@ -1,9 +1,12 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ChartModule } from 'primeng/chart';
 import { AnalyticsService, AnalyticsData } from '../../../core/services/analytics.service';
+import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-analytics',
@@ -80,6 +83,30 @@ import { AnalyticsService, AnalyticsData } from '../../../core/services/analytic
     </div>
   </div>
 
+
+  <!-- Time Tracking section -->
+  <div *ngIf="data() && timeStats().length > 0" class="bg-white rounded-xl border border-gray-100 overflow-hidden" style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="font-bold text-gray-900 text-sm">⏱ Time Tracking</h2>
+      <span class="text-xs text-slate-400">Total this month: <strong class="text-gray-700">{{ formatMinutes(totalMinutesThisMonth()) }}</strong></span>
+    </div>
+    <div class="p-4 space-y-2">
+      <div *ngFor="let stat of timeStats().slice(0,10)"
+           class="flex items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-gray-700 truncate">{{ stat.label }}</span>
+            <span class="text-xs font-bold text-blue-700 ml-2 shrink-0">{{ formatMinutes(stat.minutes) }}</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+            <div class="h-full rounded-full bg-blue-400"
+                 [style.width]="(stat.minutes / maxTimeMinutes() * 100) + '%'"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Loading skeleton -->
   <div *ngIf="loading()" class="space-y-4">
     <div class="grid grid-cols-4 gap-4">
@@ -104,9 +131,39 @@ export class AnalyticsComponent implements OnInit {
     { label: '90 days', days: 90 },
   ];
 
-  constructor(private analyticsService: AnalyticsService) {}
+  timeStats = signal<{label: string; minutes: number}[]>([]);
+  totalMinutesThisMonth = signal(0);
 
-  ngOnInit() { this.load(); }
+  maxTimeMinutes(): number {
+    const stats = this.timeStats();
+    return stats.length > 0 ? Math.max(...stats.map(s => s.minutes)) : 1;
+  }
+
+  formatMinutes(total: number): string {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h > 0 && m > 0) return h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h';
+    return m + 'm';
+  }
+
+  constructor(private analyticsService: AnalyticsService, private http: HttpClient) {}
+
+  ngOnInit() {
+    this.load();
+    this.loadTimeStats();
+  }
+
+  loadTimeStats() {
+    this.http.get<any>(`${environment.apiUrl}/analytics/time-summary`).subscribe({
+      next: (r) => {
+        const d = r.data || r;
+        this.timeStats.set(d.topTickets || []);
+        this.totalMinutesThisMonth.set(d.totalMinutesThisMonth || 0);
+      },
+      error: () => {}
+    });
+  }
 
   load() {
     this.loading.set(true);

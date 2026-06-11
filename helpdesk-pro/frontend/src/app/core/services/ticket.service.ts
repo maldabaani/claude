@@ -87,6 +87,10 @@ export class TicketService {
     return this.http.post<ApiResponse<Ticket>>(`${this.base}/${sourceId}/merge`, { targetTicketId }).pipe(map(r => r.data));
   }
 
+  snoozeTicket(ticketId: string, snoozeUntil: string | null): Observable<Ticket> {
+    return this.http.patch<ApiResponse<Ticket>>(`${this.base}/${ticketId}/snooze`, { snoozeUntil }).pipe(map(r => r.data));
+  }
+
   recordPresence(ticketId: string): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.base}/${ticketId}/presence`, {}).pipe(map(r => r.data));
   }

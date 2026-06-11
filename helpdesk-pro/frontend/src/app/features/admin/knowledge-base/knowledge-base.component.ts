@@ -51,11 +51,12 @@ import { KbService, KbCategory, KbArticle, KbArticleRequest } from '../../../cor
 
               <!-- Table header -->
               <div class="grid gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50/60 text-xs font-bold text-slate-400 uppercase tracking-wider"
-                   style="grid-template-columns:3fr 2fr 100px 80px 100px">
+                   style="grid-template-columns:3fr 2fr 100px 80px 140px 100px">
                 <span>Title</span>
                 <span>Category</span>
                 <span>Status</span>
                 <span>Views</span>
+                <span>Ratings</span>
                 <span class="text-center">Actions</span>
               </div>
 
@@ -63,14 +64,20 @@ import { KbService, KbCategory, KbArticle, KbArticleRequest } from '../../../cor
               <div *ngFor="let a of articles(); let last = last"
                    class="grid gap-4 px-5 py-4 items-center hover:bg-gray-50 transition-colors"
                    [class.border-b]="!last"
-                   style="grid-template-columns:3fr 2fr 100px 80px 100px;border-color:#F1F5F9">
+                   style="grid-template-columns:3fr 2fr 100px 80px 140px 100px;border-color:#F1F5F9">
                 <p class="text-sm font-semibold text-gray-900 truncate">{{ a.title }}</p>
                 <p class="text-xs text-slate-500">{{ a.categoryName || '—' }}</p>
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold w-fit"
                       [ngClass]="a.status === 'PUBLISHED' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">
                   {{ a.status }}
                 </span>
-                <p class="text-xs text-slate-500">{{ a.viewCount }}</p>
+                <p class="text-xs text-slate-500 flex items-center gap-1">
+                  <span>👁</span> {{ a.viewCount }}
+                </p>
+                <p class="text-xs text-slate-500 flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-green-600">👍 {{ a.helpfulYes }}</span>
+                  <span class="flex items-center gap-0.5 text-red-500">👎 {{ a.helpfulNo }}</span>
+                </p>
                 <div class="flex items-center justify-center gap-1">
                   <button pButton type="button" (click)="openEdit(a)"
                           icon="pi pi-pencil" severity="secondary"

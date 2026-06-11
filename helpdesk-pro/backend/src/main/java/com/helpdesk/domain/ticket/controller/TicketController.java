@@ -1,8 +1,11 @@
 package com.helpdesk.domain.ticket.controller;
 
+import com.helpdesk.domain.tag.TagResponse;
+import com.helpdesk.domain.tag.TagService;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
+import com.helpdesk.domain.ticket.dto.SnoozeRequest;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
@@ -39,6 +42,7 @@ public class TicketController {
     private final TicketService ticketService;
     private final PresenceService presenceService;
     private final TicketWatcherRepository ticketWatcherRepository;
+    private final TagService tagService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -50,6 +54,7 @@ public class TicketController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "false") boolean includeSnoozed,
             Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
 
@@ -64,7 +69,7 @@ public class TicketController {
         }
         Page<TicketResponse> page = ticketService.findAll(status, priority, departmentId, agentId, filterByCreated,
                 from, to, search, currentUser.getOrganizationId(), currentUser.getId(),
-                currentUser.getRole().name().equals("CUSTOMER"), pageable);
+                currentUser.getRole().name().equals("CUSTOMER"), includeSnoozed, pageable);
         return ResponseEntity.ok(ApiResponse.ok(page));
     }
 
@@ -113,6 +118,24 @@ public class TicketController {
             @AuthenticationPrincipal User currentUser) {
         presenceService.recordPresence(id, currentUser.getId(), currentUser.getFullName());
         return ResponseEntity.ok(ApiResponse.ok("Presence recorded", null));
+    }
+
+    @PostMapping("/{id}/presence/join")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> joinPresence(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser) {
+        List<PresenceService.AgentPresence> viewers = presenceService.join(id, currentUser.getId(), currentUser.getFullName());
+        return ResponseEntity.ok(ApiResponse.ok(viewers));
+    }
+
+    @PostMapping("/{id}/presence/leave")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PresenceService.AgentPresence>>> leavePresence(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser) {
+        List<PresenceService.AgentPresence> viewers = presenceService.leave(id, currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.ok(viewers));
     }
 
     @GetMapping("/{id}/presence")
@@ -226,10 +249,37 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.ok("Ticket merged", result));
     }
 
+    @PatchMapping("/{id}/snooze")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> snooze(
+            @PathVariable UUID id,
+            @RequestBody SnoozeRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok("Ticket snooze updated",
+                ticketService.snooze(id, request.snoozeUntil(), currentUser.getId())));
+    }
+
     @PostMapping("/bulk")
     @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> bulkAction(
             @Valid @RequestBody BulkTicketRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(ticketService.bulkAction(request)));
+    }
+
+    // ── Tag taxonomy ──────────────────────────────────────────────────────────
+
+    @PutMapping("/{id}/tags")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<TagResponse>>> setTicketTags(
+            @PathVariable UUID id,
+            @RequestBody Map<String, List<UUID>> body) {
+        List<UUID> tagIds = body.getOrDefault("tagIds", List.of());
+        tagService.setTicketTags(id, tagIds);
+        return ResponseEntity.ok(ApiResponse.ok(tagService.getTicketTags(id)));
+    }
+
+    @GetMapping("/{id}/tags")
+    public ResponseEntity<ApiResponse<List<TagResponse>>> getTicketTags(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(tagService.getTicketTags(id)));
     }
 }

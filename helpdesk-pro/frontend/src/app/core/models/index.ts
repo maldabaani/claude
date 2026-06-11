@@ -34,6 +34,8 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   manualDueDate?: string;
+  snoozedUntil?: string;
+  preSnoozeStatus?: string;
 }
 
 export interface Comment {

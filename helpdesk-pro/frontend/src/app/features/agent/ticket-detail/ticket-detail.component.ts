@@ -13,13 +13,25 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { DatePickerModule } from 'primeng/datepicker';
 import { CheckboxModule } from 'primeng/checkbox';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { TicketService } from '../../../core/services/ticket.service';
+import { KeyboardShortcutService } from '../../../core/services/keyboard-shortcut.service';
+import { TagService, Tag as ManagedTag } from '../../../core/services/tag.service';
 import { UserService } from '../../../core/services/user.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { CannedResponseService, CannedResponse as CannedResponseModel } from '../../../core/services/canned-response.service';
 import { CustomFieldService, CustomField } from '../../../core/services/custom-field.service';
 import { TaskService, TicketTask } from '../../../core/services/task.service';
 import { IssueService, Issue } from '../../../core/services/issue.service';
+import { PresenceService, PresenceViewer } from '../../../core/services/presence.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { Subscription, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { DraftService } from '../../../core/services/draft.service';
+import { TimeEntryService, TimeEntry } from '../../../core/services/time-entry.service';
+import { TicketLinkService, TicketLink, LinkType } from '../../../core/services/ticket-link.service';
+import { TicketParentService, TicketSummary } from '../../../core/services/ticket-parent.service';
+import { MacroService, Macro } from '../../../core/services/macro.service';
 import { Ticket, Comment, TicketStatus, User, Department, Attachment } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
@@ -32,7 +44,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
     ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
-    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule,
+    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule, InputNumberModule,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -40,19 +52,47 @@ import { environment } from '../../../../environments/environment';
     <div *ngIf="!loading() && ticket()" class="space-y-5">
 
       <!-- Collision warning -->
-      <div *ngIf="otherAgentsCount() > 0"
+      <div *ngIf="otherViewers().length > 0"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+           style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E">
+        <i class="pi pi-eye" style="font-size:16px;color:#D97706"></i>
+        <span>Also viewing: <strong>{{ otherViewers()[0].agentName }}<ng-container *ngIf="otherViewers().length > 1">, +{{ otherViewers().length - 1 }} more</ng-container></strong></span>
+        <span class="ml-2 text-xs" style="color:#B45309">Be careful — replies may conflict</span>
+      </div>
+
+      <!-- Snooze banner -->
+      <div *ngIf="ticket()?.snoozedUntil"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
            style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E">
-        <i class="pi pi-exclamation-triangle" style="font-size:16px;color:#D97706"></i>
-        <span><strong>{{ otherAgentsCount() }}</strong> other agent(s) are viewing this ticket</span>
+        <span style="font-size:16px">💤</span>
+        <span>Snoozed until <strong>{{ ticket()!.snoozedUntil | date:'MMM d, h:mm a' }}</strong></span>
+        <button (click)="unsnooze()"
+                class="ml-auto px-3 py-1 rounded-lg text-xs font-bold border"
+                style="border-color:#D97706;color:#D97706;background:white">
+          Wake up
+        </button>
       </div>
 
       <!-- Back nav -->
-      <a routerLink="/agent/queue"
-         class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
-        <i class="pi pi-arrow-left" style="font-size:16px"></i>
-        Back to queue
-      </a>
+      <div class="flex items-center justify-between">
+        <a routerLink="/agent/queue"
+           class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-gray-900 transition-colors">
+          <i class="pi pi-arrow-left" style="font-size:16px"></i>
+          Back to queue
+        </a>
+        <button *ngIf="!ticket()?.snoozedUntil" (click)="showSnoozeDialog = true"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors"
+                pTooltip="Snooze ticket (S)"
+                tooltipPosition="bottom">
+          <span>💤</span>
+          Snooze
+        </button>
+        <button (click)="openMacroOverlay()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors">
+          <i class="pi pi-bolt" style="font-size:12px"></i>
+          Run Macro
+        </button>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -194,6 +234,15 @@ import { environment } from '../../../../environments/environment';
                 </div>
               </div>
 
+              <!-- Draft indicator -->
+              <div *ngIf="draftSavedAt()" class="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                <span>💾 Draft saved {{ draftSavedAt() | date:'h:mm a' }}</span>
+                <button type="button" (click)="discardDraft()"
+                        class="text-xs text-red-400 hover:text-red-600 underline transition-colors">
+                  Discard draft
+                </button>
+              </div>
+
               <!-- Pending files -->
               <div *ngIf="pendingFiles().length > 0" class="flex flex-wrap gap-2 mt-2">
                 <div *ngFor="let f of pendingFiles()"
@@ -220,7 +269,9 @@ import { environment } from '../../../../environments/environment';
                         [disabled]="replyControl.invalid || submitting"
                         class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         [style.background]="noteMode === 'internal' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : 'linear-gradient(135deg,#2563EB,#1D4ED8)'"
-                        style="box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+                        style="box-shadow:0 2px 8px rgba(0,0,0,0.15)"
+                        pTooltip="Focus reply textarea (R)"
+                        tooltipPosition="top">
                   <i class="pi pi-send" style="font-size:16px"></i>
                   {{ submitting ? 'Sending...' : (noteMode === 'internal' ? 'Add Note' : 'Send Reply') }}
                 </button>
@@ -242,7 +293,10 @@ import { environment } from '../../../../environments/environment';
 
               <!-- Status -->
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Status
+                  <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(E) resolve</span>
+                </label>
                 <p-select [options]="statusOptions" [(ngModel)]="currentStatus" (onChange)="updateStatus()"
                           optionLabel="label" optionValue="value" class="w-full" />
               </div>
@@ -289,7 +343,7 @@ import { environment } from '../../../../environments/environment';
                     {{ (ticket()!.createdBy?.fullName || 'C')[0] }}
                   </div>
                   <div class="min-w-0">
-                    <p class="text-sm font-bold text-gray-900 truncate">{{ ticket()!.createdBy?.fullName }}</p>
+                    <a [routerLink]="['/agent/customers', ticket()!.createdBy?.id]" class="text-sm font-bold text-gray-900 hover:text-indigo-600 hover:underline truncate block">{{ ticket()!.createdBy?.fullName }}</a>
                     <p class="text-xs text-slate-400 truncate">{{ ticket()!.createdBy?.email }}</p>
                   </div>
                 </div>
@@ -297,7 +351,10 @@ import { environment } from '../../../../environments/environment';
 
               <!-- Assigned Agent -->
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned To</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Assigned To
+                  <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(A) assign me</span>
+                </label>
                 <p-select [options]="agentOptions" [(ngModel)]="currentAgentId" (onChange)="assignAgent()"
                           optionLabel="label" optionValue="value" class="w-full"
                           placeholder="Unassigned" />
@@ -323,27 +380,34 @@ import { environment } from '../../../../environments/environment';
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</label>
                 <div class="flex flex-wrap gap-1.5 mb-2">
-                  <span *ngFor="let tag of ticket()!.tags"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-                        style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">
-                    {{ tag }}
-                    <button (click)="removeTag(tag)" class="hover:text-red-500 transition-colors leading-none">
-                      <i class="pi pi-times" style="font-size:11px"></i>
+                  <span *ngFor="let tag of ticketManagedTags()"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+                        [style.background]="tag.color">
+                    {{ tag.name }}
+                    <button (click)="removeManagedTag(tag)" class="hover:opacity-75 transition-opacity leading-none ml-0.5">
+                      <i class="pi pi-times" style="font-size:10px"></i>
                     </button>
                   </span>
-                  <span *ngIf="ticket()!.tags.length === 0" class="text-xs text-slate-300 italic">No tags</span>
+                  <span *ngIf="ticketManagedTags().length === 0" class="text-xs text-slate-300 italic">No tags</span>
                 </div>
-                <div class="flex gap-1.5">
-                  <input #tagInput
-                         class="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
-                         placeholder="Add tag..."
-                         (keydown.enter)="addTag(tagInput.value); tagInput.value = ''"
+                <!-- Tag autocomplete -->
+                <div class="relative">
+                  <input #tagSearchInput
+                         class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-blue-400"
+                         placeholder="+ Add tag..."
+                         [(ngModel)]="tagSearchQuery"
+                         (input)="onTagSearch($event)"
+                         (focus)="showTagSuggestions = true"
                          style="font-family:inherit">
-                  <button (click)="addTag(tagInput.value); tagInput.value = ''"
-                          class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white"
-                          style="background:#2563EB">
-                    Add
-                  </button>
+                  <div *ngIf="showTagSuggestions && tagSuggestions().length > 0"
+                       class="absolute left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 max-h-40 overflow-y-auto">
+                    <button *ngFor="let t of tagSuggestions()"
+                            (click)="addManagedTag(t)"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-slate-50 transition-colors text-left">
+                      <span class="w-3 h-3 rounded-full shrink-0" [style.background]="t.color"></span>
+                      <span class="font-medium text-gray-800">{{ t.name }}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -516,6 +580,217 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
+
+          <!-- Linked Tickets section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">Linked Tickets</h3>
+                <span *ngIf="ticketLinks().length > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ ticketLinks().length }}</span>
+              </div>
+              <button (click)="showAddLinkDialog()"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Add Link
+              </button>
+            </div>
+            <div class="p-4">
+              <div *ngIf="ticketLinks().length === 0" class="text-xs text-slate-400 italic text-center py-2">
+                No linked tickets
+              </div>
+              <ng-container *ngFor="let group of groupedLinks()">
+                <div class="mb-3">
+                  <div class="flex items-center gap-1.5 mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                          [style.background]="linkTypeStyle(group.type).bg"
+                          [style.color]="linkTypeStyle(group.type).color">
+                      {{ linkTypeStyle(group.type).label }}
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <div *ngFor="let link of group.links"
+                         class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer hover:border-blue-300 transition-colors"
+                         style="background:#F8FAFC;border-color:#E2E8F0"
+                         [routerLink]="['/agent/tickets', link.linkedTicketId]">
+                      <span class="font-mono text-blue-600">{{ link.linkedTicketNumber }}</span>
+                      <span class="text-gray-600 truncate max-w-32">{{ link.linkedTicketSubject }}</span>
+                      <button (click)="removeTicketLink($event, link)"
+                              class="ml-1 text-gray-300 hover:text-red-500 transition-colors leading-none">
+                        <i class="pi pi-times" style="font-size:9px"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+
+          <!-- Time Tracking section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">⏱ Time</h3>
+                <span *ngIf="totalTimeMinutes() > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ formatMinutes(totalTimeMinutes()) }}</span>
+              </div>
+              <button (click)="showLogTimeForm = !showLogTimeForm"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Log Time
+              </button>
+            </div>
+            <div class="p-4 space-y-3">
+              <!-- Log form -->
+              <div *ngIf="showLogTimeForm" class="rounded-xl p-3 space-y-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
+                <div class="flex gap-2">
+                  <div class="flex-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hours</label>
+                    <p-inputnumber [(ngModel)]="logHours" [min]="0" [max]="99" class="w-full" inputStyleClass="w-full text-sm" />
+                  </div>
+                  <div class="flex-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Minutes</label>
+                    <p-inputnumber [(ngModel)]="logMins" [min]="0" [max]="59" class="w-full" inputStyleClass="w-full text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Note (optional)</label>
+                  <textarea pTextarea [(ngModel)]="logNote" rows="2" class="w-full text-xs" placeholder="What did you work on?"></textarea>
+                </div>
+                <div class="flex gap-2 justify-end">
+                  <button (click)="showLogTimeForm = false; logHours = 0; logMins = 0; logNote = ''"
+                          class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button (click)="submitTimeEntry()"
+                          [disabled]="(logHours === 0 && logMins === 0) || loggingTime"
+                          class="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 transition-colors"
+                          style="background:#2563EB">
+                    {{ loggingTime ? 'Saving...' : 'Save' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Entries list -->
+              <div *ngIf="timeEntries().length === 0 && !showLogTimeForm" class="text-xs text-slate-400 italic text-center py-2">
+                No time logged yet
+              </div>
+              <div *ngFor="let entry of timeEntries()"
+                   class="flex items-start gap-2 group">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-gray-800">{{ entry.agentName }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+                          style="background:#DBEAFE;color:#1D4ED8">{{ formatMinutes(entry.minutes) }}</span>
+                    <span class="text-xs text-slate-400">{{ entry.loggedAt | date:'MMM d' }}</span>
+                  </div>
+                  <p *ngIf="entry.note" class="text-xs text-slate-500 mt-0.5 truncate">{{ entry.note }}</p>
+                </div>
+                <button (click)="deleteTimeEntry(entry)"
+                        class="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 transition-all shrink-0">
+                  <i class="pi pi-trash" style="font-size:11px"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tickets section -->
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+               style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #F1F5F9">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-gray-900 text-sm">Sub-tickets</h3>
+                <span *ngIf="childTickets().length > 0"
+                      class="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style="background:#EFF6FF;color:#1D4ED8">{{ childTickets().length }}</span>
+              </div>
+              <button (click)="showAddSubTicketForm = !showAddSubTicketForm"
+                      class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="pi pi-plus" style="font-size:12px"></i>
+                Add
+              </button>
+            </div>
+            <div class="p-4 space-y-3">
+
+              <!-- Parent link -->
+              <div *ngIf="ticket()?.parentTicketId" class="flex items-center gap-2 px-3 py-2 rounded-lg"
+                   style="background:#F0FDF4;border:1px solid #BBF7D0">
+                <i class="pi pi-arrow-up" style="font-size:11px;color:#166534"></i>
+                <span class="text-xs font-semibold text-gray-600">Parent:</span>
+                <a [routerLink]="['/agent/tickets', ticket()!.parentTicketId]"
+                   class="text-xs font-bold text-green-700 hover:underline truncate">
+                  #{{ ticket()!.parentTicketNumber || ticket()!.parentTicketId }}
+                  <ng-container *ngIf="ticket()!.parentTicketTitle"> — {{ ticket()!.parentTicketTitle }}</ng-container>
+                </a>
+                <button (click)="unlinkParent()"
+                        class="ml-auto text-gray-300 hover:text-red-500 transition-colors leading-none"
+                        title="Remove parent link">
+                  <i class="pi pi-times" style="font-size:10px"></i>
+                </button>
+              </div>
+
+              <!-- Add sub-ticket inline form -->
+              <div *ngIf="showAddSubTicketForm" class="rounded-xl p-3 space-y-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Subject</label>
+                  <input pInputText class="w-full text-sm" placeholder="Sub-ticket subject..."
+                         [(ngModel)]="newSubSubject" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                  <textarea pTextarea [(ngModel)]="newSubDescription" rows="2" class="w-full text-xs"
+                            placeholder="Describe the issue..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">Priority</label>
+                  <p-select [options]="priorityOptions" [(ngModel)]="newSubPriority"
+                            optionLabel="label" optionValue="value" class="w-full" />
+                </div>
+                <div class="flex gap-2 justify-end">
+                  <button (click)="showAddSubTicketForm = false; newSubSubject = ''; newSubDescription = ''"
+                          class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button (click)="createSubTicket()"
+                          [disabled]="!newSubSubject.trim() || creatingSubTicket"
+                          class="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 transition-colors"
+                          style="background:#2563EB">
+                    {{ creatingSubTicket ? 'Creating...' : 'Create' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Child tickets list -->
+              <div *ngIf="childTickets().length === 0 && !showAddSubTicketForm" class="text-xs text-slate-400 italic text-center py-2">
+                No sub-tickets
+              </div>
+              <div *ngFor="let child of childTickets(); let last = last"
+                   class="flex items-center gap-2 py-1.5"
+                   [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'">
+                <a [routerLink]="['/agent/tickets', child.id]"
+                   class="text-xs font-mono font-bold text-blue-600 hover:underline shrink-0">
+                  {{ child.ticketNumber }}
+                </a>
+                <span class="flex-1 text-xs text-gray-700 truncate min-w-0">{{ child.subject || child.title }}</span>
+                <span class="shrink-0 px-1.5 py-0.5 rounded-full text-xs font-semibold"
+                      [ngStyle]="statusChipStyle(child.status)">
+                  {{ child.status }}
+                </span>
+              </div>
+
+              <!-- Set parent button -->
+              <button *ngIf="!ticket()?.parentTicketId" (click)="showSetParentDialog = true"
+                      class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors mt-1">
+                <i class="pi pi-link" style="font-size:11px"></i>
+                Set parent ticket
+              </button>
+            </div>
+          </div>
+
           <!-- Merge ticket button -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
@@ -530,6 +805,70 @@ import { environment } from '../../../../environments/environment';
         </div>
       </div>
     </div>
+
+    <!-- Macro overlay -->
+    <p-dialog [(visible)]="macroOverlayVisible" [modal]="true" header="⚡ Run Macro"
+              [style]="{width:'420px'}" [draggable]="false">
+      <div class="space-y-2 pt-1">
+        <p class="text-sm text-slate-500 mb-3">Select a macro to apply multiple actions to this ticket at once.</p>
+        <div *ngIf="macros().length === 0" class="text-center py-6 text-slate-400 text-sm">No macros available</div>
+        <div *ngFor="let m of macros()"
+             (click)="applyMacro(m)"
+             class="flex flex-col gap-1 px-4 py-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+          <span class="font-semibold text-gray-900 text-sm">{{ m.name }}</span>
+          <span *ngIf="m.description" class="text-xs text-slate-400">{{ m.description }}</span>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <span *ngFor="let a of m.actions"
+                  class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style="background:#EEF2FF;color:#4338CA">{{ a.type }}: {{ a.value }}</span>
+          </div>
+        </div>
+      </div>
+    </p-dialog>
+
+    <!-- Snooze dialog -->
+    <p-dialog [(visible)]="showSnoozeDialog" [modal]="true" header="💤 Snooze Ticket"
+              [style]="{width:'420px'}" [closable]="true">
+      <div class="space-y-3 p-2">
+        <p class="text-sm text-slate-500">Hide this ticket from the queue until a future time. It will automatically reappear when the time arrives.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button (click)="snooze(snoozeIn(1))"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            ⏰ In 1 hour
+          </button>
+          <button (click)="snooze(snoozeIn(4))"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            ⏰ In 4 hours
+          </button>
+          <button (click)="snooze(snoozeTomorrow9am())"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            🌅 Tomorrow 9am
+          </button>
+          <button (click)="snooze(snoozeNextMonday9am())"
+                  class="px-3 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left">
+            📅 Next Monday 9am
+          </button>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Custom time</label>
+          <input type="datetime-local" [(ngModel)]="customSnoozeDate"
+                 class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-amber-400"
+                 style="font-family:inherit" />
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="showSnoozeDialog = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="snooze(customSnoozeDate ? new Date(customSnoozeDate) : null)"
+                [disabled]="!customSnoozeDate"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#D97706">
+          Snooze
+        </button>
+      </ng-template>
+    </p-dialog>
 
     <!-- Merge dialog -->
     <p-dialog [(visible)]="mergeDialogVisible" [modal]="true" header="Merge Ticket"
@@ -569,6 +908,95 @@ import { environment } from '../../../../environments/environment';
                 class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
                 style="background:#2563EB">
           {{ merging ? 'Merging...' : 'Merge' }}
+        </button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- Add Ticket Link dialog -->
+    <p-dialog [(visible)]="addLinkDialogVisible" [modal]="true" header="Link Ticket"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for a ticket to link and select the relationship type.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Enter subject or ticket number..."
+                 [ngModel]="linkSearch()"
+                 (ngModelChange)="onLinkSearch($event)" />
+        </div>
+        <div *ngIf="linkResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let t of linkResults()"
+               (click)="selectLinkTarget(t)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="linkTargetId() === t.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ t.title }}</span>
+              <span class="text-xs font-mono text-slate-400">{{ t.ticketNumber }}</span>
+            </div>
+            <span class="text-xs text-slate-400">{{ t.status }}</span>
+          </div>
+        </div>
+        <div *ngIf="linkSearch().length > 1 && linkResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No matching tickets found
+        </div>
+        <div *ngIf="linkTargetId()">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Relationship type</label>
+          <p-select [options]="linkTypeOptions" [(ngModel)]="selectedLinkType"
+                    optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="addLinkDialogVisible = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmAddLink()"
+                [disabled]="!linkTargetId() || !selectedLinkType || addingLink"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ addingLink ? 'Linking...' : 'Add Link' }}
+        </button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- Set Parent dialog -->
+    <p-dialog [(visible)]="showSetParentDialog" [modal]="true" header="Set Parent Ticket"
+              [style]="{width:'480px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Search for a ticket to set as the parent of this ticket.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
+          <input pInputText class="w-full text-sm"
+                 placeholder="Enter subject or ticket number..."
+                 [ngModel]="parentSearch()"
+                 (ngModelChange)="onParentSearch($event)" />
+        </div>
+        <div *ngIf="parentResults().length > 0" class="border border-gray-200 rounded-xl overflow-hidden">
+          <div *ngFor="let t of parentResults()"
+               (click)="selectParentTarget(t)"
+               class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+               [class.bg-blue-50]="parentTargetId() === t.id">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-900">{{ t.title }}</span>
+              <span class="text-xs font-mono text-slate-400">{{ t.ticketNumber }}</span>
+            </div>
+            <span class="text-xs text-slate-400">{{ t.status }}</span>
+          </div>
+        </div>
+        <div *ngIf="parentSearch().length > 1 && parentResults().length === 0" class="text-xs text-slate-400 text-center py-3">
+          No matching tickets found
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="showSetParentDialog = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmSetParent()"
+                [disabled]="!parentTargetId() || settingParent"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#2563EB">
+          {{ settingParent ? 'Setting...' : 'Set Parent' }}
         </button>
       </ng-template>
     </p-dialog>
@@ -628,6 +1056,11 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   loading = signal(true);
   submitting = false;
 
+  // Draft
+  draftSavedAt = signal<Date | null>(null);
+  private replySubject = new Subject<string>();
+  private draftSubscription: Subscription | null = null;
+
   // Watchers
   watchers = signal<string[]>([]);
 
@@ -648,11 +1081,140 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   linkedIssues = signal<Issue[]>([]);
   private issueSearchTimeout: any;
 
+  // Ticket Links
+  ticketLinks = signal<TicketLink[]>([]);
+  macros = signal<Macro[]>([]);
+  macroOverlayVisible = false;
+
+  // Sub-tickets
+  childTickets = signal<TicketSummary[]>([]);
+  showAddSubTicketForm = false;
+  newSubSubject = '';
+  newSubDescription = '';
+  newSubPriority = 'MEDIUM';
+  creatingSubTicket = false;
+  showSetParentDialog = false;
+  parentSearch = signal('');
+  parentResults = signal<any[]>([]);
+  parentTargetId = signal<string | null>(null);
+  settingParent = false;
+  private parentSearchTimeout: any;
+
+  priorityOptions = [
+    { label: 'LOW', value: 'LOW' },
+    { label: 'MEDIUM', value: 'MEDIUM' },
+    { label: 'HIGH', value: 'HIGH' },
+    { label: 'URGENT', value: 'URGENT' },
+  ];
+
+  statusChipStyle(status: string): Record<string, string> {
+    const map: Record<string, Record<string, string>> = {
+      NEW: { background: '#DBEAFE', color: '#1D4ED8' },
+      OPEN: { background: '#EDE9FE', color: '#5B21B6' },
+      PENDING: { background: '#FEF3C7', color: '#92400E' },
+      ON_HOLD: { background: '#F1F5F9', color: '#475569' },
+      RESOLVED: { background: '#DCFCE7', color: '#15803D' },
+      CLOSED: { background: '#F1F5F9', color: '#64748B' },
+    };
+    return map[status] ?? { background: '#F1F5F9', color: '#475569' };
+  }
+  applyingMacro = false;
+  addLinkDialogVisible = false;
+  linkSearch = signal('');
+  linkResults = signal<any[]>([]);
+  linkTargetId = signal<string | null>(null);
+  selectedLinkType: LinkType = 'RELATED_TO';
+  addingLink = false;
+  private linkSearchTimeout: any;
+
+  linkTypeOptions = [
+    { label: '🔗 Related To', value: 'RELATED_TO' },
+    { label: '🚫 Blocks', value: 'BLOCKS' },
+    { label: '⛔ Is Blocked By', value: 'IS_BLOCKED_BY' },
+    { label: '📋 Duplicates', value: 'DUPLICATES' },
+    { label: '📄 Is Duplicated By', value: 'IS_DUPLICATED_BY' },
+  ];
+
+  groupedLinks(): { type: LinkType; links: TicketLink[] }[] {
+    const map = new Map<LinkType, TicketLink[]>();
+    for (const link of this.ticketLinks()) {
+      if (!map.has(link.linkType)) map.set(link.linkType, []);
+      map.get(link.linkType)!.push(link);
+    }
+    return Array.from(map.entries()).map(([type, links]) => ({ type, links }));
+  }
+
+  linkTypeStyle(type: LinkType): { bg: string; color: string; label: string } {
+    const styles: Record<LinkType, { bg: string; color: string; label: string }> = {
+      RELATED_TO: { bg: '#EFF6FF', color: '#1D4ED8', label: '🔗 Related To' },
+      BLOCKS: { bg: '#FEF2F2', color: '#DC2626', label: '🚫 Blocks' },
+      IS_BLOCKED_BY: { bg: '#FFF7ED', color: '#C2410C', label: '⛔ Blocked By' },
+      DUPLICATES: { bg: '#F0FDF4', color: '#15803D', label: '📋 Duplicates' },
+      IS_DUPLICATED_BY: { bg: '#FAFAF9', color: '#57534E', label: '📄 Duplicated By' },
+    };
+    return styles[type];
+  }
+
+  // Time tracking
+  timeEntries = signal<TimeEntry[]>([]);
+  showLogTimeForm = false;
+  logHours = 0;
+  logMins = 0;
+  logNote = '';
+  loggingTime = false;
+
+  totalTimeMinutes(): number {
+    return this.timeEntries().reduce((sum, e) => sum + e.minutes, 0);
+  }
+
+  formatMinutes(total: number): string {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h > 0 && m > 0) return h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h';
+    return m + 'm';
+  }
+
+  submitTimeEntry() {
+    const minutes = (this.logHours * 60) + this.logMins;
+    if (minutes <= 0) return;
+    this.loggingTime = true;
+    const id = this.ticket()!.id;
+    this.timeEntryService.logTime(id, { minutes, note: this.logNote || undefined }).subscribe({
+      next: (entry) => {
+        this.timeEntries.update(list => [entry, ...list]);
+        this.showLogTimeForm = false;
+        this.logHours = 0;
+        this.logMins = 0;
+        this.logNote = '';
+        this.loggingTime = false;
+      },
+      error: () => { this.loggingTime = false; }
+    });
+  }
+
+  deleteTimeEntry(entry: TimeEntry) {
+    const id = this.ticket()!.id;
+    this.timeEntryService.deleteEntry(id, entry.id).subscribe(() => {
+      this.timeEntries.update(list => list.filter(e => e.id !== entry.id));
+    });
+  }
+
+  // Snooze
+  showSnoozeDialog = false;
+  customSnoozeDate = '';
+
   // Merge
   mergeDialogVisible = false;
   mergeSearch = signal('');
   mergeResults = signal<Ticket[]>([]);
   mergeTargetId = signal<string | null>(null);
+
+  // Managed tags
+  ticketManagedTags = signal<ManagedTag[]>([]);
+  tagSuggestions = signal<ManagedTag[]>([]);
+  tagSearchQuery = '';
+  showTagSuggestions = false;
   merging = false;
   private mergeSearchTimeout: any;
   replyControl = new FormControl('', Validators.required);
@@ -674,8 +1236,10 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   }
 
   // Presence state
-  presenceAgents = signal<{agentId: string; agentName: string}[]>([]);
+  presenceAgents = signal<PresenceViewer[]>([]);
+  otherViewers = signal<PresenceViewer[]>([]);
   private presenceInterval: ReturnType<typeof setInterval> | null = null;
+  private presenceSubscription: Subscription | null = null;
 
   noteModeOptions = [
     { label: 'Public', value: 'public' },
@@ -754,6 +1318,15 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     private customFieldService: CustomFieldService,
     private taskService: TaskService,
     private issueService: IssueService,
+    private presenceService: PresenceService,
+    private authService: AuthService,
+    private draftService: DraftService,
+    private timeEntryService: TimeEntryService,
+    private tagService: TagService,
+    private ticketLinkService: TicketLinkService,
+    private macroService: MacroService,
+    private ticketParentService: TicketParentService,
+    private shortcutService: KeyboardShortcutService,
   ) {}
 
   onReplyInput(event: Event) {
@@ -809,6 +1382,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       if (t.manualDueDate) this.manualDueDateValue = new Date(t.manualDueDate);
       this.loading.set(false);
     });
+    this.tagService.getTicketTags(id).subscribe(tags => this.ticketManagedTags.set(tags));
     this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
     this.ticketService.getAttachments(id).subscribe(a => this.attachments.set(a));
     this.userService.getUsers('AGENT', 0, 100).subscribe(p => {
@@ -824,6 +1398,9 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.customFieldService.getFields().subscribe(fields => this.customFields.set(fields));
     this.taskService.getTasks(id).subscribe(list => this.tasks.set(list));
     this.issueService.getIssuesByTicket(id).subscribe(issues => this.linkedIssues.set(issues));
+    this.timeEntryService.getEntries(id).subscribe(entries => this.timeEntries.set(entries));
+    this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
+    this.ticketParentService.getChildren(id).subscribe(children => this.childTickets.set(children));
     this.customFieldService.getValues(id).subscribe(vals => {
       this.customValues.set(vals);
       const dates: Record<string, Date | null> = {};
@@ -831,21 +1408,91 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       this.customDateValues.set(dates);
     });
 
-    // Presence: record and poll
-    this.ticketService.recordPresence(id).subscribe();
-    this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
+    // Load draft
+    this.draftService.getDraft(id).subscribe(draft => {
+      if (draft) {
+        this.replyControl.setValue(draft.content, { emitEvent: false });
+        this.noteMode = draft.isInternal ? 'internal' : 'public';
+        this.draftSavedAt.set(new Date(draft.updatedAt));
+      }
+    });
+
+    // Auto-save draft with debounce
+    this.draftSubscription = this.replySubject.pipe(
+      debounceTime(3000),
+      distinctUntilChanged(),
+      switchMap(value => {
+        if (!value || !value.trim()) return [];
+        const isInternal = this.noteMode === 'internal';
+        return this.draftService.saveDraft(id, value, isInternal);
+      })
+    ).subscribe(saved => {
+      if (saved) this.draftSavedAt.set(new Date(saved.updatedAt));
+    });
+
+    this.replyControl.valueChanges.subscribe(val => {
+      if (val) this.replySubject.next(val);
+    });
+
+    // Presence: join and subscribe to WebSocket updates
+    this.presenceService.join(id).subscribe(viewers => this._updatePresence(viewers, id));
+    // Subscribe to real-time updates
+    this.presenceSubscription = this.presenceService.presence$.subscribe(update => {
+      if (update.ticketId === id) this._updatePresence(update.viewers, id);
+    });
+    // Wire up WebSocket subscription after a brief delay to allow connection
+    setTimeout(() => this.presenceService.subscribeToTicket(id), 1000);
+    // Also poll every 30s as fallback
     this.presenceInterval = setInterval(() => {
-      this.ticketService.recordPresence(id).subscribe();
-      this.ticketService.getPresence(id).subscribe(list => this.presenceAgents.set(list));
-    }, 15000);
+      this.presenceService.getViewers(id).subscribe(viewers => this._updatePresence(viewers, id));
+    }, 30000);
+
+    // Register ticket-action keyboard shortcuts
+    this.shortcutService.register('r', 'Focus reply textarea', 'Ticket Actions', () => {
+      if (this.replyTextarea?.nativeElement) {
+        this.replyTextarea.nativeElement.focus();
+      }
+    });
+    this.shortcutService.register('e', 'Resolve ticket', 'Ticket Actions', () => {
+      this.currentStatus = 'RESOLVED';
+      this.updateStatus();
+    });
+    this.shortcutService.register('s', 'Snooze ticket', 'Ticket Actions', () => {
+      this.showSnoozeDialog = true;
+    });
+    this.shortcutService.register('a', 'Assign ticket to me', 'Ticket Actions', () => {
+      const me = this.authService.currentUser();
+      if (!me) return;
+      const myAgent = this.agents().find(ag => ag.id === me.userId);
+      if (myAgent) {
+        this.currentAgentId = myAgent.id;
+        this.assignAgent();
+      }
+    });
+  }
+
+  private _updatePresence(viewers: PresenceViewer[], ticketId: string) {
+    this.presenceAgents.set(viewers);
+    const currentUserId = this.authService.currentUser()?.userId;
+    this.otherViewers.set(viewers.filter(v => v.agentId !== currentUserId));
   }
 
   ngOnDestroy() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.presenceService.leave(id).subscribe();
+    this.presenceService.unsubscribeFromTicket();
+    if (this.presenceSubscription) this.presenceSubscription.unsubscribe();
     if (this.presenceInterval) clearInterval(this.presenceInterval);
+    if (this.draftSubscription) this.draftSubscription.unsubscribe();
+    // Unregister ticket-action shortcuts
+    this.shortcutService.unregister('r');
+    this.shortcutService.unregister('e');
+    this.shortcutService.unregister('s');
+    this.shortcutService.unregister('a');
   }
 
   otherAgentsCount(): number {
-    return Math.max(0, this.presenceAgents().length - 1);
+    return this.otherViewers().length;
   }
 
   onFileSelected(event: Event) {
@@ -874,10 +1521,20 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
           next: (att) => this.attachments.update(a => [...a, att])
         }));
         this.replyControl.reset();
+        this.draftSavedAt.set(null);
+        this.draftService.deleteDraft(id).subscribe();
         this.submitting = false;
       },
       error: () => { this.submitting = false; },
     });
+  }
+
+  discardDraft() {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.replyControl.reset();
+    this.draftSavedAt.set(null);
+    this.draftService.deleteDraft(id).subscribe();
   }
 
   updateStatus() {
@@ -910,6 +1567,36 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     const ticket = this.ticket()!;
     const newTags = ticket.tags.filter(t => t !== tag);
     this.ticketService.updateTicket(ticket.id, { tags: newTags }).subscribe(t => this.ticket.set(t));
+  }
+
+  // Managed tag methods
+  addManagedTag(tag: ManagedTag) {
+    const current = this.ticketManagedTags();
+    if (current.some(t => t.id === tag.id)) return;
+    const newTags = [...current, tag];
+    this.ticketManagedTags.set(newTags);
+    this.tagService.setTicketTags(this.ticket()!.id, newTags.map(t => t.id)).subscribe();
+    this.tagSearchQuery = '';
+    this.showTagSuggestions = false;
+    this.tagSuggestions.set([]);
+  }
+
+  removeManagedTag(tag: ManagedTag) {
+    const newTags = this.ticketManagedTags().filter(t => t.id !== tag.id);
+    this.ticketManagedTags.set(newTags);
+    this.tagService.setTicketTags(this.ticket()!.id, newTags.map(t => t.id)).subscribe();
+  }
+
+  onTagSearch(event: Event) {
+    const q = (event.target as HTMLInputElement).value;
+    if (!q.trim()) {
+      this.tagSuggestions.set([]);
+      return;
+    }
+    this.tagService.searchTags(q).subscribe(tags => {
+      const currentIds = new Set(this.ticketManagedTags().map(t => t.id));
+      this.tagSuggestions.set(tags.filter(t => !currentIds.has(t.id)));
+    });
   }
 
   addWatcher(value: string) {
@@ -985,6 +1672,43 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.customFieldService.saveValues(id, this.customValues()).subscribe();
   }
 
+  snoozeIn(hours: number): Date {
+    const d = new Date();
+    d.setHours(d.getHours() + hours);
+    return d;
+  }
+
+  snoozeTomorrow9am(): Date {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+
+  snoozeNextMonday9am(): Date {
+    const d = new Date();
+    const day = d.getDay();
+    const daysUntilMonday = ((1 - day + 7) % 7) || 7;
+    d.setDate(d.getDate() + daysUntilMonday);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+
+  snooze(until: Date | null) {
+    if (!until) return;
+    const id = this.ticket()!.id;
+    this.ticketService.snoozeTicket(id, until.toISOString()).subscribe(t => {
+      this.ticket.set(t);
+      this.showSnoozeDialog = false;
+      this.customSnoozeDate = '';
+    });
+  }
+
+  unsnooze() {
+    const id = this.ticket()!.id;
+    this.ticketService.snoozeTicket(id, null).subscribe(t => this.ticket.set(t));
+  }
+
   topBarClass(): string {
     const map: Record<string, string> = {
       NEW: 'bg-blue-500', OPEN: 'bg-indigo-500', PENDING: 'bg-amber-400',
@@ -1055,6 +1779,149 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     this.issueService.unlinkTicket(issueId, this.ticket()!.id).subscribe({
       next: () => { this.linkedIssues.update(list => list.filter(i => i.id !== issueId)); },
       error: () => {},
+    });
+  }
+
+  showAddLinkDialog() {
+    this.addLinkDialogVisible = true;
+    this.linkSearch.set('');
+    this.linkResults.set([]);
+    this.linkTargetId.set(null);
+    this.selectedLinkType = 'RELATED_TO';
+  }
+
+  onLinkSearch(query: string) {
+    this.linkSearch.set(query);
+    clearTimeout(this.linkSearchTimeout);
+    if (query.length < 2) { this.linkResults.set([]); return; }
+    this.linkSearchTimeout = setTimeout(() => {
+      this.ticketService.getTickets({ search: query, size: 10 }).subscribe(page => {
+        this.linkResults.set(page.content.filter(t => t.id !== this.ticket()!.id));
+      });
+    }, 300);
+  }
+
+  selectLinkTarget(t: any) {
+    this.linkTargetId.set(t.id);
+  }
+
+  confirmAddLink() {
+    const targetId = this.linkTargetId();
+    if (!targetId || !this.selectedLinkType) return;
+    this.addingLink = true;
+    const id = this.ticket()!.id;
+    this.ticketLinkService.addLink(id, targetId, this.selectedLinkType).subscribe({
+      next: (links) => {
+        this.ticketLinks.set(links);
+        this.addingLink = false;
+        this.addLinkDialogVisible = false;
+      },
+      error: () => { this.addingLink = false; },
+    });
+  }
+
+  removeTicketLink(event: MouseEvent, link: TicketLink) {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = this.ticket()!.id;
+    this.ticketLinkService.removeLink(id, link.id).subscribe({
+      next: () => {
+        this.ticketLinkService.getLinks(id).subscribe(links => this.ticketLinks.set(links));
+      },
+    });
+  }
+
+  loadMacros() {
+    this.macroService.getAll().subscribe({
+      next: ms => this.macros.set(ms),
+      error: () => {}
+    });
+  }
+
+  openMacroOverlay() {
+    if (this.macros().length === 0) { this.loadMacros(); }
+    this.macroOverlayVisible = true;
+  }
+
+  applyMacro(m: Macro) {
+    const ticketId = this.ticket()?.id;
+    if (!ticketId) return;
+    this.applyingMacro = true;
+    this.macroService.apply(m.id, ticketId).subscribe({
+      next: () => {
+        this.applyingMacro = false;
+        this.macroOverlayVisible = false;
+        const id = this.route.snapshot.paramMap.get('id')!;
+        this.ticketService.getTicket(id).subscribe(t => this.ticket.set(t));
+      },
+      error: () => { this.applyingMacro = false; }
+    });
+  }
+
+  createSubTicket() {
+    const subject = this.newSubSubject.trim();
+    if (!subject) return;
+    const id = this.ticket()!.id;
+    this.creatingSubTicket = true;
+    this.ticketParentService.createChild(id, {
+      subject,
+      description: this.newSubDescription.trim() || subject,
+      priority: this.newSubPriority,
+    }).subscribe({
+      next: (child) => {
+        this.childTickets.update(list => [...list, child]);
+        this.showAddSubTicketForm = false;
+        this.newSubSubject = '';
+        this.newSubDescription = '';
+        this.newSubPriority = 'MEDIUM';
+        this.creatingSubTicket = false;
+      },
+      error: () => { this.creatingSubTicket = false; },
+    });
+  }
+
+  unlinkParent() {
+    const id = this.ticket()!.id;
+    this.ticketParentService.removeParent(id).subscribe({
+      next: () => {
+        this.ticket.update(t => t ? { ...t, parentTicketId: null, parentTicketNumber: null, parentTicketTitle: null } : t);
+      },
+    });
+  }
+
+  onParentSearch(query: string) {
+    this.parentSearch.set(query);
+    clearTimeout(this.parentSearchTimeout);
+    if (query.length < 2) { this.parentResults.set([]); return; }
+    this.parentSearchTimeout = setTimeout(() => {
+      this.ticketService.getTickets({ search: query, size: 10 }).subscribe(page => {
+        this.parentResults.set(page.content.filter((t: any) => t.id !== this.ticket()!.id));
+      });
+    }, 300);
+  }
+
+  selectParentTarget(t: any) {
+    this.parentTargetId.set(t.id);
+  }
+
+  confirmSetParent() {
+    const parentId = this.parentTargetId();
+    if (!parentId) return;
+    this.settingParent = true;
+    const id = this.ticket()!.id;
+    const target = this.parentResults().find((t: any) => t.id === parentId);
+    this.ticketParentService.setParent(id, parentId).subscribe({
+      next: () => {
+        this.settingParent = false;
+        this.showSetParentDialog = false;
+        this.ticket.update(t => t ? {
+          ...t,
+          parentTicketId: parentId,
+          parentTicketNumber: target?.ticketNumber ?? null,
+          parentTicketTitle: target?.title ?? null,
+        } : t);
+      },
+      error: () => { this.settingParent = false; },
     });
   }
 }

@@ -3,6 +3,7 @@ package com.helpdesk.domain.kb.controller;
 import com.helpdesk.domain.kb.dto.KbArticleRequest;
 import com.helpdesk.domain.kb.dto.KbArticleResponse;
 import com.helpdesk.domain.kb.dto.KbCategoryResponse;
+import com.helpdesk.domain.kb.dto.RateRequest;
 import com.helpdesk.domain.kb.service.KbService;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.shared.response.ApiResponse;
@@ -55,6 +56,20 @@ public class KbController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<KbArticleResponse>> getArticle(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(kbService.getArticle(id)));
+    }
+
+    @PostMapping("/articles/{id}/view")
+    public ResponseEntity<ApiResponse<KbArticleResponse>> trackView(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(kbService.trackView(id)));
+    }
+
+    @PostMapping("/articles/{id}/rate")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<KbArticleResponse>> rate(
+            @PathVariable UUID id,
+            @RequestBody RateRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok(kbService.rate(id, request.helpful(), currentUser)));
     }
 
     @PostMapping("/articles")

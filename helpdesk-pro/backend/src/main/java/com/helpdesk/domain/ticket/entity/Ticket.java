@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +82,28 @@ public class Ticket extends AuditableEntity {
     @Builder.Default
     private List<String> tags = new ArrayList<>();
 
+
+    @Column(name = "snoozed_until")
+    private LocalDateTime snoozedUntil;
+
+    @Column(name = "snoozed_by_id")
+    private UUID snoozedById;
+
+    @Column(name = "pre_snooze_status")
+    private String preSnoozeStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_ticket_id")
+    private Ticket parent;
+
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Ticket> children = new ArrayList<>();
+
     @Version
     private Long version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private com.helpdesk.domain.team.Team team;
 }

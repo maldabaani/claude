@@ -36,6 +36,7 @@ import com.helpdesk.domain.comment.entity.Comment;
 import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.helptopic.HelpTopic;
 import com.helpdesk.domain.helptopic.HelpTopicRepository;
+import com.helpdesk.domain.roundrobin.RoundRobinService;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +54,8 @@ public class TicketService {
     private final SystemSettingRepository systemSettingRepository;
     private final WebhookService webhookService;
     private final HelpTopicRepository helpTopicRepository;
+    private final RoundRobinService roundRobinService;
+    private final com.helpdesk.domain.team.TeamRepository teamRepository;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -90,6 +93,7 @@ public class TicketService {
         });
 
         autoAssign(ticket);
+        roundRobinAssign(ticket);
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketCreated(saved);
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
@@ -105,8 +109,14 @@ public class TicketService {
     public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
                                         UUID agentId, UUID createdById, Instant from, Instant to,
                                         String search, Pageable pageable) {
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, false, pageable);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, boolean includeSnoozed, Pageable pageable) {
         return ticketRepository.findAll(
-                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search), pageable)
+                TicketSpecification.filtered(status, priority, departmentId, agentId, createdById, from, to, search, includeSnoozed), pageable)
                 .map(this::toResponse);
     }
 
@@ -114,16 +124,24 @@ public class TicketService {
                                         UUID agentId, UUID createdById, Instant from, Instant to,
                                         String search, UUID organizationId, UUID currentUserId,
                                         boolean isCustomer, Pageable pageable) {
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, organizationId,
+                currentUserId, isCustomer, false, pageable);
+    }
+
+    public Page<TicketResponse> findAll(TicketStatus status, Priority priority, UUID departmentId,
+                                        UUID agentId, UUID createdById, Instant from, Instant to,
+                                        String search, UUID organizationId, UUID currentUserId,
+                                        boolean isCustomer, boolean includeSnoozed, Pageable pageable) {
         if (isCustomer && organizationId != null) {
             List<UUID> orgUserIds = userRepository.findActiveByOrganizationId(organizationId)
                     .stream().map(User::getId).toList();
             org.springframework.data.jpa.domain.Specification<Ticket> baseSpec =
-                TicketSpecification.filtered(status, priority, departmentId, agentId, null, from, to, search);
+                TicketSpecification.filtered(status, priority, departmentId, agentId, null, from, to, search, includeSnoozed);
             org.springframework.data.jpa.domain.Specification<Ticket> orgSpec =
                 baseSpec.and((r, q, cb) -> r.get("createdById").in(orgUserIds));
             return ticketRepository.findAll(orgSpec, pageable).map(this::toResponse);
         }
-        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, pageable);
+        return findAll(status, priority, departmentId, agentId, createdById, from, to, search, includeSnoozed, pageable);
     }
 
     public TicketResponse findById(UUID id) {
@@ -152,6 +170,21 @@ public class TicketService {
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketAssigned(saved);
         auditLogService.log("TICKET", saved.getId(), "ASSIGNED", agentId);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TicketResponse assignTeam(UUID id, UUID teamId) {
+        Ticket ticket = getTicket(id);
+        if (teamId != null) {
+            com.helpdesk.domain.team.Team team = teamRepository.findById(teamId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
+            ticket.setTeam(team);
+        } else {
+            ticket.setTeam(null);
+        }
+        Ticket saved = ticketRepository.save(ticket);
+        auditLogService.log("TICKET", saved.getId(), "TEAM_ASSIGNED", null);
         return toResponse(saved);
     }
 
@@ -264,6 +297,15 @@ public class TicketService {
         ticket.setStatus(TicketStatus.OPEN);
     }
 
+
+    private void roundRobinAssign(Ticket ticket) {
+        if (ticket.getAssignedAgentId() != null) return;
+        roundRobinService.getNextAgent(ticket.getDepartmentId()).ifPresent(agentId -> {
+            ticket.setAssignedAgentId(agentId);
+            ticket.setStatus(TicketStatus.OPEN);
+        });
+    }
+
     @Transactional
     public TicketResponse updateManualDueDate(UUID id, Instant dueDate) {
         Ticket ticket = getTicket(id);
@@ -277,6 +319,7 @@ public class TicketService {
     }
 
     public TicketResponse toResponse(Ticket ticket) {
+        com.helpdesk.domain.team.Team team = ticket.getTeam();
         return new TicketResponse(
                 ticket.getId(), ticket.getTicketNumber(), ticket.getTitle(), ticket.getDescription(),
                 ticket.getStatus(), ticket.getPriority(), ticket.getCategory(), ticket.getDepartmentId(),
@@ -287,7 +330,32 @@ public class TicketService {
                 ticket.getSlaPolicyId(), ticket.getDueDate(), ticket.getFirstResponseAt(),
                 ticket.getResolvedAt(), ticket.getClosedAt(), ticket.isSlaBreached(),
                 ticket.getTags(), ticket.getCreatedAt(), ticket.getUpdatedAt(),
-                ticket.getManualDueDate()
+                ticket.getManualDueDate(),
+                ticket.getSnoozedUntil(),
+                ticket.getPreSnoozeStatus(),
+                team != null ? team.getId() : null,
+                team != null ? team.getName() : null,
+                team != null ? team.getColor() : null
         );
+    }
+
+    @Transactional
+    public TicketResponse snooze(UUID id, java.time.LocalDateTime snoozeUntil, UUID currentUserId) {
+        Ticket ticket = getTicket(id);
+        if (snoozeUntil != null) {
+            ticket.setPreSnoozeStatus(ticket.getStatus().name());
+            ticket.setStatus(TicketStatus.SNOOZED);
+            ticket.setSnoozedUntil(snoozeUntil);
+            ticket.setSnoozedById(currentUserId);
+        } else {
+            String restore = ticket.getPreSnoozeStatus();
+            TicketStatus restoreStatus = (restore != null && !restore.isBlank())
+                    ? TicketStatus.valueOf(restore) : TicketStatus.OPEN;
+            ticket.setStatus(restoreStatus);
+            ticket.setSnoozedUntil(null);
+            ticket.setSnoozedById(null);
+            ticket.setPreSnoozeStatus(null);
+        }
+        return toResponse(ticketRepository.save(ticket));
     }
 }

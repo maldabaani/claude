@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class AdminShell extends ConsumerWidget {
   final Widget child;
@@ -21,12 +22,18 @@ class AdminShell extends ConsumerWidget {
     _NavItem('/admin/custom-fields', Icons.input_outlined, 'Custom Fields'),
     _NavItem('/admin/sla-rules', Icons.rule_outlined, 'SLA Rules'),
     _NavItem('/admin/templates', Icons.description_outlined, 'Templates'),
+    _NavItem('/admin/macros', Icons.flash_on_outlined, 'Macros'),
     _NavItem('/admin/webhooks', Icons.webhook_outlined, 'Webhooks'),
     _NavItem('/admin/api-keys', Icons.key_outlined, 'API Keys'),
     _NavItem('/admin/help-topics', Icons.help_outline_rounded, 'Help Topics'),
     _NavItem('/admin/email-inboxes', Icons.email_outlined, 'Email Inboxes'),
     _NavItem('/admin/organizations', Icons.corporate_fare_outlined, 'Organizations'),
     _NavItem('/admin/issues', Icons.bug_report_outlined, 'Issues'),
+    _NavItem('/admin/tags', Icons.label_outlined, 'Tags'),
+    _NavItem('/admin/business-hours', Icons.schedule_outlined, 'Business Hours'),
+    _NavItem('/admin/round-robin', Icons.autorenew_outlined, 'Round Robin'),
+    _NavItem('/admin/agent-performance', Icons.bar_chart_outlined, 'Performance'),
+    _NavItem('/admin/teams', Icons.group_work_outlined, 'Teams'),
     _NavItem('/admin/settings', Icons.settings_outlined, 'Settings'),
   ];
 
@@ -85,6 +92,13 @@ class AdminShell extends ConsumerWidget {
               Text(user?.fullName ?? 'Admin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
               const Text('Administrator', style: TextStyle(color: AppColors.textOnDark, fontSize: 11)),
             ])),
+            IconButton(
+              icon: Icon(
+                ref.watch(themeModeProvider) == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: AppColors.textOnDark, size: 18,
+              ),
+              onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+            ),
             IconButton(icon: const Icon(Icons.logout_outlined, color: AppColors.textOnDark, size: 18),
               onPressed: () async { Navigator.pop(context); await ref.read(authProvider.notifier).logout(); }),
           ])),
