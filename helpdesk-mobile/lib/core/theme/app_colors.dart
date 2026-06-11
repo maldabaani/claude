@@ -75,4 +75,23 @@ class AppColors {
   static const textTertiaryDark = Color(0xFF64748B);
   static const surfaceVariantDark = Color(0xFF1E293B);
   static const sidebarDark = Color(0xFF020617);
+
+  /// Returns a color set resolved for the current theme brightness.
+  static _AppColorSet of(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return _AppColorSet(isDark: isDark);
+  }
 }
+
+class _AppColorSet {
+  final bool isDark;
+  const _AppColorSet({required this.isDark});
+
+  Color get background => isDark ? AppColors.backgroundDark : AppColors.background;
+  Color get surface => isDark ? AppColors.surfaceDark : AppColors.surface;
+  Color get surfaceVariant => isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+  Color get border => isDark ? AppColors.borderDark : AppColors.border;
+  Color get textPrimary => isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+  Color get textSecondary => isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+  Color get textTertiary => isDark ? AppColors.textTertiaryDark : AppColors.textTertiary;
+  Color get sidebar => isDark ? AppColors.sidebarDark : AppColors.sidebar;

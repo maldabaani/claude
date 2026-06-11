@@ -63,8 +63,8 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: SegmentedButton<int>(
-              style: SegmentedButton.styleFrom(
-                textStyle: const TextStyle(fontSize: 11),
+              style: ButtonStyle(
+                textStyle: WidgetStateProperty.all(const TextStyle(fontSize: 11)),
                 visualDensity: VisualDensity.compact,
               ),
               segments: const [

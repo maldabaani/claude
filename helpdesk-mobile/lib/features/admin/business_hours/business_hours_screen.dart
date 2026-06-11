@@ -107,7 +107,7 @@ class _BusinessHoursScreenState extends ConsumerState<BusinessHoursScreen> {
   Future<void> _pickTime(int dayIndex, bool isOpen) async {
     final day = _schedule[dayIndex];
     final existing = isOpen ? day['openTime'] : day['closeTime'];
-    TimeOfDay initial = const TimeOfDay(hour: isOpen ? 9 : 17, minute: 0);
+    TimeOfDay initial = TimeOfDay(hour: isOpen ? 9 : 17, minute: 0);
     if (existing != null) {
       final parts = (existing as String).split(':');
       initial = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
