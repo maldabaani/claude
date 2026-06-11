@@ -2042,19 +2042,3 @@ class _TimeTabState extends State<_TimeTab> {
   }
 }
 
-
-  void _showMacroSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _MacroSheet(
-        ticketId: widget.id,
-        onApplied: () {
-          Navigator.pop(context);
-          _load();
-        },
-      ),
-    );
-  }
-}
