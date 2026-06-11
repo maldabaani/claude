@@ -83,6 +83,10 @@ export class TicketService {
     return this.http.patch<ApiResponse<Ticket>>(`${this.base}/${ticketId}/due-date`, { dueDate }).pipe(map(r => r.data));
   }
 
+  splitTicket(sourceId: string, request: {subject: string; description: string; departmentId?: string; priority?: string; commentIds?: string[]}): Observable<Ticket> {
+    return this.http.post<ApiResponse<Ticket>>(`${this.base}/${sourceId}/split`, request).pipe(map(r => r.data));
+  }
+
   mergeTicket(sourceId: string, targetTicketId: string): Observable<Ticket> {
     return this.http.post<ApiResponse<Ticket>>(`${this.base}/${sourceId}/merge`, { targetTicketId }).pipe(map(r => r.data));
   }

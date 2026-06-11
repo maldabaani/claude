@@ -321,6 +321,52 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
     }
   }
 
+  Future<void> _splitTicket({
+    required String subject,
+    required String description,
+    String? departmentId,
+    String? priority,
+    List<String>? commentIds,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'subject': subject,
+        'description': description,
+        if (departmentId != null) 'departmentId': departmentId,
+        if (priority != null) 'priority': priority,
+        if (commentIds != null && commentIds.isNotEmpty) 'commentIds': commentIds,
+      };
+      final res = await _api.post(ApiEndpoints.ticketSplit(widget.id), data: body);
+      final newTicket = res.data['data'] as Map<String, dynamic>? ?? {};
+      final newNumber = newTicket['ticketNumber'] ?? newTicket['id'] ?? '';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Split into #$newNumber'), backgroundColor: const Color(0xFF7C3AED)),
+        );
+        await _load();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to split ticket'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  void _showSplitDialog() {
+    final ticket = _ticket;
+    if (ticket == null) return;
+    showDialog(
+      context: context,
+      builder: (_) => _SplitDialog(
+        currentTicket: ticket,
+        api: _api,
+        onSplit: _splitTicket,
+      ),
+    );
+  }
+
   Future<void> _snooze(DateTime until) async {
     try {
       await _api.patch(ApiEndpoints.ticketSnooze(widget.id), data: {'snoozeUntil': until.toIso8601String()});
@@ -512,6 +558,11 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
               icon: const Icon(Icons.bedtime_outlined),
               tooltip: 'Snooze Ticket',
               onPressed: _showSnoozeSheet,
+            ),
+            IconButton(
+              icon: const Icon(Icons.call_split_rounded),
+              tooltip: 'Split Ticket',
+              onPressed: _showSplitDialog,
             ),
             IconButton(
               icon: const Icon(Icons.merge_type_rounded),
@@ -1107,6 +1158,140 @@ class _TasksTabState extends State<_TasksTab> {
                     );
                   },
                 ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Split Dialog ─────────────────────────────────────────────────────────────
+
+class _SplitDialog extends StatefulWidget {
+  final Map<String, dynamic> currentTicket;
+  final ApiClient api;
+  final Future<void> Function({
+    required String subject,
+    required String description,
+    String? departmentId,
+    String? priority,
+    List<String>? commentIds,
+  }) onSplit;
+
+  const _SplitDialog({required this.currentTicket, required this.api, required this.onSplit});
+
+  @override
+  State<_SplitDialog> createState() => _SplitDialogState();
+}
+
+class _SplitDialogState extends State<_SplitDialog> {
+  late final TextEditingController _subjectCtrl;
+  late final TextEditingController _descCtrl;
+  bool _splitting = false;
+  String _priority = 'MEDIUM';
+
+  final _priorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
+  @override
+  void initState() {
+    super.initState();
+    final title = widget.currentTicket['title'] ?? widget.currentTicket['subject'] ?? '';
+    _subjectCtrl = TextEditingController(text: 'Split: $title');
+    _descCtrl = TextEditingController();
+    _priority = widget.currentTicket['priority'] ?? 'MEDIUM';
+  }
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(children: [
+        Icon(Icons.call_split_rounded, color: Color(0xFF7C3AED)),
+        SizedBox(width: 8),
+        Text('Split Ticket'),
+      ]),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Create a new ticket from this one.',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              const Text('Subject', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _subjectCtrl,
+                decoration: InputDecoration(
+                  hintText: 'New ticket subject...',
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Description', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _descCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Describe the issue...',
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Priority', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: _priority,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                onChanged: (v) => setState(() => _priority = v ?? _priority),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: _splitting ? null : () async {
+            final subject = _subjectCtrl.text.trim();
+            if (subject.isEmpty) return;
+            setState(() => _splitting = true);
+            await widget.onSplit(
+              subject: subject,
+              description: _descCtrl.text.trim(),
+              priority: _priority,
+            );
+            if (mounted) Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), foregroundColor: Colors.white),
+          child: _splitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Split'),
         ),
       ],
     );

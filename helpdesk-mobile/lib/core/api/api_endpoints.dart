@@ -32,6 +32,7 @@ class ApiEndpoints {
   static String ticketTask(String ticketId, String taskId) => '/tickets/$ticketId/tasks/$taskId';
   static String ticketTaskToggle(String ticketId, String taskId) => '/tickets/$ticketId/tasks/$taskId/toggle';
   static String ticketMerge(String id) => '/tickets/$id/merge';
+  static String ticketSplit(String id) => '/tickets/$id/split';
   static String ticketDueDate(String id) => '/tickets/$id/due-date';
   static const String ticketsBulk = '/tickets/bulk';
 

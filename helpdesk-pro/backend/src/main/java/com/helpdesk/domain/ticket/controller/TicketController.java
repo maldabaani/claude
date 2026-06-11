@@ -3,6 +3,7 @@ package com.helpdesk.domain.ticket.controller;
 import com.helpdesk.domain.tag.TagResponse;
 import com.helpdesk.domain.tag.TagService;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
+import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
@@ -224,6 +225,17 @@ public class TicketController {
             @PathVariable String email) {
         ticketWatcherRepository.deleteByTicketIdAndEmail(id, email);
         return ResponseEntity.ok(ApiResponse.ok("Watcher removed", null));
+    }
+
+
+    @PostMapping("/{id}/split")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> splitTicket(
+            @PathVariable UUID id,
+            @RequestBody TicketSplitRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        TicketResponse result = ticketService.splitTicket(id, request, currentUser.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Ticket split successfully", result));
     }
 
     // ── Merge ─────────────────────────────────────────────────────────────────

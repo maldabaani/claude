@@ -67,6 +67,7 @@ export const routes: Routes = [
       { path: 'macros', loadComponent: () => import('./features/admin/macros/macros.component').then(m => m.MacrosComponent) },
       { path: 'teams', loadComponent: () => import('./features/admin/teams/teams.component').then(m => m.TeamsComponent) },
       { path: 'nps', loadComponent: () => import('./features/admin/nps/nps-dashboard.component').then(m => m.NpsDashboardComponent) },
+      { path: 'automation-rules', loadComponent: () => import('./features/admin/automation-rules/automation-rules.component').then(m => m.AutomationRulesComponent) },
       { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },
