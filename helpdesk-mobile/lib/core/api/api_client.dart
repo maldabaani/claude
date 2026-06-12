@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_endpoints.dart';
 
@@ -6,6 +7,10 @@ class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
   ApiClient._internal();
+
+  /// Protected constructor for subclassing in tests.
+  @visibleForTesting
+  ApiClient._forTest();
 
   late final Dio _dio;
 

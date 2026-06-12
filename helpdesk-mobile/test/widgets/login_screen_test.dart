@@ -1,99 +1,24 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:helpdesk_mobile/core/auth/auth_provider.dart';
-import 'package:helpdesk_mobile/core/auth/auth_state.dart';
-import 'package:helpdesk_mobile/core/theme/app_theme.dart';
-
-import 'login_screen_test.mocks.dart';
-
-// We render a simplified version of the LoginScreen form directly, extracting
-// only the widgets that matter, to avoid go_router's navigation requirement.
+// Widget tests for the login screen.
 //
-// Alternatively we render the actual LoginScreen wrapped in a MaterialApp with
-// a mock AuthNotifier so no real API calls are made.
+// We test a replicated minimal form that mirrors the production LoginScreen
+// widgets and validation logic. This avoids go_router and real network calls.
 
-@GenerateMocks([AuthNotifier])
-void main() {
-  late MockAuthNotifier mockNotifier;
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-  setUp(() {
-    mockNotifier = MockAuthNotifier();
-    // Stub out the login future so it never hangs
-    when(mockNotifier.login(any, any)).thenAnswer((_) async => null);
-    // Stub state stream
-    when(mockNotifier.stream).thenAnswer(
-      (_) => Stream.value(const AuthState(status: AuthStatus.unauthenticated)),
-    );
-  });
+// ─── Minimal widget mirroring the login form ──────────────────────────────
 
-  Widget buildTestWidget() {
-    return ProviderScope(
-      overrides: [
-        authProvider.overrideWith((_) => mockNotifier),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: _MinimalLoginForm(onLogin: (email, password) {
-          mockNotifier.login(email, password);
-        }),
-      ),
-    );
-  }
+class _TestLoginScreen extends StatefulWidget {
+  /// Called when form is valid and the button is tapped.
+  final Future<void> Function(String email, String password)? onSubmit;
 
-  testWidgets('renders email and password fields', (tester) async {
-    await tester.pumpWidget(buildTestWidget());
-    expect(find.byType(TextFormField), findsAtLeastNWidgets(2));
-  });
-
-  testWidgets('renders login button', (tester) async {
-    await tester.pumpWidget(buildTestWidget());
-    expect(find.text('Sign In'), findsOneWidget);
-  });
-
-  testWidgets('shows validation errors when fields are empty and button is pressed',
-      (tester) async {
-    await tester.pumpWidget(buildTestWidget());
-    await tester.tap(find.text('Sign In'));
-    await tester.pump();
-    // Both validators should fire
-    expect(find.text('Enter a valid email address'), findsOneWidget);
-    expect(find.text('Password is required'), findsOneWidget);
-  });
-
-  testWidgets('shows loading indicator during login', (tester) async {
-    // Make login hang so the loading state persists during the test
-    when(mockNotifier.login(any, any))
-        .thenAnswer((_) => Future.delayed(const Duration(seconds: 10)));
-
-    await tester.pumpWidget(buildTestWidget());
-
-    // Fill in valid credentials
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.first, 'user@test.com');
-    await tester.enterText(fields.last, 'password123');
-
-    await tester.tap(find.text('Sign In'));
-    await tester.pump(); // start async
-    await tester.pump(const Duration(milliseconds: 50));
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-  });
-}
-
-// ─── Minimal LoginForm that mirrors the production form logic ─────────────
-
-class _MinimalLoginForm extends StatefulWidget {
-  final void Function(String email, String password) onLogin;
-  const _MinimalLoginForm({required this.onLogin});
+  const _TestLoginScreen({this.onSubmit});
 
   @override
-  State<_MinimalLoginForm> createState() => _MinimalLoginFormState();
+  State<_TestLoginScreen> createState() => _TestLoginScreenState();
 }
 
-class _MinimalLoginFormState extends State<_MinimalLoginForm> {
+class _TestLoginScreenState extends State<_TestLoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -102,7 +27,7 @@ class _MinimalLoginFormState extends State<_MinimalLoginForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    await widget.onLogin(_emailCtrl.text.trim(), _passwordCtrl.text);
+    await widget.onSubmit?.call(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (mounted) setState(() => _loading = false);
   }
 
@@ -113,27 +38,90 @@ class _MinimalLoginFormState extends State<_MinimalLoginForm> {
         key: _formKey,
         child: Column(
           children: [
+            // Email field
             TextFormField(
+              key: const Key('email_field'),
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(hintText: 'Email Address'),
               validator: (v) =>
                   v == null || !v.contains('@') ? 'Enter a valid email address' : null,
             ),
+            // Password field
             TextFormField(
+              key: const Key('password_field'),
               controller: _passwordCtrl,
               obscureText: true,
+              decoration: const InputDecoration(hintText: 'Password'),
               validator: (v) =>
                   v == null || v.isEmpty ? 'Password is required' : null,
             ),
-            ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const CircularProgressIndicator()
-                  : const Text('Sign In'),
-            ),
+            // Login button / loading indicator
+            _loading
+                ? const CircularProgressIndicator(key: Key('loading_indicator'))
+                : ElevatedButton(
+                    key: const Key('login_button'),
+                    onPressed: _submit,
+                    child: const Text('Sign In'),
+                  ),
           ],
         ),
       ),
     );
   }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────
+
+void main() {
+  Widget wrap({Future<void> Function(String, String)? onSubmit}) =>
+      MaterialApp(home: _TestLoginScreen(onSubmit: onSubmit));
+
+  testWidgets('renders email and password fields', (tester) async {
+    await tester.pumpWidget(wrap());
+    expect(find.byKey(const Key('email_field')), findsOneWidget);
+    expect(find.byKey(const Key('password_field')), findsOneWidget);
+  });
+
+  testWidgets('renders login button', (tester) async {
+    await tester.pumpWidget(wrap());
+    expect(find.byKey(const Key('login_button')), findsOneWidget);
+    expect(find.text('Sign In'), findsOneWidget);
+  });
+
+  testWidgets('shows validation errors when fields empty and button pressed',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.tap(find.byKey(const Key('login_button')));
+    await tester.pump();
+
+    expect(find.text('Enter a valid email address'), findsOneWidget);
+    expect(find.text('Password is required'), findsOneWidget);
+  });
+
+  testWidgets('shows email validation error for value without @', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.enterText(find.byKey(const Key('email_field')), 'notanemail');
+    await tester.tap(find.byKey(const Key('login_button')));
+    await tester.pump();
+
+    expect(find.text('Enter a valid email address'), findsOneWidget);
+  });
+
+  testWidgets('shows loading indicator during login', (tester) async {
+    // onSubmit that never completes keeps the loading state visible
+    final completer = Future<void>.delayed(const Duration(seconds: 60));
+
+    await tester.pumpWidget(wrap(onSubmit: (_, __) => completer));
+
+    await tester.enterText(find.byKey(const Key('email_field')), 'user@test.com');
+    await tester.enterText(find.byKey(const Key('password_field')), 'password123');
+
+    await tester.tap(find.byKey(const Key('login_button')));
+    await tester.pump(); // trigger setState(_loading = true)
+
+    expect(find.byKey(const Key('loading_indicator')), findsOneWidget);
+    // Button is replaced by spinner while loading
+    expect(find.byKey(const Key('login_button')), findsNothing);
+  });
 }
