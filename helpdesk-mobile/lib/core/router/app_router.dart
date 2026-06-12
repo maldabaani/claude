@@ -71,6 +71,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (authState.isAgent) return '/agent';
         return '/customer';
       }
+
+      // Role-based shell guards: prevent cross-role route access
+      if (isAuth) {
+        final isCustomerRoute = location.startsWith('/customer');
+        final isAgentRoute = location.startsWith('/agent');
+        final isAdminRoute = location.startsWith('/admin');
+
+        if (isCustomerRoute && !authState.isCustomer) {
+          if (authState.isAdmin) return '/admin';
+          return '/agent';
+        }
+        if (isAgentRoute && authState.isCustomer) return '/customer';
+        if (isAdminRoute && !authState.isAdmin) {
+          if (authState.isAgent) return '/agent';
+          return '/customer';
+        }
+      }
+
       return null;
     },
     routes: [
@@ -118,6 +136,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/admin', builder: (_, __) => const AdminOverviewScreen()),
           GoRoute(path: '/admin/tickets', builder: (_, __) => const AdminTicketsScreen()),
+          GoRoute(path: '/admin/tickets/:id', builder: (_, s) => AgentTicketDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/admin/users', builder: (_, __) => const UsersScreen()),
           GoRoute(path: '/admin/departments', builder: (_, __) => const DepartmentsScreen()),
           GoRoute(path: '/admin/sla', builder: (_, __) => const SlaPoliciesScreen()),

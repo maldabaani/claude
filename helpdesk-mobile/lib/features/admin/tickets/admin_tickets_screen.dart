@@ -117,7 +117,7 @@ class _AdminTicketsScreenState extends ConsumerState<AdminTicketsScreen> {
                     if (_bulkMode) {
                       setState(() { if (isSelected) _selected.remove(id); else _selected.add(id); });
                     } else {
-                      context.push('/agent/tickets/$id');
+                      context.push('/admin/tickets/$id');
                     }
                   },
                   borderRadius: BorderRadius.circular(16),

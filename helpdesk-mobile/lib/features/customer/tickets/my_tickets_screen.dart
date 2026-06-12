@@ -64,6 +64,7 @@ class _MyTicketsScreenState extends ConsumerState<MyTicketsScreen> {
         _error = null;
         _page = 0;
         _tickets = [];
+        _total = 0;
         _hasMore = true;
       });
     }
