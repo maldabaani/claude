@@ -71,6 +71,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (authState.isAgent) return '/agent';
         return '/customer';
       }
+
+      // Role-based shell guards: prevent cross-role route access
+      if (isAuth) {
+        final isCustomerRoute = location.startsWith('/customer');
+        final isAgentRoute = location.startsWith('/agent');
+        final isAdminRoute = location.startsWith('/admin');
+
+        if (isCustomerRoute && !authState.isCustomer) {
+          if (authState.isAdmin) return '/admin';
+          return '/agent';
+        }
+        if (isAgentRoute && authState.isCustomer) return '/customer';
+        if (isAdminRoute && !authState.isAdmin) {
+          if (authState.isAgent) return '/agent';
+          return '/customer';
+        }
+      }
+
       return null;
     },
     routes: [
