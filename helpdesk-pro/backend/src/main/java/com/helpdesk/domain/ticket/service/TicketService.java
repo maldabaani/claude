@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
+import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.audit.service.AuditLogService;
 import com.helpdesk.domain.comment.entity.Comment;
 import com.helpdesk.domain.comment.repository.CommentRepository;
@@ -320,6 +321,7 @@ public class TicketService {
 
     public TicketResponse toResponse(Ticket ticket) {
         com.helpdesk.domain.team.Team team = ticket.getTeam();
+        Ticket splitFrom = ticket.getSplitFrom();
         return new TicketResponse(
                 ticket.getId(), ticket.getTicketNumber(), ticket.getTitle(), ticket.getDescription(),
                 ticket.getStatus(), ticket.getPriority(), ticket.getCategory(), ticket.getDepartmentId(),
@@ -335,8 +337,62 @@ public class TicketService {
                 ticket.getPreSnoozeStatus(),
                 team != null ? team.getId() : null,
                 team != null ? team.getName() : null,
-                team != null ? team.getColor() : null
+                team != null ? team.getColor() : null,
+                splitFrom != null ? splitFrom.getId() : null,
+                splitFrom != null ? splitFrom.getTicketNumber() : null
         );
+    }
+
+
+    @Transactional
+    public TicketResponse splitTicket(UUID sourceId, TicketSplitRequest request, UUID actorId) {
+        Ticket source = getTicket(sourceId);
+
+        Priority priority = request.getPriority() != null
+                ? Priority.valueOf(request.getPriority())
+                : source.getPriority();
+
+        Ticket newTicket = Ticket.builder()
+                .ticketNumber(ticketNumberGenerator.generate())
+                .title(request.getSubject() != null ? request.getSubject() : "Split: " + source.getTitle())
+                .description(request.getDescription() != null ? request.getDescription() : "")
+                .priority(priority)
+                .departmentId(request.getDepartmentId() != null ? request.getDepartmentId() : source.getDepartmentId())
+                .createdById(source.getCreatedById())
+                .splitFrom(source)
+                .build();
+
+        Ticket saved = ticketRepository.save(newTicket);
+
+        // Optionally move specified comments to the new ticket
+        if (request.getCommentIds() != null && !request.getCommentIds().isEmpty()) {
+            for (UUID commentId : request.getCommentIds()) {
+                commentRepository.findByIdAndDeletedAtIsNull(commentId).ifPresent(c -> {
+                    c.setTicketId(saved.getId());
+                    commentRepository.save(c);
+                });
+            }
+        }
+
+        // Add internal note on original ticket
+        Comment noteOnSource = Comment.builder()
+                .ticketId(sourceId)
+                .authorId(actorId)
+                .body("This ticket was split into #" + saved.getTicketNumber())
+                .internal(true)
+                .build();
+        commentRepository.save(noteOnSource);
+
+        // Add internal note on new ticket
+        Comment noteOnNew = Comment.builder()
+                .ticketId(saved.getId())
+                .authorId(actorId)
+                .body("Split from ticket #" + source.getTicketNumber())
+                .internal(true)
+                .build();
+        commentRepository.save(noteOnNew);
+
+        auditLogService.log("TICKET", sourceId, "SPLIT", actorId, null, "{\"newTicketId\":\"" + saved.getId() + "\"}");        return toResponse(saved);
     }
 
     @Transactional

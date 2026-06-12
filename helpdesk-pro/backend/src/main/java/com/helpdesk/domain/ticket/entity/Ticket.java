@@ -103,6 +103,11 @@ public class Ticket extends AuditableEntity {
     @Version
     private Long version;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "split_from_id")
+    private Ticket splitFrom;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id")
     private com.helpdesk.domain.team.Team team;

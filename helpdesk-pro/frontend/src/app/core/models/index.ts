@@ -39,6 +39,8 @@ export interface Ticket {
   parentTicketId?: string | null;
   parentTicketNumber?: string | null;
   parentTicketTitle?: string | null;
+  splitFromId?: string | null;
+  splitFromNumber?: string | null;
 }
 
 export interface Comment {

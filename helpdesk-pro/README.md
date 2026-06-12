@@ -1,6 +1,6 @@
 # HelpDesk Pro
 
-A modern, full-stack customer support ticketing system built as a professional replacement for osTicket. Features a clean enterprise UI, real-time notifications, SLA tracking, and role-based access control.
+A modern, full-stack enterprise customer support ticketing system built as a professional replacement for osTicket. Features a clean enterprise UI, real-time notifications, SLA tracking, role-based access control, and an extensive enterprise feature pack.
 
 ---
 
@@ -9,6 +9,7 @@ A modern, full-stack customer support ticketing system built as a professional r
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
+- [What's New (Enterprise Feature Pack)](#whats-new-enterprise-feature-pack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -27,9 +28,9 @@ A modern, full-stack customer support ticketing system built as a professional r
 
 HelpDesk Pro is a SaaS-ready support ticket management system with three distinct portals:
 
-- **Customer Portal** — Submit tickets, track status, reply to support threads
-- **Agent Dashboard** — Manage ticket queues, add internal notes, update statuses
-- **Admin Panel** — Full control over users, departments, SLA policies, and settings
+- **Customer Portal** — Submit tickets, track status, reply to support threads, rate support via CSAT
+- **Agent Dashboard** — Manage ticket queues, add internal notes, use macros, track time, manage watchers and tasks
+- **Admin Panel** — Full control over users, departments, SLA policies, business hours, round-robin routing, teams, NPS, agent performance, and system settings
 
 ---
 
@@ -38,12 +39,12 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 | Layer | Technology |
 |---|---|
 | Backend | Java 21, Spring Boot 3.2, Spring Security 6, Spring Data JPA |
-| Database | PostgreSQL 16 + Flyway migrations |
-| Authentication | JWT (access token + refresh token) |
+| Database | PostgreSQL 16 + Flyway migrations (V1–V44) |
+| Authentication | JWT (access token + refresh token) + TOTP 2FA |
 | Real-time | WebSocket (STOMP over SockJS) |
 | Email | JavaMailSender (SMTP) |
 | Frontend | Angular 18 (standalone components) |
-| UI Library | Angular Material (custom-themed) + TailwindCSS |
+| UI Library | PrimeNG + TailwindCSS |
 | State | Angular Signals |
 | Build | Maven (backend), Angular CLI (frontend) |
 | Container | Docker + Docker Compose |
@@ -55,16 +56,20 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 
 ### Core Ticketing
 - Auto-generated ticket numbers (`TKT-YYYYMMDD-XXXXX`)
-- Full ticket lifecycle: NEW → OPEN → PENDING → ON_HOLD → RESOLVED → CLOSED
+- Full ticket lifecycle: NEW → OPEN → PENDING → ON_HOLD → RESOLVED → CLOSED → **SNOOZED**
 - Enforced status transition rules (e.g. CLOSED tickets reopen on customer reply)
 - Ticket priority levels: LOW, MEDIUM, HIGH, CRITICAL
-- Department-based routing and auto-assignment (least-loaded agent)
+- Department-based routing and auto-assignment (least-loaded or round-robin)
 - Tags and custom categories
+- **Parent–child ticket hierarchy** — link sub-tickets to a parent ticket
+- **Ticket Snooze** — defer a ticket to a future date/time with preset or custom picker
+- **Ticket Merging** — merge duplicate tickets into a primary ticket
 
 ### SLA Management
 - Per-priority SLA policies (response time + resolution time)
 - Background scheduler checks SLA breaches every 5 minutes
 - Automatic escalation notifications to team leads and admins on breach
+- Configurable escalation rules per policy
 
 ### Communication
 - Public replies visible to customer and agents
@@ -72,21 +77,69 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 - First response time tracking
 - File attachments (up to 20MB per file)
 - Real-time in-app notifications via WebSocket
+- **Canned Responses** — pre-written reply snippets insertable from the reply box
+- **Ticket Templates** — pre-filled ticket templates per department
+
+### Agent Productivity
+- **Macros** — apply bulk actions (status, priority, assignment, internal note) in one click
+- **Ticket Tasks** — per-ticket checklist with add/complete/delete
+- **Ticket Watchers** — subscribe additional agents to a ticket's updates
+- **Saved Views** — create named filter presets for ticket queues
+- **Time Tracking** — log time spent per ticket
+- **Agent Availability** — set online/busy/offline status with per-channel toggles (email, chat, phone)
 
 ### Admin Controls
-- Full CRUD for users, departments, and SLA policies
+- Full CRUD for users, departments, SLA policies, and all configuration entities
 - Role assignment (CUSTOMER / AGENT / TEAM_LEAD / ADMIN)
 - Activate/deactivate users
 - Dashboard KPIs: open tickets, pending, resolved today, SLA breached
-- Status breakdown chart
+- **Business Hours** — configure support schedule per day of week with timezone support
+- **Round Robin Assignment** — per-department auto-assignment toggle
+- **Teams** — create agent teams; assign tickets to teams
+- **Agent Performance** — per-agent metrics with time-range filtering
+- **NPS Dashboard** — Net Promoter Score survey results with promoter/passive/detractor breakdown
+- **Macros Admin** — manage the shared macro library
+- **Organizations** — group customers into organizations
 
 ### Security
 - JWT access tokens (1 hour) + refresh tokens (7 days)
+- TOTP-based Two-Factor Authentication (QR code setup, enable/disable per user)
 - BCrypt password hashing
 - Role-based endpoint protection (`@PreAuthorize`)
+- Rate limiting (configurable req/min per IP)
 - Soft delete on all entities (no permanent data loss)
 - Optimistic locking on tickets (prevent concurrent update conflicts)
 - CORS configured per environment
+
+---
+
+## What's New (Enterprise Feature Pack)
+
+| # | Feature | Backend | Angular | Flutter |
+|---|---|:---:|:---:|:---:|
+| F1 | Two-Factor Authentication (TOTP) | ✅ | ✅ | ✅ |
+| F2 | Canned Responses | ✅ | ✅ | ✅ |
+| F3 | SLA Escalation Rules | ✅ | ✅ | ✅ |
+| F4 | Ticket Templates | ✅ | ✅ | ✅ |
+| F5 | Knowledge Base | ✅ | ✅ | ✅ |
+| F6 | Custom Fields | ✅ | ✅ | ✅ |
+| F7 | Webhooks | ✅ | ✅ | ✅ |
+| F8 | API Keys | ✅ | ✅ | ✅ |
+| F9 | Audit Log | ✅ | ✅ | ✅ |
+| F10 | Advanced Analytics | ✅ | ✅ | ✅ |
+| F11 | Ticket Watchers | ✅ | ✅ | ✅ |
+| F12 | Ticket Tasks | ✅ | ✅ | ✅ |
+| F13 | Saved Views | ✅ | ✅ | ✅ |
+| F14 | Ticket Merging | ✅ | ✅ | ✅ |
+| F15 | Parent–Child Tickets | ✅ | ✅ | ✅ |
+| F16 | Ticket Snooze | ✅ | ✅ | ✅ |
+| F17 | Agent Availability | ✅ | ✅ | ✅ |
+| F18 | Macros | ✅ | ✅ | ✅ |
+| F19 | Business Hours | ✅ | ✅ | ✅ |
+| F20 | Round Robin Assignment | ✅ | ✅ | ✅ |
+| — | Agent Performance Dashboard | ✅ | ✅ | ✅ |
+| — | Teams | ✅ | ✅ | ✅ |
+| — | NPS Dashboard | ✅ | ✅ | ✅ |
 
 ---
 
@@ -96,7 +149,7 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 helpdesk-pro/
 ├── backend/                        # Spring Boot application
 │   ├── src/main/java/com/helpdesk/
-│   │   ├── config/                 # Security, WebSocket, JPA config
+│   │   ├── config/                 # Security, WebSocket, JPA, rate-limit config
 │   │   ├── domain/
 │   │   │   ├── user/               # entity, repo, service, controller, dto
 │   │   │   ├── ticket/             # entity, repo, service, controller, dto
@@ -104,30 +157,75 @@ helpdesk-pro/
 │   │   │   ├── attachment/
 │   │   │   ├── department/
 │   │   │   ├── sla/
-│   │   │   └── notification/
-│   │   ├── security/               # JWT provider, filter, UserDetailsService
-│   │   └── shared/                 # ApiResponse, AuditableEntity, exceptions
+│   │   │   ├── notification/
+│   │   │   ├── canned_response/
+│   │   │   ├── template/
+│   │   │   ├── kb/                 # Knowledge base categories + articles
+│   │   │   ├── custom_field/
+│   │   │   ├── webhook/
+│   │   │   ├── api_key/
+│   │   │   ├── help_topic/
+│   │   │   ├── email_inbox/
+│   │   │   ├── organization/
+│   │   │   ├── issue/
+│   │   │   ├── audit/
+│   │   │   ├── saved_view/
+│   │   │   ├── task/
+│   │   │   ├── watcher/
+│   │   │   ├── macro/
+│   │   │   ├── team/
+│   │   │   ├── business_hours/
+│   │   │   ├── round_robin/
+│   │   │   ├── nps/
+│   │   │   ├── time_entry/
+│   │   │   └── agent_availability/
+│   │   ├── security/               # JWT provider, filter, UserDetailsService, 2FA
+│   │   └── shared/                 # ApiResponse, AuditableEntity, exceptions, rate limiter
 │   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   └── db/migration/           # Flyway SQL migrations V1–V6
+│   │   ├── application.yml         # Flyway out-of-order: true enabled
+│   │   └── db/migration/           # Flyway SQL migrations V1–V44
 │   ├── Dockerfile
 │   └── pom.xml
 │
 ├── frontend/                       # Angular 18 application
 │   ├── src/app/
 │   │   ├── core/
-│   │   │   ├── auth/               # AuthService, guards
+│   │   │   ├── auth/               # AuthService, 2FA guards
 │   │   │   ├── interceptors/       # JWT interceptor with auto-refresh
-│   │   │   ├── models/             # TypeScript interfaces
-│   │   │   └── services/           # TicketService, UserService, etc.
+│   │   │   ├── models/             # TypeScript interfaces (all entities)
+│   │   │   └── services/           # All feature services
 │   │   ├── shared/
 │   │   │   ├── components/         # status-badge, priority-badge, skeleton-loader
 │   │   │   └── pipes/              # timeAgo
 │   │   ├── features/
-│   │   │   ├── auth/               # login, register
+│   │   │   ├── auth/               # login, register, 2fa
 │   │   │   ├── customer/           # portal, submit-ticket, my-tickets, ticket-detail
 │   │   │   ├── agent/              # dashboard, ticket-queue, ticket-detail
-│   │   │   └── admin/              # overview, tickets, users, departments, sla, settings
+│   │   │   └── admin/
+│   │   │       ├── overview/
+│   │   │       ├── tickets/
+│   │   │       ├── users/
+│   │   │       ├── departments/
+│   │   │       ├── sla/
+│   │   │       ├── canned-responses/
+│   │   │       ├── templates/
+│   │   │       ├── knowledge-base/
+│   │   │       ├── custom-fields/
+│   │   │       ├── webhooks/
+│   │   │       ├── api-keys/
+│   │   │       ├── help-topics/
+│   │   │       ├── email-inboxes/
+│   │   │       ├── organizations/
+│   │   │       ├── issues/
+│   │   │       ├── audit-log/
+│   │   │       ├── analytics/
+│   │   │       ├── settings/
+│   │   │       ├── business-hours/     # NEW
+│   │   │       ├── round-robin/        # NEW
+│   │   │       ├── agent-performance/  # NEW
+│   │   │       ├── macros/             # NEW
+│   │   │       ├── teams/              # NEW
+│   │   │       └── nps/                # NEW
 │   │   └── layout/
 │   │       ├── customer-shell/     # Top nav layout
 │   │       ├── agent-shell/        # Collapsible sidebar layout
@@ -191,6 +289,8 @@ export DB_PASS=helpdesk
 
 Backend starts at: `http://localhost:8080`  
 Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+> **Note:** Flyway runs with `out-of-order: true` so migrations apply correctly even if your local database was created before newer migration files were added.
 
 #### 4. Run the Frontend
 
@@ -264,6 +364,7 @@ docker compose down -v
 | `MAIL_PASS` | *(empty)* | SMTP password |
 | `UPLOAD_PATH` | `./uploads` | File attachment storage path |
 | `FRONTEND_URL` | `http://localhost:4200` | Allowed CORS origin |
+| `ENCRYPTION_KEY` | *(required in prod)* | 32-char key for encrypting sensitive config (e.g. SMTP passwords) |
 
 ### Frontend
 
@@ -288,6 +389,8 @@ POST   /api/v1/auth/register
 POST   /api/v1/auth/login
 POST   /api/v1/auth/refresh
 POST   /api/v1/auth/logout
+POST   /api/v1/auth/2fa/setup
+POST   /api/v1/auth/2fa/verify
 
 GET    /api/v1/tickets              # filter by status, priority, department, agent, date
 POST   /api/v1/tickets
@@ -295,15 +398,49 @@ GET    /api/v1/tickets/{id}
 PATCH  /api/v1/tickets/{id}
 PATCH  /api/v1/tickets/{id}/assign
 PATCH  /api/v1/tickets/{id}/status
+PATCH  /api/v1/tickets/{id}/snooze
 DELETE /api/v1/tickets/{id}
+POST   /api/v1/tickets/{id}/merge
+GET    /api/v1/tickets/{id}/children
+GET    /api/v1/tickets/{id}/parent
 
 GET    /api/v1/tickets/{id}/comments
 POST   /api/v1/tickets/{id}/comments
-PATCH  /api/v1/tickets/{ticketId}/comments/{id}
-DELETE /api/v1/tickets/{ticketId}/comments/{id}
 
-POST   /api/v1/tickets/{id}/attachments
-GET    /api/v1/attachments/{id}/download
+GET    /api/v1/tickets/{id}/watchers
+POST   /api/v1/tickets/{id}/watchers
+DELETE /api/v1/tickets/{id}/watchers/{userId}
+
+GET    /api/v1/tickets/{id}/tasks
+POST   /api/v1/tickets/{id}/tasks
+PATCH  /api/v1/tickets/{id}/tasks/{taskId}
+DELETE /api/v1/tickets/{id}/tasks/{taskId}
+
+GET    /api/v1/macros
+POST   /api/v1/macros
+PUT    /api/v1/macros/{id}
+DELETE /api/v1/macros/{id}
+POST   /api/v1/macros/{macroId}/apply/{ticketId}
+
+GET    /api/v1/teams
+POST   /api/v1/teams
+GET    /api/v1/teams/{id}/members
+POST   /api/v1/teams/{id}/members
+DELETE /api/v1/teams/{id}/members/{userId}
+
+GET    /api/v1/business-hours
+PUT    /api/v1/business-hours
+
+GET    /api/v1/round-robin/config
+PUT    /api/v1/round-robin/config
+
+GET    /api/v1/analytics/agents     # agent performance metrics
+GET    /api/v1/nps/score
+GET    /api/v1/nps/responses
+
+GET    /api/v1/agents/availability
+GET    /api/v1/agents/availability/me
+PUT    /api/v1/agents/availability/me
 
 GET    /api/v1/departments
 POST   /api/v1/departments
@@ -353,29 +490,39 @@ All responses use a standard wrapper:
 | Reply to ticket | ✅ | ✅ | ✅ | ✅ |
 | Add internal note | ❌ | ✅ | ✅ | ✅ |
 | Change ticket status | ❌ | ✅ | ✅ | ✅ |
+| Snooze ticket | ❌ | ✅ | ✅ | ✅ |
+| Merge tickets | ❌ | ✅ | ✅ | ✅ |
+| Apply macros | ❌ | ✅ | ✅ | ✅ |
+| Manage tasks/watchers | ❌ | ✅ | ✅ | ✅ |
 | Assign ticket | ❌ | ✅ | ✅ | ✅ |
 | Manage users | ❌ | ❌ | ❌ | ✅ |
 | Manage departments | ❌ | ❌ | ❌ | ✅ |
 | Manage SLA policies | ❌ | ❌ | ❌ | ✅ |
+| Manage macros library | ❌ | ❌ | ❌ | ✅ |
+| Manage teams | ❌ | ❌ | ❌ | ✅ |
+| Configure business hours | ❌ | ❌ | ❌ | ✅ |
+| Configure round robin | ❌ | ❌ | ❌ | ✅ |
+| View agent performance | ❌ | ❌ | ✅ | ✅ |
+| View NPS dashboard | ❌ | ❌ | ✅ | ✅ |
 | View dashboard stats | ❌ | ✅ | ✅ | ✅ |
+| View audit log | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
 ## Database Migrations
 
-Flyway runs automatically on startup. Migration files are in:
+Flyway runs automatically on startup with `out-of-order: true`. Migration files are in:
 ```
 backend/src/main/resources/db/migration/
 ```
 
-| File | Contents |
+| Range | Contents |
 |---|---|
-| `V1__create_users.sql` | Users table with indexes |
-| `V2__create_departments_and_sla.sql` | Departments and SLA policy tables |
-| `V3__create_tickets.sql` | Tickets table with tags, sequence |
-| `V4__create_comments_and_attachments.sql` | Comments and attachments tables |
-| `V5__create_notifications_and_audit.sql` | Notifications and audit log tables |
-| `V6__seed_initial_data.sql` | Default admin/agent/customer users, 3 departments, 4 SLA policies |
+| V1–V6 | Core tables: users, departments, SLA, tickets, comments, attachments, notifications, audit log, seed data |
+| V7–V15 | 2FA, canned responses, SLA rules, templates, knowledge base, custom fields, webhooks, API keys |
+| V16–V25 | Help topics, email inboxes, organizations, issues, saved views, tasks, watchers, analytics views |
+| V26–V35 | Macros, ticket merging, parent-child tickets, time tracking, agent availability, teams |
+| V36–V44 | Business hours, round robin, NPS, agent performance views, SNOOZED status constraint fix |
 
 ---
 
@@ -396,16 +543,15 @@ Nginx (port 80)
   └── /ws/*       → proxy → Spring Boot :8080 (WebSocket upgrade)
   │
 Spring Boot 3 (port 8080)
-  ├── Spring Security 6 (stateless JWT)
+  ├── Spring Security 6 (stateless JWT + TOTP 2FA)
   ├── REST Controllers (versioned /api/v1/*)
   ├── Spring Data JPA → PostgreSQL
-  ├── Flyway (schema migrations)
+  ├── Flyway (schema migrations, out-of-order enabled)
   ├── STOMP WebSocket (real-time notifications)
   ├── JavaMailSender (email notifications)
-  └── @Scheduled SLA checker (every 5 min)
+  ├── Bucket4j rate limiting per IP
+  └── @Scheduled tasks: SLA checker (5 min), snooze waker (1 min)
   │
 PostgreSQL 16
-  └── 8 tables: users, departments, sla_policies, tickets,
-                ticket_tags, comments, attachments,
-                notifications, audit_logs
+  └── 40+ tables covering all domains above
 ```

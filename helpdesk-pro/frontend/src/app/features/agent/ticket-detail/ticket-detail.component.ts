@@ -60,6 +60,15 @@ import { environment } from '../../../../environments/environment';
         <span class="ml-2 text-xs" style="color:#B45309">Be careful — replies may conflict</span>
       </div>
 
+      <!-- Split from banner -->
+      <div *ngIf="ticket()?.splitFromId"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+           style="background:#F0F9FF;border:1px solid #BAE6FD;color:#0369A1">
+        <i class="pi pi-sitemap" style="font-size:16px;color:#0284C7"></i>
+        <span>Split from <a [routerLink]="['/agent/tickets', ticket()!.splitFromId]"
+              class="font-bold hover:underline">#{{ ticket()!.splitFromNumber }}</a></span>
+      </div>
+
       <!-- Snooze banner -->
       <div *ngIf="ticket()?.snoozedUntil"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
@@ -791,10 +800,15 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
-          <!-- Merge ticket button -->
+          <!-- Merge/Split ticket buttons -->
           <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                style="box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-            <div class="p-4">
+            <div class="p-4 space-y-2">
+              <button (click)="openSplitDialog()"
+                      class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-colors">
+                <i class="pi pi-sitemap" style="font-size:15px"></i>
+                Split Ticket
+              </button>
               <button (click)="showMergeDialog()"
                       class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 <i class="pi pi-arrow-right-arrow-left" style="font-size:15px"></i>
@@ -997,6 +1011,65 @@ import { environment } from '../../../../environments/environment';
                 class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
                 style="background:#2563EB">
           {{ settingParent ? 'Setting...' : 'Set Parent' }}
+        </button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- Split Ticket dialog -->
+    <p-dialog [(visible)]="splitDialogVisible" [modal]="true" header="Split Ticket"
+              [style]="{width:'520px'}" [closable]="true">
+      <div class="space-y-4 p-2">
+        <p class="text-sm text-slate-500">Create a new ticket from this one. Optionally move selected comments to the new ticket.</p>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">New ticket subject</label>
+          <input pInputText class="w-full text-sm" placeholder="Subject..."
+                 [(ngModel)]="splitSubject" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+          <textarea pTextarea [(ngModel)]="splitDescription" rows="3" class="w-full text-sm"
+                    placeholder="Describe the issue..."></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Department</label>
+            <p-select [options]="departmentOptions()" [(ngModel)]="splitDepartmentId"
+                      optionLabel="label" optionValue="value" class="w-full"
+                      placeholder="Select department" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Priority</label>
+            <p-select [options]="priorityOptions" [(ngModel)]="splitPriority"
+                      optionLabel="label" optionValue="value" class="w-full" />
+          </div>
+        </div>
+        <div *ngIf="publicComments().length > 0">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Move comments to new ticket (optional)</label>
+          <div class="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+            <div *ngFor="let c of publicComments(); let last = last"
+                 class="flex items-start gap-3 px-4 py-3"
+                 [style.border-bottom]="!last ? '1px solid #F1F5F9' : 'none'">
+              <p-checkbox [(ngModel)]="splitCommentIds"
+                          [value]="c.id"
+                          [binary]="false" />
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-gray-700">{{ c.author.fullName }}</p>
+                <p class="text-xs text-slate-500 mt-0.5 truncate">{{ c.body }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button (click)="splitDialogVisible = false"
+                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
+          Cancel
+        </button>
+        <button (click)="confirmSplit()"
+                [disabled]="!splitSubject.trim() || splitting"
+                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style="background:#7C3AED">
+          {{ splitting ? 'Splitting...' : 'Split Ticket' }}
         </button>
       </ng-template>
     </p-dialog>
@@ -1217,6 +1290,15 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   showTagSuggestions = false;
   merging = false;
   private mergeSearchTimeout: any;
+
+  // Split
+  splitDialogVisible = false;
+  splitSubject = '';
+  splitDescription = '';
+  splitDepartmentId: string | null = null;
+  splitPriority = 'MEDIUM';
+  splitCommentIds: string[] = [];
+  splitting = false;
   replyControl = new FormControl('', Validators.required);
   noteMode: 'public' | 'internal' = 'public';
   currentStatus: TicketStatus = 'NEW';
@@ -1612,6 +1694,53 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     const id = this.ticket()!.id;
     this.ticketService.removeWatcher(id, email).subscribe(() => {
       this.watchers.update(list => list.filter(w => w !== email));
+    });
+  }
+
+  departmentOptions(): {label: string; value: string}[] {
+    return this.departments().map(d => ({ label: d.name, value: d.id }));
+  }
+
+  publicComments(): import('../../../core/models').Comment[] {
+    return this.comments().filter(c => !c.internal);
+  }
+
+  openSplitDialog() {
+    const t = this.ticket();
+    if (!t) return;
+    this.splitSubject = 'Split: ' + t.title;
+    this.splitDescription = '';
+    this.splitDepartmentId = t.departmentId ?? null;
+    this.splitPriority = t.priority ?? 'MEDIUM';
+    this.splitCommentIds = [];
+    this.splitDialogVisible = true;
+  }
+
+  confirmSplit() {
+    const subject = this.splitSubject.trim();
+    if (!subject) return;
+    this.splitting = true;
+    const id = this.ticket()!.id;
+    this.ticketService.splitTicket(id, {
+      subject,
+      description: this.splitDescription,
+      departmentId: this.splitDepartmentId ?? undefined,
+      priority: this.splitPriority,
+      commentIds: this.splitCommentIds.length > 0 ? this.splitCommentIds : undefined,
+    }).subscribe({
+      next: (newTicket) => {
+        this.splitting = false;
+        this.splitDialogVisible = false;
+        // Reload comments (some may have moved)
+        this.ticketService.getComments(id).subscribe(c => this.comments.set(c));
+        // Show success
+        const nb: any = document.createElement('div');
+        nb.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;background:#7C3AED;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+        nb.textContent = 'Ticket split successfully into #' + newTicket.ticketNumber;
+        document.body.appendChild(nb);
+        setTimeout(() => nb.remove(), 4000);
+      },
+      error: () => { this.splitting = false; },
     });
   }
 

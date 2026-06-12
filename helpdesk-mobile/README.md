@@ -28,7 +28,7 @@ HelpDesk Mobile is the Flutter front-end companion to HelpDesk Pro's Spring Boot
 
 - **Customer Portal** — Submit tickets, track status, reply to threads, rate support via CSAT
 - **Agent Dashboard** — Manage queues, handle tickets, add internal notes, manage tasks and watchers
-- **Admin Panel** — Full control over users, departments, SLA, knowledge base, canned responses, webhooks, API keys, and more
+- **Admin Panel** — Full control over users, departments, SLA, knowledge base, canned responses, webhooks, API keys, business hours, round-robin routing, teams, NPS, agent performance, and more
 
 All portals share a consistent side-drawer navigation pattern matching the web app experience.
 
@@ -65,14 +65,18 @@ All portals share a consistent side-drawer navigation pattern matching the web a
 - Ticket queue with search, status/priority filters, multi-select bulk actions (close, resolve)
 - Full ticket detail:
   - Reply (public) and internal notes
-  - Status and priority changes
+  - Status and priority changes with **Snooze** (preset or custom date/time)
   - Agent assignment
   - **Watchers** tab — add/remove watchers by email
   - **Tasks** tab — add, toggle, and delete checklist tasks
   - **Merge** action — merge duplicate ticket into another
+  - **Macros** tab — apply one-click macro actions (status, priority, assignment, notes)
+  - **Sub-tickets** tab — view child tickets, create sub-ticket, link to parent
+  - **Time Tracking** tab — log time entries per ticket
   - File attachments
 - Saved Views — create and manage named filter presets
 - Notifications screen
+- **Agent Availability** — set yourself as online/busy/offline with per-channel toggles
 
 ### Admin Panel
 | Section | Capabilities |
@@ -96,6 +100,44 @@ All portals share a consistent side-drawer navigation pattern matching the web a
 | Audit Log | Read-only log with entity-type filter |
 | Analytics | Charts: tickets over time, by priority, by department, by agent, resolution times |
 | Settings | System-wide settings management |
+| **Business Hours** | Per-day open/close toggle with configurable open/close times; timezone selector |
+| **Round Robin** | Global on/off toggle and per-department round-robin assignment switches |
+| **Agent Performance** | Per-agent metrics: tickets resolved, avg response time, avg resolution time, CSAT score; 7d / 30d / 90d range selector |
+| **Teams** | Create and manage agent teams; color-coded team list; add/remove members via bottom sheet |
+| **NPS** | Net Promoter Score dashboard: score gauge, promoter/passive/detractor breakdown bars, full response list |
+| **Macros** | Create and manage macro templates (name, description, action list); apply macros from ticket detail |
+
+---
+
+## What's New (Enterprise Feature Pack)
+
+The following features were added as part of the enterprise upgrade across backend, web, and mobile:
+
+| # | Feature | Description |
+|---|---|---|
+| F1 | Two-Factor Authentication | TOTP-based 2FA setup, QR code, enable/disable in profile |
+| F2 | Canned Responses | Pre-written reply templates, insert from ticket reply box |
+| F3 | SLA Escalation Rules | Configurable escalation on SLA breach |
+| F4 | Ticket Templates | Department-specific ticket templates |
+| F5 | Knowledge Base | Public article browser + admin category/article management |
+| F6 | Custom Fields | Dynamic per-ticket fields (text, select, checkbox, date) |
+| F7 | Webhooks | Outbound event webhooks with HMAC secret |
+| F8 | API Keys | Named API keys for integrations |
+| F9 | Audit Log | Immutable log of all admin/agent actions |
+| F10 | Advanced Analytics | Charts for ticket volume, resolution times, agent stats |
+| F11 | Ticket Watchers | Subscribe extra agents/admins to ticket updates |
+| F12 | Ticket Tasks | Checklist sub-tasks per ticket |
+| F13 | Saved Views | Named filter presets for agent ticket queues |
+| F14 | Ticket Merging | Merge a duplicate ticket into a primary ticket |
+| F15 | Parent–Child Tickets | Link sub-tickets to a parent; navigate hierarchy |
+| F16 | Ticket Snooze | Snooze a ticket to a future date/time with preset or custom picker |
+| F17 | Agent Availability | Online/Busy/Offline status with per-channel (email, chat, phone) toggles |
+| F18 | Macros | Apply bulk actions (status, priority, note, assignment) in one click |
+| F19 | Business Hours | Configure support hours per day of week with timezone support |
+| F20 | Round Robin Assignment | Auto-assign incoming tickets in round-robin per department |
+| — | Agent Performance | Admin dashboard for per-agent resolution, response, and CSAT metrics |
+| — | Teams | Group agents into teams; assign tickets to teams |
+| — | NPS | Net Promoter Score survey results and breakdown |
 
 ---
 
@@ -156,7 +198,7 @@ helpdesk-mobile/
 │   │   ├── router/
 │   │   │   └── app_router.dart          # go_router config, role-based redirects
 │   │   └── theme/
-│   │       ├── app_colors.dart
+│   │       ├── app_colors.dart          # Light + dark palette; AppColors.of(context)
 │   │       └── app_theme.dart
 │   │
 │   └── features/
@@ -176,7 +218,7 @@ helpdesk-mobile/
 │       │   ├── shell/agent_shell.dart
 │       │   ├── dashboard/agent_dashboard_screen.dart
 │       │   ├── queue/ticket_queue_screen.dart
-│       │   ├── tickets/agent_ticket_detail_screen.dart
+│       │   ├── tickets/agent_ticket_detail_screen.dart  # 8-tab detail view
 │       │   └── saved_views/saved_views_screen.dart
 │       ├── admin/
 │       │   ├── shell/admin_shell.dart
@@ -198,7 +240,13 @@ helpdesk-mobile/
 │       │   ├── issues/issues_screen.dart
 │       │   ├── audit_log/audit_log_screen.dart
 │       │   ├── analytics/analytics_screen.dart
-│       │   └── settings/settings_screen.dart
+│       │   ├── settings/settings_screen.dart
+│       │   ├── business_hours/business_hours_screen.dart   # NEW
+│       │   ├── round_robin/round_robin_screen.dart         # NEW
+│       │   ├── agent_performance/agent_performance_screen.dart  # NEW
+│       │   ├── teams/teams_screen.dart                     # NEW
+│       │   ├── nps/nps_screen.dart                         # NEW
+│       │   └── macros/macros_screen.dart                   # NEW
 │       └── shared/
 │           ├── profile/profile_screen.dart
 │           ├── notifications/notifications_screen.dart
@@ -306,7 +354,7 @@ Home · My Tickets · Submit Ticket · Knowledge Base · Notifications · Profil
 Dashboard · Ticket Queue · Saved Views · Notifications · Profile
 
 ### Admin Drawer
-Overview · Tickets · Users · Departments · SLA Policies · Canned Responses · Analytics · Knowledge Base · Audit Log · Custom Fields · SLA Rules · Templates · Webhooks · API Keys · Help Topics · Email Inboxes · Organizations · Issues · Settings
+Overview · Tickets · Users · Departments · SLA Policies · SLA Rules · Canned Responses · Templates · Analytics · Knowledge Base · Audit Log · Custom Fields · Webhooks · API Keys · Help Topics · Email Inboxes · Organizations · Issues · Settings · **Business Hours** · **Round Robin** · **Agent Performance** · **Teams** · **NPS** · **Macros**
 
 ---
 
@@ -334,7 +382,7 @@ Overview · Tickets · Users · Departments · SLA Policies · Canned Responses 
 |---|---|
 | `/agent` | Dashboard with KPI cards |
 | `/agent/queue` | Ticket queue with bulk actions |
-| `/agent/tickets/:id` | Full ticket detail: replies, notes, watchers, tasks, merge |
+| `/agent/tickets/:id` | Full ticket detail: replies, notes, watchers, tasks, macros, sub-tickets, merge, snooze |
 | `/agent/saved-views` | Manage named filter presets |
 
 ### Admin
@@ -359,6 +407,12 @@ Overview · Tickets · Users · Departments · SLA Policies · Canned Responses 
 | `/admin/audit` | Audit log viewer |
 | `/admin/analytics` | Charts and performance metrics |
 | `/admin/settings` | System settings |
+| `/admin/business-hours` | Business hours schedule per day of week |
+| `/admin/round-robin` | Round-robin routing global toggle + per-department switches |
+| `/admin/agent-performance` | Agent KPI table with time-range selector |
+| `/admin/teams` | Team management with member list |
+| `/admin/nps` | NPS score, promoter/passive/detractor breakdown, response list |
+| `/admin/macros` | Macro library (CRUD) |
 
 ### Shared
 | Route | Screen |
@@ -410,6 +464,13 @@ class _MyScreenState extends ConsumerState<MyScreen> {
     setState(() { _items = res.data['data'] ?? []; _loading = false; });
   }
 }
+```
+
+### Theme
+`AppColors.of(context)` resolves light or dark palette colors at runtime:
+```dart
+final colors = AppColors.of(context);
+Container(color: colors.background, child: Text('Hello', style: TextStyle(color: colors.textPrimary)));
 ```
 
 ---

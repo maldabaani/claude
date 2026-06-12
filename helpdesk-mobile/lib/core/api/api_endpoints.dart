@@ -32,6 +32,7 @@ class ApiEndpoints {
   static String ticketTask(String ticketId, String taskId) => '/tickets/$ticketId/tasks/$taskId';
   static String ticketTaskToggle(String ticketId, String taskId) => '/tickets/$ticketId/tasks/$taskId/toggle';
   static String ticketMerge(String id) => '/tickets/$id/merge';
+  static String ticketSplit(String id) => '/tickets/$id/split';
   static String ticketDueDate(String id) => '/tickets/$id/due-date';
   static const String ticketsBulk = '/tickets/bulk';
 
@@ -167,4 +168,9 @@ class ApiEndpoints {
   static const String npsScore = '/nps/score';
   static const String npsResponses = '/nps/responses';
   static String npsTicket(String ticketId) => '/nps/tickets/$ticketId';
+
+  // Automation Rules
+  static const String automationRules = '/automation-rules';
+  static String automationRule(String id) => '/automation-rules/$id';
+  static String automationRuleToggle(String id) => '/automation-rules/$id/toggle';
 }

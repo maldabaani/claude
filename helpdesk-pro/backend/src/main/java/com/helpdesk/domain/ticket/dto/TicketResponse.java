@@ -35,5 +35,7 @@ public record TicketResponse(
         String preSnoozeStatus,
         java.util.UUID teamId,
         String teamName,
-        String teamColor
+        String teamColor,
+        java.util.UUID splitFromId,
+        String splitFromNumber
 ) {}

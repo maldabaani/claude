@@ -48,6 +48,7 @@ import '../../features/customer/shell/customer_shell.dart';
 import '../../features/agent/shell/agent_shell.dart';
 import '../../features/admin/shell/admin_shell.dart';
 import '../../features/admin/agent_performance/agent_performance_screen.dart';
+import '../../features/admin/automation_rules/automation_rules_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -131,6 +132,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/macros', builder: (_, __) => const MacrosScreen()),
           GoRoute(path: '/admin/teams', builder: (_, __) => const TeamsScreen()),
           GoRoute(path: '/admin/nps', builder: (_, __) => const NpsScreen()),
+          GoRoute(path: '/admin/automation-rules', builder: (_, __) => const AutomationRulesScreen()),
           GoRoute(path: '/admin/api-keys', builder: (_, __) => const ApiKeysScreen()),
           GoRoute(path: '/admin/help-topics', builder: (_, __) => const HelpTopicsScreen()),
           GoRoute(path: '/admin/email-inboxes', builder: (_, __) => const EmailInboxesScreen()),
@@ -140,7 +142,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/business-hours', builder: (_, __) => const BusinessHoursScreen()),
           GoRoute(path: '/admin/round-robin', builder: (_, __) => const RoundRobinScreen()),
           GoRoute(path: '/admin/agent-performance', builder: (_, __) => const AgentPerformanceScreen()),
-                    GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/admin/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/admin/customers/:id', builder: (_, s) => CustomerProfileScreen(userId: s.pathParameters['id']!)),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
