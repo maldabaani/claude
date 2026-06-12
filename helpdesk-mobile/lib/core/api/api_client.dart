@@ -10,7 +10,7 @@ class ApiClient {
 
   /// Protected constructor for subclassing in tests.
   @visibleForTesting
-  ApiClient._forTest();
+  ApiClient.forTest();
 
   late final Dio _dio;
 
