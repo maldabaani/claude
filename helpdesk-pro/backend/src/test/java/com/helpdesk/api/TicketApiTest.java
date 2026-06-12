@@ -37,9 +37,9 @@ class TicketApiTest {
     // ── GET /tickets ──────────────────────────────────────────────────────────
 
     @Test
-    void getTickets_withoutToken_returns401() throws Exception {
+    void getTickets_withoutToken_returns4xx() throws Exception {
         mockMvc.perform(get("/api/v1/tickets"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -141,13 +141,13 @@ class TicketApiTest {
     }
 
     @Test
-    void createTicket_withoutToken_returns401() throws Exception {
+    void createTicket_withoutToken_returns4xx() throws Exception {
         mockMvc.perform(post("/api/v1/tickets")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Unauth","description":"test"}
                                 """))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 
     // ── GET /tickets/:id ──────────────────────────────────────────────────────

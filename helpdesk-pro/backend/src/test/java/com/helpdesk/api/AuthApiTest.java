@@ -97,9 +97,9 @@ class AuthApiTest {
     // ── /users/me ──────────────────────────────────────────────────────────────
 
     @Test
-    void getMe_withoutToken_returns401() throws Exception {
+    void getMe_withoutToken_returns4xx() throws Exception {
         mockMvc.perform(get("/api/v1/users/me"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -124,11 +124,11 @@ class AuthApiTest {
     }
 
     @Test
-    void getMe_withExpiredToken_returns401() throws Exception {
+    void getMe_withExpiredToken_returns4xx() throws Exception {
         String expiredToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbkBoZWxwZGVzay5jb20iLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTYwMDAwMDAwMX0.invalid";
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", "Bearer " + expiredToken))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

@@ -105,8 +105,7 @@ class TicketServiceTest {
         when(systemSettingRepository.findById(any())).thenReturn(Optional.empty());
         when(roundRobinService.getNextAgent(any())).thenReturn(Optional.empty());
         when(ticketRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findById(customer.getId())).thenReturn(Optional.of(customer));
-        when(userRepository.findById(argThat(id -> !id.equals(customer.getId())))).thenReturn(Optional.empty());
+        when(userRepository.findById(any())).thenReturn(Optional.of(customer));
 
         var request = new CreateTicketRequest("Title", "Desc", null, null, null, null, null);
         ticketService.create(request, customer);

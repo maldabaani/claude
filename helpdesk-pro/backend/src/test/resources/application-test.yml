@@ -1,25 +1,46 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:helpdesk_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;NON_KEYWORDS=VALUE
+    url: jdbc:h2:mem:helpdesk_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;NON_KEYWORDS=VALUE,KEY
     driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    defer-datasource-initialization: true
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         format_sql: false
+  sql:
+    init:
+      mode: always
   flyway:
     enabled: false
+  mail:
+    host: localhost
+    port: 25
+    username:
+    password:
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
 
 app:
   jwt:
     secret: dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW11c3QtYmUtbG9uZy1lbm91Z2g=
     expiration: 3600000
+    access-expiry: 3600000
     refresh-expiration: 86400000
+    refresh-expiry: 86400000
+  frontend-url: http://localhost:4200
+  upload:
+    path: /tmp/helpdesk-test-uploads
+  encryption:
+    key: test-encryption-key-32-chars-lng!
+  sla:
+    check-interval-ms: 999999999
 
 logging:
   level:
