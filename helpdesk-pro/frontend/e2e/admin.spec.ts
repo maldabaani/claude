@@ -23,7 +23,7 @@ test.describe('Admin Panel', () => {
 
     // KPI cards appear once the analytics data loads
     // The component uses `*ngIf="data()"` so we wait for any stat card content
-    await expect(page.locator('text=Total Tickets').or(page.locator('text=Resolved'))).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Total Tickets').or(page.locator('text=Resolved'))).first().toBeVisible({ timeout: 15000 });
   });
 
   // ── Automation Rules ──────────────────────────────────────────────────────
@@ -43,7 +43,9 @@ test.describe('Admin Panel', () => {
   test('Admin can create an automation rule', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/admin/automation-rules');
-    await expect(page.locator('app-skeleton-loader, text=No automation rules defined, table')).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('app-skeleton-loader').or(page.locator('text=No automation rules defined')).or(page.locator('table'))
+    ).first().toBeVisible({ timeout: 15000 });
 
     // Click the "Add Rule" button to reveal the create form
     await page.getByRole('button', { name: /Add Rule/i }).click();
@@ -77,7 +79,9 @@ test.describe('Admin Panel', () => {
     await page.goto('/admin/automation-rules');
 
     // First create a rule so we have something to delete
-    await expect(page.locator('text=No automation rules defined, table, app-skeleton-loader').first()).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('app-skeleton-loader').or(page.locator('text=No automation rules defined')).or(page.locator('table'))
+    ).first().toBeVisible({ timeout: 15000 });
 
     await page.getByRole('button', { name: /Add Rule/i }).click();
     await expect(page.getByText('New Automation Rule')).toBeVisible({ timeout: 5000 });
