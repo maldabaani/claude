@@ -118,9 +118,9 @@ class ApiEndpoints {
   // Tags
   static const String tags = '/tags';
   static String tagSearch = '/tags/search';
-  static String tag(String id) => '/tags/\$id';
-  static String tagMerge(String id) => '/tags/\$id/merge';
-  static String ticketTags(String id) => '/tickets/\$id/tags';
+  static String tag(String id) => '/tags/$id';
+  static String tagMerge(String id) => '/tags/$id/merge';
+  static String ticketTags(String id) => '/tickets/$id/tags';
 
   // Ticket Links
   static String ticketLinks(String id) => '/tickets/$id/links';

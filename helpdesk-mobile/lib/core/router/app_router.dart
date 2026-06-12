@@ -136,6 +136,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/admin', builder: (_, __) => const AdminOverviewScreen()),
           GoRoute(path: '/admin/tickets', builder: (_, __) => const AdminTicketsScreen()),
+          GoRoute(path: '/admin/tickets/:id', builder: (_, s) => AgentTicketDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/admin/users', builder: (_, __) => const UsersScreen()),
           GoRoute(path: '/admin/departments', builder: (_, __) => const DepartmentsScreen()),
           GoRoute(path: '/admin/sla', builder: (_, __) => const SlaPoliciesScreen()),
