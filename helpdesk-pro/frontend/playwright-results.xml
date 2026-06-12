@@ -1,0 +1,142 @@
+<testsuites id="" name="" tests="32" failures="0" skipped="32" errors="0" time="0.17975599999999997">
+<testsuite name="admin.spec.ts" timestamp="2026-06-12T19:08:35.735Z" hostname="" tests="8" failures="0" skipped="8" time="0" errors="0">
+<testcase name="Admin Panel › Admin can view the Users list" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can view the Analytics page" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can view the Automation Rules page" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can create an automation rule" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can toggle an automation rule active/inactive" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can delete an automation rule" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can view the Departments page" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Admin Panel › Admin can view the SLA Policies page" classname="admin.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="auth.spec.ts" timestamp="2026-06-12T19:08:35.735Z" hostname="" tests="9" failures="0" skipped="9" time="0" errors="0">
+<testcase name="Authentication › Admin login redirects to /admin" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Agent login redirects to /agent" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Customer login redirects to /customer" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Wrong password shows error message" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Unauthenticated access to /admin redirects to /login" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Unauthenticated access to /customer redirects to /login" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Customer accessing /admin is redirected to /customer" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Admin accessing /customer stays in /customer (admin has CUSTOMER role access)" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication › Logout redirects to /login and clears token" classname="auth.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="customer.spec.ts" timestamp="2026-06-12T19:08:35.735Z" hostname="" tests="7" failures="0" skipped="7" time="0" errors="0">
+<testcase name="Customer Portal › Customer home screen loads with welcome hero" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer home shows recent-tickets section" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer can navigate to Knowledge Base" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer can navigate to Notifications" classname="customer.spec.ts">
+<properties>
+<property name="skip" value="">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer profile page loads" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer profile shows account settings sections" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Customer Portal › Customer can navigate to My Tickets via sidebar" classname="customer.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="tickets.spec.ts" timestamp="2026-06-12T19:08:35.735Z" hostname="" tests="8" failures="0" skipped="8" time="0" errors="0">
+<testcase name="Ticket Management › Admin can view the All Tickets list" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Admin can click a ticket row and see its detail page" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Admin ticket detail stays inside the admin shell (sidebar has admin nav)" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Customer sees My Tickets page" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Customer can submit a new ticket" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Customer submitted ticket appears in their ticket list" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Customer can filter tickets by status" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Ticket Management › Admin can search for tickets using the header search bar" classname="tickets.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>

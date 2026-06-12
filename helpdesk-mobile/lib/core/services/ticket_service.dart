@@ -4,7 +4,12 @@ import '../models/ticket_model.dart';
 import '../models/comment_model.dart';
 
 class TicketService {
-  final _api = ApiClient();
+  final ApiClient _api;
+
+  TicketService() : _api = ApiClient();
+
+  /// Constructor for testing — allows injecting a mock [ApiClient].
+  TicketService.withClient(this._api);
 
   Future<Map<String, dynamic>> getTickets({
     int page = 0,
