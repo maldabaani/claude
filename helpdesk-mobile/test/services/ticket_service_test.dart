@@ -22,7 +22,7 @@ class _FakeApiClient extends ApiClient {
       getHandler;
   Map<String, dynamic> Function(String path, dynamic data)? postHandler;
 
-  _FakeApiClient() : super._forTest();
+  _FakeApiClient() : super.forTest();
 
   @override
   Future<Response> get(String path, {Map<String, dynamic>? queryParams}) async {

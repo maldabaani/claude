@@ -3,6 +3,7 @@
 // We test a replicated minimal form that mirrors the production LoginScreen
 // widgets and validation logic. This avoids go_router and real network calls.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -109,10 +110,10 @@ void main() {
   });
 
   testWidgets('shows loading indicator during login', (tester) async {
-    // onSubmit that never completes keeps the loading state visible
-    final completer = Future<void>.delayed(const Duration(seconds: 60));
+    // Use a Completer so we never create a pending Timer (Future.delayed would).
+    final completer = Completer<void>();
 
-    await tester.pumpWidget(wrap(onSubmit: (_, __) => completer));
+    await tester.pumpWidget(wrap(onSubmit: (_, __) => completer.future));
 
     await tester.enterText(find.byKey(const Key('email_field')), 'user@test.com');
     await tester.enterText(find.byKey(const Key('password_field')), 'password123');
