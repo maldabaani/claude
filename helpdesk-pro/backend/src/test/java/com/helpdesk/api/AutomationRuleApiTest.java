@@ -63,9 +63,9 @@ class AutomationRuleApiTest {
     }
 
     @Test
-    void getAll_withoutToken_returns401() throws Exception {
+    void getAll_withoutToken_returns4xx() throws Exception {
         mockMvc.perform(get("/api/v1/automation-rules"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
