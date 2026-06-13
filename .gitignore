@@ -1,3 +1,10 @@
 .claude/
 javac.*.args
 .vscode/
+
+# Flutter build artifacts
+helpdesk-mobile/build/
+helpdesk-mobile/.dart_tool/
+helpdesk-mobile/.flutter-plugins
+helpdesk-mobile/.flutter-plugins-dependencies
+helpdesk-mobile/.packages
