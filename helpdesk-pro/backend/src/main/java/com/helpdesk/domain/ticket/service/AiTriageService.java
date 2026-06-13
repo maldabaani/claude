@@ -25,7 +25,7 @@ public class AiTriageService {
     private final ObjectMapper objectMapper;
 
     public AiTriageService(
-            @Value("${anthropic.api.key}") String apiKey,
+            @Value("${anthropic.api.key:}") String apiKey,
             ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.restClient = RestClient.builder()
