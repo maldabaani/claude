@@ -169,6 +169,9 @@ class ApiEndpoints {
   static const String npsResponses = '/nps/responses';
   static String npsTicket(String ticketId) => '/nps/tickets/$ticketId';
 
+  // AI Triage
+  static String ticketAiSuggestions(String id) => '/tickets/$id/ai-suggestions';
+
   // Automation Rules
   static const String automationRules = '/automation-rules';
   static String automationRule(String id) => '/automation-rules/$id';
