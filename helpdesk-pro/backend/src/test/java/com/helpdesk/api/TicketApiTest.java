@@ -244,6 +244,44 @@ class TicketApiTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ── AI Triage suggestions (F-SmartTriage) ────────────────────────────────
+
+    @Test
+    void aiSuggestions_asAgent_returns200WithFallback() throws Exception {
+        // Anthropic API key is a test placeholder so AiTriageService returns fallback
+        String ticketId = createTicket(adminToken, "Cannot login to my account", "Error 401 every time I try");
+
+        MvcResult result = mockMvc.perform(post("/api/v1/tickets/" + ticketId + "/ai-suggestions")
+                        .header("Authorization", "Bearer " + agentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.category").isString())
+                .andExpect(jsonPath("$.data.priority").isString())
+                .andExpect(jsonPath("$.data.suggestedResponse").isString())
+                .andReturn();
+
+        var data = objectMapper.readTree(result.getResponse().getContentAsString()).at("/data");
+        // Fallback values are expected when API key is invalid
+        assertThat(data.at("/category").asText()).isNotBlank();
+        assertThat(data.at("/priority").asText()).isNotBlank();
+        assertThat(data.at("/suggestedResponse").asText()).isNotBlank();
+    }
+
+    @Test
+    void aiSuggestions_asCustomer_returns403() throws Exception {
+        String ticketId = createTicket(adminToken, "Test ticket", "Description");
+
+        mockMvc.perform(post("/api/v1/tickets/" + ticketId + "/ai-suggestions")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aiSuggestions_withUnknownTicketId_returns404() throws Exception {
+        mockMvc.perform(post("/api/v1/tickets/00000000-0000-0000-0000-000000000000/ai-suggestions")
+                        .header("Authorization", "Bearer " + agentToken))
+                .andExpect(status().isNotFound());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String createTicket(String token, String title, String description) throws Exception {
