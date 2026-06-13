@@ -102,4 +102,10 @@ export class TicketService {
   getPresence(ticketId: string): Observable<{agentId: string; agentName: string}[]> {
     return this.http.get<ApiResponse<{agentId: string; agentName: string}[]>>(`${this.base}/${ticketId}/presence`).pipe(map(r => r.data));
   }
+
+  getAiSuggestions(ticketId: string): Observable<{category: string; priority: string; suggestedResponse: string}> {
+    return this.http.post<ApiResponse<{category: string; priority: string; suggestedResponse: string}>>(
+      `${this.base}/${ticketId}/ai-suggestions`, {}
+    ).pipe(map(r => r.data));
+  }
 }
