@@ -8,3 +8,15 @@ helpdesk-mobile/.dart_tool/
 helpdesk-mobile/.flutter-plugins
 helpdesk-mobile/.flutter-plugins-dependencies
 helpdesk-mobile/.packages
+
+# Angular / Playwright test artifacts
+helpdesk-pro/frontend/.angular/
+helpdesk-pro/frontend/dist/
+helpdesk-pro/frontend/test-results/
+helpdesk-pro/frontend/**/.last-run.json
+helpdesk-pro/frontend/**/error-context.md
+helpdesk-pro/frontend/**/test-failed-*.png
+helpdesk-pro/frontend/**/video.webm
+
+# Maven target
+helpdesk-pro/backend/target/
