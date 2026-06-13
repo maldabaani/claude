@@ -634,6 +634,7 @@ class _AgentTicketDetailScreenState extends ConsumerState<AgentTicketDetailScree
                         children: [
                           _DetailsTab(ticket: _ticket!, onAssignToMe: _assignToMe, onStatusChange: _updateStatus, managedTags: _ticketManagedTags, onTagsChanged: (tags) { setState(() => _ticketManagedTags = tags); }),
                           _CommentsTab(
+                            ticketId: widget.id,
                             comments: _comments,
                             commentController: _commentController,
                             internalNote: _internalNote,
@@ -1444,7 +1445,8 @@ class _MergeDialogState extends State<_MergeDialog> {
 
 // ─── Comments Tab ─────────────────────────────────────────────────────────────
 
-class _CommentsTab extends StatelessWidget {
+class _CommentsTab extends StatefulWidget {
+  final String ticketId;
   final List<dynamic> comments;
   final TextEditingController commentController;
   final bool internalNote;
@@ -1455,6 +1457,7 @@ class _CommentsTab extends StatelessWidget {
   final VoidCallback? onDiscardDraft;
 
   const _CommentsTab({
+    required this.ticketId,
     required this.comments,
     required this.commentController,
     required this.internalNote,
@@ -1466,11 +1469,55 @@ class _CommentsTab extends StatelessWidget {
   });
 
   @override
+  State<_CommentsTab> createState() => _CommentsTabState();
+}
+
+class _CommentsTabState extends State<_CommentsTab> {
+  final _api = ApiClient();
+  bool _aiLoading = false;
+  String _aiError = '';
+  Map<String, dynamic>? _aiSuggestion;
+
+  // Editable fields shown in the suggestion card
+  final _aiCategoryCtrl = TextEditingController();
+  final _aiPriorityCtrl = TextEditingController();
+  final _aiResponseCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _aiCategoryCtrl.dispose();
+    _aiPriorityCtrl.dispose();
+    _aiResponseCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requestAiSuggestion() async {
+    setState(() { _aiLoading = true; _aiError = ''; _aiSuggestion = null; });
+    try {
+      final res = await _api.post(ApiEndpoints.ticketAiSuggestions(widget.ticketId), data: {});
+      final data = res.data['data'] as Map<String, dynamic>;
+      _aiCategoryCtrl.text = data['category'] ?? '';
+      _aiPriorityCtrl.text = data['priority'] ?? '';
+      _aiResponseCtrl.text = data['suggestedResponse'] ?? '';
+      if (mounted) setState(() { _aiSuggestion = data; _aiLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _aiError = 'Failed to get AI suggestion'; _aiLoading = false; });
+    }
+  }
+
+  void _applyAiSuggestion() {
+    widget.commentController.text = _aiResponseCtrl.text;
+    setState(() => _aiSuggestion = null);
+  }
+
+  void _dismissAiSuggestion() => setState(() { _aiSuggestion = null; _aiError = ''; });
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Expanded(
-          child: comments.isEmpty
+          child: widget.comments.isEmpty
               ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.chat_bubble_outline, size: 40, color: AppColors.textTertiary),
                   SizedBox(height: 8),
@@ -1478,38 +1525,160 @@ class _CommentsTab extends StatelessWidget {
                 ]))
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: comments.length,
+                  itemCount: widget.comments.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _CommentBubble(comment: comments[i]),
+                  itemBuilder: (_, i) => _CommentBubble(comment: widget.comments[i]),
                 ),
         ),
+
+        // ── AI Suggestion Card ──────────────────────────────────────────────
+        if (_aiSuggestion != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F3FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('AI Suggestion — review and edit before applying',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF7C3AED))),
+                ),
+                GestureDetector(
+                  onTap: _dismissAiSuggestion,
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF7C3AED)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Category', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: _aiCategoryCtrl,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                    ),
+                  ),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Priority', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: _aiPriorityCtrl,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                    ),
+                  ),
+                ])),
+              ]),
+              const SizedBox(height: 10),
+              const Text('Suggested Response', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _aiResponseCtrl,
+                maxLines: 4,
+                minLines: 2,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                TextButton(
+                  onPressed: _dismissAiSuggestion,
+                  child: const Text('Dismiss', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _applyAiSuggestion,
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Apply to Reply'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+
+        if (_aiError.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            child: Text(_aiError, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          ),
+
+        // ── Reply Box ───────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
           decoration: const BoxDecoration(color: AppColors.surface, border: Border(top: BorderSide(color: AppColors.border))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               GestureDetector(
-                onTap: () => onToggleInternal(!internalNote),
+                onTap: () => widget.onToggleInternal(!widget.internalNote),
                 child: Row(children: [
-                  Icon(internalNote ? Icons.lock_outlined : Icons.public_outlined, size: 16, color: internalNote ? AppColors.warning : AppColors.textSecondary),
+                  Icon(widget.internalNote ? Icons.lock_outlined : Icons.public_outlined, size: 16, color: widget.internalNote ? AppColors.warning : AppColors.textSecondary),
                   const SizedBox(width: 4),
-                  Text(internalNote ? 'Internal Note' : 'Public Reply',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: internalNote ? AppColors.warning : AppColors.textSecondary)),
+                  Text(widget.internalNote ? 'Internal Note' : 'Public Reply',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: widget.internalNote ? AppColors.warning : AppColors.textSecondary)),
                 ]),
               ),
               const SizedBox(width: 8),
-              Transform.scale(scale: 0.8, child: Switch(value: internalNote, onChanged: onToggleInternal, activeColor: AppColors.warning)),
+              Transform.scale(scale: 0.8, child: Switch(value: widget.internalNote, onChanged: widget.onToggleInternal, activeColor: AppColors.warning)),
+              const Spacer(),
+              // AI Suggest button
+              _aiLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3AED)))
+                  : TextButton.icon(
+                      onPressed: _requestAiSuggestion,
+                      icon: const Icon(Icons.auto_awesome, size: 15, color: Color(0xFF7C3AED)),
+                      label: const Text('AI Suggest', style: TextStyle(fontSize: 12, color: Color(0xFF7C3AED), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF7C3AED), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
             ]),
-            if (draftSavedAt != null)
+            if (widget.draftSavedAt != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(children: [
                   const Icon(Icons.save_outlined, size: 12, color: AppColors.textTertiary),
                   const SizedBox(width: 4),
-                  Text('Draft saved', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                  const Text('Draft saved', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: onDiscardDraft,
+                    onTap: widget.onDiscardDraft,
                     child: const Text('Discard', style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600)),
                   ),
                 ]),
@@ -1517,12 +1686,12 @@ class _CommentsTab extends StatelessWidget {
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
                 child: TextField(
-                  controller: commentController,
+                  controller: widget.commentController,
                   decoration: InputDecoration(
-                    hintText: internalNote ? 'Add internal note...' : 'Reply to customer...',
+                    hintText: widget.internalNote ? 'Add internal note...' : 'Reply to customer...',
                     isDense: true,
                     filled: true,
-                    fillColor: internalNote ? AppColors.warningBg : AppColors.surfaceVariant,
+                    fillColor: widget.internalNote ? AppColors.warningBg : AppColors.surfaceVariant,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                   maxLines: 4,
@@ -1534,11 +1703,11 @@ class _CommentsTab extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  onTap: submitting ? null : onSend,
+                  onTap: widget.submitting ? null : widget.onSend,
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.all(10),
-                    child: submitting
+                    child: widget.submitting
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.send, color: Colors.white, size: 20),
                   ),
