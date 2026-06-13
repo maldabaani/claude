@@ -265,13 +265,73 @@ import { environment } from '../../../../environments/environment';
                 </div>
               </div>
 
+              <!-- AI Suggestion Panel -->
+              <div *ngIf="aiSuggestion()" class="mt-3 rounded-xl border border-indigo-200 overflow-hidden" style="background:#F5F3FF">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #DDD6FE">
+                  <span class="text-xs font-bold text-indigo-700">✨ AI Suggestion — review and edit before applying</span>
+                  <button (click)="dismissAiSuggestion()" class="text-indigo-300 hover:text-indigo-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4 space-y-3">
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+                      <select [(ngModel)]="aiSuggestCategory"
+                              class="w-full text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-indigo-400">
+                        <option value="technical">Technical</option>
+                        <option value="billing">Billing</option>
+                        <option value="account">Account</option>
+                        <option value="feature_request">Feature Request</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">Priority</label>
+                      <p-select [options]="priorityOptions" [(ngModel)]="aiSuggestPriority"
+                                optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Suggested Response</label>
+                    <textarea [(ngModel)]="aiSuggestResponse" rows="3"
+                              class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-indigo-400"
+                              style="font-family:inherit;resize:vertical"></textarea>
+                  </div>
+                  <div class="flex items-center justify-end gap-2">
+                    <button (click)="dismissAiSuggestion()"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                      Dismiss
+                    </button>
+                    <button (click)="applyAiSuggestion()"
+                            class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
+                            style="background:linear-gradient(135deg,#6366F1,#4F46E5)">
+                      <i class="pi pi-check" style="font-size:11px"></i>
+                      Apply to Ticket
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI error -->
+              <div *ngIf="aiError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ aiError() }}
+              </div>
+
               <div class="flex items-center justify-between mt-3">
-                <div>
+                <div class="flex items-center gap-2">
                   <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display:none">
                   <button type="button" (click)="fileInput.click()"
                           class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                     <i class="pi pi-paperclip" style="font-size:14px"></i>
                     Attach
+                  </button>
+                  <button type="button" (click)="requestAiSuggestion()"
+                          [disabled]="aiLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50">
+                    <i [class]="aiLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-sparkles'" style="font-size:14px"></i>
+                    {{ aiLoading() ? 'Thinking…' : 'AI Suggest' }}
                   </button>
                 </div>
                 <button (click)="sendReply()"
@@ -1124,6 +1184,14 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   comments = signal<Comment[]>([]);
   agents = signal<User[]>([]);
   departments = signal<Department[]>([]);
+
+  // AI triage suggestion state
+  aiLoading = signal(false);
+  aiError = signal('');
+  aiSuggestion = signal<{category: string; priority: string; suggestedResponse: string} | null>(null);
+  aiSuggestCategory = '';
+  aiSuggestPriority = '';
+  aiSuggestResponse = '';
   attachments = signal<Attachment[]>([]);
   pendingFiles = signal<File[]>([]);
   loading = signal(true);
@@ -2056,5 +2124,50 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       },
       error: () => { this.settingParent = false; },
     });
+  }
+
+  // ── AI Triage ──────────────────────────────────────────────────────────────
+
+  requestAiSuggestion(): void {
+    const id = this.ticket()?.id;
+    if (!id) return;
+    this.aiLoading.set(true);
+    this.aiError.set('');
+    this.aiSuggestion.set(null);
+    this.ticketService.getAiSuggestions(id).subscribe({
+      next: (s) => {
+        this.aiSuggestCategory = s.category;
+        this.aiSuggestPriority = s.priority.toUpperCase();
+        this.aiSuggestResponse = s.suggestedResponse;
+        this.aiSuggestion.set(s);
+        this.aiLoading.set(false);
+      },
+      error: () => {
+        this.aiError.set('AI suggestion unavailable');
+        this.aiLoading.set(false);
+      },
+    });
+  }
+
+  applyAiSuggestion(): void {
+    const id = this.ticket()?.id;
+    if (!id || !this.aiSuggestion()) return;
+    // Pre-fill reply textarea — agent must still click Send Reply
+    this.replyControl.setValue(this.aiSuggestResponse);
+    // Update ticket priority and category (explicit agent action)
+    this.ticketService.updateTicket(id, {
+      priority: this.aiSuggestPriority as any,
+      category: this.aiSuggestCategory,
+    }).subscribe({
+      next: (updated) => { this.ticket.set(updated); },
+      error: () => { /* reply textarea still pre-filled even if ticket update fails */ },
+    });
+    this.aiSuggestion.set(null);
+    this.aiError.set('');
+  }
+
+  dismissAiSuggestion(): void {
+    this.aiSuggestion.set(null);
+    this.aiError.set('');
   }
 }

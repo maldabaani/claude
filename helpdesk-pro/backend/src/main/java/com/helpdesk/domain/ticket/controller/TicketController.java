@@ -7,7 +7,9 @@ import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
+import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
+import com.helpdesk.domain.ticket.service.AiTriageService;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.ticket.entity.TicketWatcher;
@@ -44,6 +46,7 @@ public class TicketController {
     private final PresenceService presenceService;
     private final TicketWatcherRepository ticketWatcherRepository;
     private final TagService tagService;
+    private final AiTriageService aiTriageService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -293,5 +296,15 @@ public class TicketController {
     @GetMapping("/{id}/tags")
     public ResponseEntity<ApiResponse<List<TagResponse>>> getTicketTags(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(tagService.getTicketTags(id)));
+    }
+
+    // ── AI Triage ─────────────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/ai-suggestions")
+    @PreAuthorize("hasAnyRole('AGENT', 'TEAM_LEAD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TriageSuggestion>> getAiSuggestions(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        TriageSuggestion suggestion = aiTriageService.suggest(ticket.title(), ticket.description());
+        return ResponseEntity.ok(ApiResponse.ok(suggestion));
     }
 }
