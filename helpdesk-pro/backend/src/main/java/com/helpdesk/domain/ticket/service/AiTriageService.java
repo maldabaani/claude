@@ -2,6 +2,11 @@ package com.helpdesk.domain.ticket.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.helpdesk.domain.ticket.dto.DuplicateCandidate;
+import com.helpdesk.domain.ticket.dto.DuplicateDetectionResult;
+import com.helpdesk.domain.ticket.dto.SentimentResult;
+import com.helpdesk.domain.ticket.dto.SmartReply;
+import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,4 +94,238 @@ public class AiTriageService {
                 s.path("suggested_response").asText(FALLBACK.suggestedResponse())
         );
     }
+
+    public TicketSummary summarize(String title, String description, List<String> commentBodies) {
+        try {
+            StringBuilder commentsSection = new StringBuilder();
+            if (commentBodies != null && !commentBodies.isEmpty()) {
+                commentsSection.append("\nComments:\n");
+                for (int i = 0; i < commentBodies.size(); i++) {
+                    commentsSection.append("- ").append(commentBodies.get(i)).append("\n");
+                }
+            }
+
+            String prompt = """
+                    You are a helpdesk assistant. Summarize the following support ticket in 3-4 concise sentences.                     Respond with ONLY valid JSON \u2014 no markdown, no explanation, no code fences.
+
+                    Required JSON format:
+                    {"summary":"<3-4 sentence concise summary of the ticket and its current status>"}
+
+                    Ticket title: %s
+                    Ticket description: %s%s
+                    """.formatted(
+                    title != null ? title : "(no title)",
+                    description != null ? description : "(no description)",
+                    commentsSection
+            );
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 512,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            return parseSummaryResponse(response);
+        } catch (Exception e) {
+            log.warn("AI summarization failed for ticket \'{}\': {}", title, e.getMessage());
+            return new TicketSummary("Unable to generate summary.");
+        }
+    }
+
+    private TicketSummary parseSummaryResponse(JsonNode response) throws Exception {
+        String text = response.at("/content/0/text").asText().strip();
+        if (text.startsWith("```")) {
+            text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+        }
+        JsonNode s = objectMapper.readTree(text);
+        return new TicketSummary(s.path("summary").asText("Unable to generate summary."));
+    }
+
+    public SentimentResult analyzeSentiment(String title, String description, String latestComment) {
+        try {
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("You are a helpdesk sentiment analysis assistant. Analyze the customer tone/emotion from the following support ticket and respond with ONLY valid JSON — no markdown, no explanation, no code fences.\n\n");
+            prompt.append("Required JSON format:\n");
+            prompt.append("{\"sentiment\":\"<one of: positive, neutral, negative, frustrated, urgent>\",\"score\":<1-10>,\"action\":\"<short recommended action>\"}\n\n");
+            prompt.append("Where score 1=very negative, 10=very positive.\n\n");
+            prompt.append("Ticket title: ").append(title != null ? title : "(no title)").append("\n");
+            prompt.append("Ticket description: ").append(description != null ? description : "(no description)").append("\n");
+            if (latestComment != null && !latestComment.isBlank()) {
+                prompt.append("Latest customer comment: ").append(latestComment).append("\n");
+            }
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 256,
+                    "messages", List.of(Map.of("role", "user", "content", prompt.toString()))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode s = objectMapper.readTree(text);
+            return new SentimentResult(
+                    s.path("sentiment").asText("neutral"),
+                    s.path("score").asInt(5),
+                    s.path("action").asText("Review and respond to the customer.")
+            );
+        } catch (Exception e) {
+            log.warn("AI sentiment analysis failed for ticket '{}': {}", title, e.getMessage());
+            return new SentimentResult("neutral", 5, "Review and respond to the customer.");
+        }
+    }
+
+    public SmartReply generateSmartReply(String title, String description, List<Map<String, String>> conversationHistory) {
+        try {
+            StringBuilder conv = new StringBuilder();
+            if (conversationHistory != null && !conversationHistory.isEmpty()) {
+                conv.append("\nConversation history:\n");
+                for (Map<String, String> msg : conversationHistory) {
+                    conv.append("[").append(msg.getOrDefault("role", "unknown")).append("]: ")
+                        .append(msg.getOrDefault("body", "")).append("\n");
+                }
+            }
+
+            String prompt = """
+                    You are an expert helpdesk agent. Based on the following support ticket and conversation history, \
+                    write a professional, empathetic, and helpful reply to the customer. \
+                    Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
+
+                    Required JSON format:
+                    {"reply":"<professional reply text, 2-4 sentences, addressing the customer's issue directly>","tone":"<one of: empathetic, professional, informative, apologetic>"}
+
+                    Ticket title: %s
+                    Ticket description: %s%s
+                    """.formatted(
+                    title != null ? title : "(no title)",
+                    description != null ? description : "(no description)",
+                    conv
+            );
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 512,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode s = objectMapper.readTree(text);
+            return new SmartReply(
+                    s.path("reply").asText("Thank you for reaching out. We will look into this and get back to you shortly."),
+                    s.path("tone").asText("professional")
+            );
+        } catch (Exception e) {
+            log.warn("AI smart reply failed for ticket '{}': {}", title, e.getMessage());
+            return new SmartReply("Thank you for reaching out. We will look into this and get back to you shortly.", "professional");
+        }
+    }
+
+    public DuplicateDetectionResult detectDuplicates(String currentId, String currentTitle, String currentDescription,
+                                                      List<Map<String, String>> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return new DuplicateDetectionResult(List.of());
+        }
+        try {
+            StringBuilder candidateList = new StringBuilder();
+            for (Map<String, String> c : candidates) {
+                candidateList.append("ID:").append(c.get("id"))
+                        .append(" #").append(c.get("ticketNumber"))
+                        .append(": ").append(c.get("title")).append("\n");
+            }
+
+            String prompt = """
+                    You are a helpdesk duplicate detection assistant. Given the current ticket and a list of recent tickets, \
+                    identify any that are likely duplicates or closely related. \
+                    Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
+
+                    Required JSON format:
+                    {"duplicates":[{"id":"<ticket id>","similarityScore":<1-100>,"reason":"<one sentence explanation>"}]}
+                    Return an empty array if no duplicates found. Only include tickets with similarityScore >= 60.
+
+                    Current ticket title: %s
+                    Current ticket description: %s
+
+                    Recent tickets to compare:
+                    %s
+                    """.formatted(
+                    currentTitle != null ? currentTitle : "(no title)",
+                    currentDescription != null ? currentDescription : "(no description)",
+                    candidateList
+            );
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 1024,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode root = objectMapper.readTree(text);
+            JsonNode dupsNode = root.path("duplicates");
+
+            // Build a lookup map from id -> candidate info
+            Map<String, Map<String, String>> candidateMap = new java.util.HashMap<>();
+            for (Map<String, String> c : candidates) {
+                candidateMap.put(c.get("id"), c);
+            }
+
+            List<DuplicateCandidate> results = new java.util.ArrayList<>();
+            if (dupsNode.isArray()) {
+                for (JsonNode dup : dupsNode) {
+                    String id = dup.path("id").asText();
+                    if (!id.equals(currentId) && candidateMap.containsKey(id)) {
+                        Map<String, String> meta = candidateMap.get(id);
+                        results.add(new DuplicateCandidate(
+                                id,
+                                meta.getOrDefault("ticketNumber", ""),
+                                meta.getOrDefault("title", ""),
+                                dup.path("similarityScore").asInt(60),
+                                dup.path("reason").asText("")
+                        ));
+                    }
+                }
+            }
+            results.sort((a, b) -> b.similarityScore() - a.similarityScore());
+            return new DuplicateDetectionResult(results);
+        } catch (Exception e) {
+            log.warn("AI duplicate detection failed for ticket '{}': {}", currentTitle, e.getMessage());
+            return new DuplicateDetectionResult(List.of());
+        }
+    }
+
 }

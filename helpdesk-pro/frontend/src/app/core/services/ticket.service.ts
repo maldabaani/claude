@@ -108,4 +108,24 @@ export class TicketService {
       `${this.base}/${ticketId}/ai-suggestions`, {}
     ).pipe(map(r => r.data));
   }
+
+  getAiSummary(ticketId: string): Observable<{ summary: string }> {
+    return this.http.post<{ summary: string }>(`${this.base}/${ticketId}/ai-summary`, {});
+  }
+
+  getAiSentiment(ticketId: string): Observable<{ sentiment: string; score: number; action: string }> {
+    return this.http.post<{ sentiment: string; score: number; action: string }>(`${this.base}/${ticketId}/ai-sentiment`, {});
+  }
+
+  getSmartReply(ticketId: string): Observable<{ reply: string; tone: string }> {
+    return this.http.post<{ reply: string; tone: string }>(`${this.base}/${ticketId}/ai-smart-reply`, {});
+  }
+
+  autoCategorize(ticketId: string): Observable<{ data: { priority: string; category: string } }> {
+    return this.http.post<any>(`${this.base}/${ticketId}/ai-auto-categorize`, {});
+  }
+
+  detectDuplicates(ticketId: string): Observable<{ duplicates: { id: string; ticketNumber: string; title: string; similarityScore: number; reason: string }[] }> {
+    return this.http.post<any>(`${this.base}/${ticketId}/ai-duplicates`, {});
+  }
 }

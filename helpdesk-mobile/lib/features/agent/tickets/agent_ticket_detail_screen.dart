@@ -1478,6 +1478,27 @@ class _CommentsTabState extends State<_CommentsTab> {
   String _aiError = '';
   Map<String, dynamic>? _aiSuggestion;
 
+  // AI Summary state
+  bool _summaryLoading = false;
+  String? _summaryError;
+  String? _aiSummary;
+
+  // Sentiment state
+  bool _sentimentLoading = false;
+  String? _sentimentError;
+  Map<String, dynamic>? _sentiment;
+
+  // Smart Reply state
+  bool _smartReplyLoading = false;
+
+  // Auto-Categorize state
+  bool _autoCategorizeLoading = false;
+
+  // Duplicate Detection state
+  bool _duplicatesLoading = false;
+  bool _duplicatesChecked = false;
+  List<Map<String, dynamic>> _duplicates = [];
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1511,6 +1532,100 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissAiSuggestion() => setState(() { _aiSuggestion = null; _aiError = ''; });
+
+  Future<void> _requestAiSummary() async {
+    setState(() { _summaryLoading = true; _summaryError = null; });
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSummary(widget.ticketId), data: {});
+      setState(() {
+        _aiSummary = response.data['summary'] as String;
+        _summaryLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _summaryError = 'Failed to generate summary.';
+        _summaryLoading = false;
+      });
+    }
+  }
+
+  void _dismissAiSummary() => setState(() { _aiSummary = null; _summaryError = null; });
+
+  Future<void> _requestSentiment() async {
+    setState(() { _sentimentLoading = true; _sentimentError = null; });
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSentiment(widget.ticketId), data: {});
+      setState(() {
+        _sentiment = Map<String, dynamic>.from(response.data);
+        _sentimentLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _sentimentError = 'Failed to analyze sentiment.';
+        _sentimentLoading = false;
+      });
+    }
+  }
+
+  void _dismissSentiment() => setState(() { _sentiment = null; _sentimentError = null; });
+
+  Future<void> _checkDuplicates() async {
+    setState(() => _duplicatesLoading = true);
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiDuplicates(widget.ticketId), data: {});
+      final dups = (response.data['duplicates'] as List? ?? [])
+          .map((d) => Map<String, dynamic>.from(d as Map))
+          .toList();
+      if (mounted) setState(() { _duplicates = dups; _duplicatesChecked = true; _duplicatesLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() => _duplicatesLoading = false);
+    }
+  }
+
+  Future<void> _autoCategorize() async {
+    setState(() => _autoCategorizeLoading = true);
+    try {
+      await _api.post(ApiEndpoints.ticketAiAutoCategorize(widget.ticketId), data: {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ticket categorized by AI'), backgroundColor: Color(0xFF7C3AED)),
+        );
+        setState(() => _autoCategorizeLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _autoCategorizeLoading = false);
+    }
+  }
+
+  Future<void> _requestSmartReply() async {
+    setState(() => _smartReplyLoading = true);
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSmartReply(widget.ticketId), data: {});
+      final reply = response.data['reply'] as String? ?? '';
+      widget.commentController.text = reply;
+      if (mounted) setState(() => _smartReplyLoading = false);
+    } catch (e) {
+      if (mounted) setState(() => _smartReplyLoading = false);
+    }
+  }
+
+  Color _sentimentColor(String sentiment) {
+    switch (sentiment) {
+      case 'positive': return const Color(0xFF16A34A);
+      case 'negative':
+      case 'frustrated': return const Color(0xFFDC2626);
+      case 'urgent': return const Color(0xFFEA580C);
+      default: return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _scoreColor(int score) {
+    if (score >= 7) return const Color(0xFF4ADE80);
+    if (score >= 4) return const Color(0xFFFBBF24);
+    return const Color(0xFFF87171);
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   @override
   Widget build(BuildContext context) {
@@ -1636,6 +1751,181 @@ class _CommentsTabState extends State<_CommentsTab> {
             child: Text(_aiError, style: const TextStyle(fontSize: 12, color: AppColors.error)),
           ),
 
+        // ── Sentiment Card ───────────────────────────────────────────────────
+        if (_sentiment != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.favorite_outline, size: 16, color: Color(0xFFD97706)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('Customer Sentiment',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
+                ),
+                GestureDetector(
+                  onTap: _dismissSentiment,
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFFD97706)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: () {
+                      final s = _sentiment!['sentiment'] as String? ?? '';
+                      if (s == 'positive') return const Color(0xFFDCFCE7);
+                      if (s == 'negative' || s == 'frustrated') return const Color(0xFFFEE2E2);
+                      if (s == 'urgent') return const Color(0xFFFFEDD5);
+                      return const Color(0xFFF1F5F9);
+                    }(),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    (_sentiment!['sentiment'] as String? ?? 'neutral').toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: () {
+                        final s = _sentiment!['sentiment'] as String? ?? '';
+                        if (s == 'positive') return const Color(0xFF15803D);
+                        if (s == 'negative' || s == 'frustrated') return const Color(0xFFDC2626);
+                        if (s == 'urgent') return const Color(0xFFEA580C);
+                        return const Color(0xFF475569);
+                      }(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: ((_sentiment!['score'] as num? ?? 5) / 10).toDouble(),
+                      backgroundColor: const Color(0xFFE5E7EB),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        (_sentiment!['score'] as num? ?? 5) >= 7
+                            ? const Color(0xFF4ADE80)
+                            : (_sentiment!['score'] as num? ?? 5) >= 4
+                                ? const Color(0xFFFBBF24)
+                                : const Color(0xFFF87171),
+                      ),
+                      minHeight: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('${_sentiment!['score'] ?? 5}/10',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              ]),
+              const SizedBox(height: 8),
+              Text('💡 ${_sentiment!['action'] ?? ''}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+            ]),
+          ),
+        if (_sentimentError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            child: Text(_sentimentError!, style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
+          ),
+
+        // ── Duplicate Detection Card ─────────────────────────────────────────
+        if (_duplicatesChecked)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE11D48).withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.content_copy_outlined, size: 16, color: Color(0xFFE11D48)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('Potential Duplicates',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFE11D48))),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _duplicatesChecked = false),
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFFE11D48)),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              if (_duplicates.isEmpty)
+                const Text('No duplicates found.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))
+              else
+                ..._duplicates.map((dup) => Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECDD3)),
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text('#${dup['ticketNumber']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFBE123C))),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: const Color(0xFFFFE4E6), borderRadius: BorderRadius.circular(10)),
+                          child: Text('${dup['similarityScore']}% match', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFBE123C))),
+                        ),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(dup['title'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                      const SizedBox(height: 2),
+                      Text(dup['reason'] ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic)),
+                    ]),
+                  ),
+                )),
+            ]),
+          ),
+
+        // ── AI Summary Card ─────────────────────────────────────────────────
+        if (_aiSummary != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDFA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF0D9488).withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.summarize_outlined, size: 16, color: Color(0xFF0D9488)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('AI Summary',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
+                ),
+                GestureDetector(
+                  onTap: _dismissAiSummary,
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF0D9488)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Text(_aiSummary!, style: const TextStyle(fontSize: 13, color: Color(0xFF134E4A), height: 1.5)),
+            ]),
+          ),
+
+        if (_summaryError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            child: Text(_summaryError!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          ),
+
         // ── Reply Box ───────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -1664,6 +1954,81 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF7C3AED), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // AI Summary button
+              _summaryLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0D9488)))
+                  : TextButton.icon(
+                      onPressed: _requestAiSummary,
+                      icon: const Icon(Icons.summarize_outlined, size: 15, color: Color(0xFF0D9488)),
+                      label: const Text('AI Summary', style: TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Duplicate Detection button
+              _duplicatesLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE11D48)))
+                  : TextButton.icon(
+                      onPressed: _checkDuplicates,
+                      icon: const Icon(Icons.content_copy_outlined, size: 15, color: Color(0xFFE11D48)),
+                      label: const Text('Dupes', style: TextStyle(fontSize: 12, color: Color(0xFFE11D48), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFFE11D48), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Auto-Categorize button
+              _autoCategorizeLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3AED)))
+                  : TextButton.icon(
+                      onPressed: _autoCategorize,
+                      icon: const Icon(Icons.auto_fix_high_outlined, size: 15, color: Color(0xFF7C3AED)),
+                      label: const Text('Auto-Cat', style: TextStyle(fontSize: 12, color: Color(0xFF7C3AED), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF7C3AED), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Smart Reply button
+              _smartReplyLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669)))
+                  : TextButton.icon(
+                      onPressed: _requestSmartReply,
+                      icon: const Icon(Icons.reply_outlined, size: 15, color: Color(0xFF059669)),
+                      label: const Text('Smart Reply', style: TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF059669), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Sentiment button
+              _sentimentLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)))
+                  : TextButton.icon(
+                      onPressed: _requestSentiment,
+                      icon: const Icon(Icons.favorite_outline, size: 15, color: Color(0xFFD97706)),
+                      label: const Text('Sentiment', style: TextStyle(fontSize: 12, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFFD97706), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

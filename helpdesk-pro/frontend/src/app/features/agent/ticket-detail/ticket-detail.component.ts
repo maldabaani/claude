@@ -265,6 +265,61 @@ import { environment } from '../../../../environments/environment';
                 </div>
               </div>
 
+              <!-- Sentiment Panel -->
+              <div *ngIf="sentiment()" class="mt-3 rounded-xl border border-amber-200 overflow-hidden" style="background:#FFFBEB">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #FDE68A">
+                  <span class="text-xs font-bold text-amber-700">😊 Customer Sentiment</span>
+                  <button (click)="dismissSentiment()" class="text-amber-300 hover:text-amber-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                      [ngClass]="{
+                        'bg-green-100 text-green-700': sentiment()!.sentiment === 'positive',
+                        'bg-gray-100 text-gray-600': sentiment()!.sentiment === 'neutral',
+                        'bg-red-100 text-red-700': sentiment()!.sentiment === 'negative' || sentiment()!.sentiment === 'frustrated',
+                        'bg-orange-100 text-orange-700': sentiment()!.sentiment === 'urgent'
+                      }">{{ sentiment()!.sentiment | titlecase }}</span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2">
+                      <div class="h-2 rounded-full transition-all"
+                        [style.width.%]="sentiment()!.score * 10"
+                        [ngClass]="{
+                          'bg-green-400': sentiment()!.score >= 7,
+                          'bg-amber-400': sentiment()!.score >= 4 && sentiment()!.score < 7,
+                          'bg-red-400': sentiment()!.score < 4
+                        }"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-500">{{ sentiment()!.score }}/10</span>
+                  </div>
+                  <p class="text-xs text-amber-800">💡 {{ sentiment()!.action }}</p>
+                </div>
+              </div>
+              <div *ngIf="sentimentError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ sentimentError() }}
+              </div>
+
+                            <!-- AI Summary Panel -->
+              <div *ngIf="aiSummary()" class="mt-3 rounded-xl border border-teal-200 overflow-hidden" style="background:#F0FDFA">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #99F6E4">
+                  <span class="text-xs font-bold text-teal-700">🧠 AI Summary</span>
+                  <button (click)="dismissAiSummary()" class="text-teal-300 hover:text-teal-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4">
+                  <p class="text-sm text-gray-700 leading-relaxed">{{ aiSummary() }}</p>
+                </div>
+              </div>
+
+              <!-- AI Summary error -->
+              <div *ngIf="aiSummaryError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ aiSummaryError() }}
+              </div>
+
               <!-- AI Suggestion Panel -->
               <div *ngIf="aiSuggestion()" class="mt-3 rounded-xl border border-indigo-200 overflow-hidden" style="background:#F5F3FF">
                 <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #DDD6FE">
@@ -333,6 +388,24 @@ import { environment } from '../../../../environments/environment';
                     <i [class]="aiLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-sparkles'" style="font-size:14px"></i>
                     {{ aiLoading() ? 'Thinking…' : 'AI Suggest' }}
                   </button>
+                  <button type="button" (click)="requestSentiment()"
+                          [disabled]="sentimentLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-amber-200 text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50">
+                    <i [class]="sentimentLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-heart'" style="font-size:14px"></i>
+                    {{ sentimentLoading() ? 'Analyzing…' : 'Sentiment' }}
+                  </button>
+                  <button type="button" (click)="requestAiSummary()"
+                          [disabled]="aiSummaryLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors disabled:opacity-50">
+                    <i [class]="aiSummaryLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-align-left'" style="font-size:14px"></i>
+                    {{ aiSummaryLoading() ? 'Summarizing…' : 'AI Summary' }}
+                  </button>
+                  <button type="button" (click)="requestSmartReply()"
+                          [disabled]="smartReplyLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50">
+                    <i [class]="smartReplyLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-reply'" style="font-size:14px"></i>
+                    {{ smartReplyLoading() ? 'Drafting…' : 'Smart Reply' }}
+                  </button>
                 </div>
                 <button (click)="sendReply()"
                         [disabled]="replyControl.invalid || submitting"
@@ -373,7 +446,15 @@ import { environment } from '../../../../environments/environment';
               <!-- Priority -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Priority</label>
-                <app-priority-badge [priority]="ticket()!.priority" />
+                <div class="flex items-center gap-2 flex-wrap">
+                  <app-priority-badge [priority]="ticket()!.priority" />
+                  <button (click)="autoCategorize()" [disabled]="autoCategorizeLoading()"
+                          class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-50"
+                          pTooltip="AI sets category & priority automatically" tooltipPosition="top">
+                    <i [class]="autoCategorizeLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-bolt'" style="font-size:11px"></i>
+                    {{ autoCategorizeLoading() ? '…' : 'Auto' }}
+                  </button>
+                </div>
               </div>
 
               <!-- SLA -->
@@ -384,6 +465,25 @@ import { environment } from '../../../../environments/environment';
                   <span class="text-sm font-semibold">{{ ticket()!.dueDate | date:'MMM d, h:mm a' }}</span>
                 </div>
                 <p *ngIf="ticket()!.slaBreached" class="text-xs text-red-500 font-medium mt-1">SLA Breached</p>
+              </div>
+
+              <!-- Duplicate Detection -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Duplicates</label>
+                  <button (click)="checkDuplicates()" [disabled]="duplicatesLoading()"
+                          class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50">
+                    <i [class]="duplicatesLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-search'" style="font-size:11px"></i>
+                    {{ duplicatesLoading() ? '…' : 'Check' }}
+                  </button>
+                </div>
+                <div *ngIf="duplicatesChecked() && duplicates().length === 0" class="text-xs text-slate-400">No duplicates found</div>
+                <div *ngFor="let dup of duplicates()" class="mb-2 p-2 rounded-lg border border-rose-100 bg-rose-50">
+                  <a [routerLink]="['/agent/tickets', dup.id]" class="text-xs font-bold text-rose-700 hover:underline">#{{ dup.ticketNumber }}</a>
+                  <span class="ml-1 text-xs text-rose-600 font-semibold">{{ dup.similarityScore }}% match</span>
+                  <p class="text-xs text-slate-600 mt-0.5 leading-snug">{{ dup.title }}</p>
+                  <p class="text-xs text-slate-400 mt-0.5 italic">{{ dup.reason }}</p>
+                </div>
               </div>
 
               <!-- Manual Due Date -->
@@ -1189,6 +1289,19 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   aiLoading = signal(false);
   aiError = signal('');
   aiSuggestion = signal<{category: string; priority: string; suggestedResponse: string} | null>(null);
+
+  // AI summary state
+  aiSummary = signal<string | null>(null);
+  aiSummaryLoading = signal(false);
+  aiSummaryError = signal<string | null>(null);
+  sentiment = signal<{ sentiment: string; score: number; action: string } | null>(null);
+  sentimentLoading = signal(false);
+  sentimentError = signal<string | null>(null);
+  smartReplyLoading = signal(false);
+  autoCategorizeLoading = signal(false);
+  duplicates = signal<{ id: string; ticketNumber: string; title: string; similarityScore: number; reason: string }[]>([]);
+  duplicatesLoading = signal(false);
+  duplicatesChecked = signal(false);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2169,5 +2282,73 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   dismissAiSuggestion(): void {
     this.aiSuggestion.set(null);
     this.aiError.set('');
+  }
+
+  requestAiSummary() {
+    this.aiSummaryLoading.set(true);
+    this.aiSummaryError.set(null);
+    this.ticketService.getAiSummary(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.aiSummary.set(res.summary);
+        this.aiSummaryLoading.set(false);
+      },
+      error: () => {
+        this.aiSummaryError.set('Failed to generate summary.');
+        this.aiSummaryLoading.set(false);
+      }
+    });
+  }
+
+  dismissAiSummary() {
+    this.aiSummary.set(null);
+    this.aiSummaryError.set(null);
+  }
+
+  requestSentiment() {
+    this.sentimentLoading.set(true);
+    this.sentimentError.set(null);
+    this.ticketService.getAiSentiment(this.ticket()!.id).subscribe({
+      next: (res) => { this.sentiment.set(res); this.sentimentLoading.set(false); },
+      error: () => { this.sentimentError.set('Failed to analyze sentiment.'); this.sentimentLoading.set(false); }
+    });
+  }
+
+  dismissSentiment() {
+    this.sentiment.set(null);
+    this.sentimentError.set(null);
+  }
+
+  requestSmartReply() {
+    this.smartReplyLoading.set(true);
+    this.ticketService.getSmartReply(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.replyControl.setValue(res.reply);
+        this.smartReplyLoading.set(false);
+      },
+      error: () => { this.smartReplyLoading.set(false); }
+    });
+  }
+
+  autoCategorize() {
+    this.autoCategorizeLoading.set(true);
+    this.ticketService.autoCategorize(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.ticketService.getTicket(this.ticket()!.id).subscribe(t => this.ticket.set(t));
+        this.autoCategorizeLoading.set(false);
+      },
+      error: () => { this.autoCategorizeLoading.set(false); }
+    });
+  }
+
+  checkDuplicates() {
+    this.duplicatesLoading.set(true);
+    this.ticketService.detectDuplicates(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.duplicates.set(res.duplicates || []);
+        this.duplicatesChecked.set(true);
+        this.duplicatesLoading.set(false);
+      },
+      error: () => { this.duplicatesLoading.set(false); }
+    });
   }
 }

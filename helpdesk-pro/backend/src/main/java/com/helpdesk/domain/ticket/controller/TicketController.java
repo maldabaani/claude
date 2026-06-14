@@ -1,5 +1,6 @@
 package com.helpdesk.domain.ticket.controller;
 
+import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.tag.TagResponse;
 import com.helpdesk.domain.tag.TagService;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
@@ -7,6 +8,10 @@ import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
+import com.helpdesk.domain.ticket.dto.DuplicateDetectionResult;
+import com.helpdesk.domain.ticket.dto.SentimentResult;
+import com.helpdesk.domain.ticket.dto.SmartReply;
+import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.service.AiTriageService;
@@ -47,6 +52,7 @@ public class TicketController {
     private final TicketWatcherRepository ticketWatcherRepository;
     private final TagService tagService;
     private final AiTriageService aiTriageService;
+    private final CommentRepository commentRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -306,5 +312,80 @@ public class TicketController {
         TicketResponse ticket = ticketService.findById(id);
         TriageSuggestion suggestion = aiTriageService.suggest(ticket.title(), ticket.description());
         return ResponseEntity.ok(ApiResponse.ok(suggestion));
+    }
+
+    @PostMapping("/{id}/ai-summary")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<TicketSummary> getAiSummary(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<String> commentBodies = commentRepository.findByTicketId(id, true).stream()
+                .map(c -> c.getBody())
+                .collect(java.util.stream.Collectors.toList());
+        TicketSummary summary = aiTriageService.summarize(
+                ticket.title(), ticket.description(), commentBodies);
+        return ResponseEntity.ok(summary);
+    }
+    @PostMapping("/{id}/ai-sentiment")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<SentimentResult> getAiSentiment(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<com.helpdesk.domain.comment.entity.Comment> comments = commentRepository.findByTicketId(id, false);
+        String latestComment = comments.isEmpty() ? null : comments.get(comments.size() - 1).getBody();
+        SentimentResult result = aiTriageService.analyzeSentiment(
+                ticket.title(), ticket.description(), latestComment);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{id}/ai-smart-reply")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<SmartReply> getSmartReply(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<com.helpdesk.domain.comment.entity.Comment> comments = commentRepository.findByTicketId(id, false);
+        List<Map<String, String>> history = comments.stream()
+                .map(c -> Map.of(
+                        "role", "agent",
+                        "body", c.getBody() != null ? c.getBody() : ""))
+                .collect(java.util.stream.Collectors.toList());
+        SmartReply reply = aiTriageService.generateSmartReply(ticket.title(), ticket.description(), history);
+        return ResponseEntity.ok(reply);
+    }
+
+    @PostMapping("/{id}/ai-auto-categorize")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> autoCategorize(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        TriageSuggestion suggestion = aiTriageService.suggest(ticket.title(), ticket.description());
+        Priority priority;
+        try {
+            priority = Priority.valueOf(suggestion.priority().toUpperCase());
+        } catch (Exception e) {
+            priority = Priority.MEDIUM;
+        }
+        UpdateTicketRequest update = new UpdateTicketRequest(null, null, priority, suggestion.category(), null, null);
+        TicketResponse updated = ticketService.update(id, update);
+        return ResponseEntity.ok(ApiResponse.ok("Ticket categorized by AI", updated));
+    }
+
+    @PostMapping("/{id}/ai-duplicates")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<DuplicateDetectionResult> detectDuplicates(@PathVariable UUID id) {
+        TicketResponse current = ticketService.findById(id);
+        Page<TicketResponse> recent = ticketService.findAll(
+                com.helpdesk.domain.ticket.entity.TicketStatus.OPEN, null, null, null, null, null, null, null, null, null, false, false,
+                PageRequest.of(0, 50));
+        List<Map<String, String>> candidates = recent.getContent().stream()
+                .filter(t -> !t.id().equals(id))
+                .map(t -> {
+                    java.util.HashMap<String, String> m = new java.util.HashMap<>();
+                    m.put("id", t.id().toString());
+                    m.put("ticketNumber", String.valueOf(t.ticketNumber()));
+                    m.put("title", t.title() != null ? t.title() : "");
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        DuplicateDetectionResult result = aiTriageService.detectDuplicates(
+                id.toString(), current.title(), current.description(), candidates);
+
+        return ResponseEntity.ok(result);
     }
 }
