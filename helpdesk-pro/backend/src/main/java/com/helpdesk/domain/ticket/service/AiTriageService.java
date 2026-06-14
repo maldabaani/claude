@@ -40,7 +40,7 @@ public class AiTriageService {
             String prompt = buildPrompt(title, description);
 
             Map<String, Object> body = Map.of(
-                    "model", "claude-sonnet-4-6",
+                    "model", "claude-haiku-4-5-20251001",
                     "max_tokens", 512,
                     "messages", List.of(Map.of("role", "user", "content", prompt))
             );
