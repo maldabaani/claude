@@ -44,6 +44,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/admin/overview/overview.component').then(m => m.OverviewComponent) },
       { path: 'tickets', loadComponent: () => import('./features/admin/tickets/tickets.component').then(m => m.AdminTicketsComponent) },
+      { path: 'tickets/:id', loadComponent: () => import('./features/agent/ticket-detail/ticket-detail.component').then(m => m.AgentTicketDetailComponent) },
       { path: 'users', loadComponent: () => import('./features/admin/users/users.component').then(m => m.UsersComponent) },
       { path: 'departments', loadComponent: () => import('./features/admin/departments/departments.component').then(m => m.DepartmentsComponent) },
       { path: 'sla', loadComponent: () => import('./features/admin/sla/sla.component').then(m => m.SlaComponent) },
