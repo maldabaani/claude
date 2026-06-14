@@ -187,4 +187,59 @@ public class AiTriageService {
         }
     }
 
+    public SmartReply generateSmartReply(String title, String description, List<Map<String, String>> conversationHistory) {
+        try {
+            StringBuilder conv = new StringBuilder();
+            if (conversationHistory != null && !conversationHistory.isEmpty()) {
+                conv.append("\nConversation history:\n");
+                for (Map<String, String> msg : conversationHistory) {
+                    conv.append("[").append(msg.getOrDefault("role", "unknown")).append("]: ")
+                        .append(msg.getOrDefault("body", "")).append("\n");
+                }
+            }
+
+            String prompt = """
+                    You are an expert helpdesk agent. Based on the following support ticket and conversation history, \
+                    write a professional, empathetic, and helpful reply to the customer. \
+                    Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
+
+                    Required JSON format:
+                    {"reply":"<professional reply text, 2-4 sentences, addressing the customer's issue directly>","tone":"<one of: empathetic, professional, informative, apologetic>"}
+
+                    Ticket title: %s
+                    Ticket description: %s%s
+                    """.formatted(
+                    title != null ? title : "(no title)",
+                    description != null ? description : "(no description)",
+                    conv
+            );
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 512,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode s = objectMapper.readTree(text);
+            return new SmartReply(
+                    s.path("reply").asText("Thank you for reaching out. We will look into this and get back to you shortly."),
+                    s.path("tone").asText("professional")
+            );
+        } catch (Exception e) {
+            log.warn("AI smart reply failed for ticket '{}': {}", title, e.getMessage());
+            return new SmartReply("Thank you for reaching out. We will look into this and get back to you shortly.", "professional");
+        }
+    }
+
 }
