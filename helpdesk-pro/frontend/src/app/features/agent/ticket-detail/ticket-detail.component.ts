@@ -446,7 +446,15 @@ import { environment } from '../../../../environments/environment';
               <!-- Priority -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Priority</label>
-                <app-priority-badge [priority]="ticket()!.priority" />
+                <div class="flex items-center gap-2 flex-wrap">
+                  <app-priority-badge [priority]="ticket()!.priority" />
+                  <button (click)="autoCategorize()" [disabled]="autoCategorizeLoading()"
+                          class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-50"
+                          pTooltip="AI sets category & priority automatically" tooltipPosition="top">
+                    <i [class]="autoCategorizeLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-bolt'" style="font-size:11px"></i>
+                    {{ autoCategorizeLoading() ? '…' : 'Auto' }}
+                  </button>
+                </div>
               </div>
 
               <!-- SLA -->
@@ -1271,6 +1279,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   sentimentLoading = signal(false);
   sentimentError = signal<string | null>(null);
   smartReplyLoading = signal(false);
+  autoCategorizeLoading = signal(false);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2295,6 +2304,17 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
         this.smartReplyLoading.set(false);
       },
       error: () => { this.smartReplyLoading.set(false); }
+    });
+  }
+
+  autoCategorize() {
+    this.autoCategorizeLoading.set(true);
+    this.ticketService.autoCategorize(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.ticketService.getTicket(this.ticket()!.id).subscribe(t => this.ticket.set(t));
+        this.autoCategorizeLoading.set(false);
+      },
+      error: () => { this.autoCategorizeLoading.set(false); }
     });
   }
 }

@@ -1491,6 +1491,9 @@ class _CommentsTabState extends State<_CommentsTab> {
   // Smart Reply state
   bool _smartReplyLoading = false;
 
+  // Auto-Categorize state
+  bool _autoCategorizeLoading = false;
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1560,6 +1563,21 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissSentiment() => setState(() { _sentiment = null; _sentimentError = null; });
+
+  Future<void> _autoCategorize() async {
+    setState(() => _autoCategorizeLoading = true);
+    try {
+      await _api.post(ApiEndpoints.ticketAiAutoCategorize(widget.ticketId), data: {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ticket categorized by AI'), backgroundColor: Color(0xFF7C3AED)),
+        );
+        setState(() => _autoCategorizeLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _autoCategorizeLoading = false);
+    }
+  }
 
   Future<void> _requestSmartReply() async {
     setState(() => _smartReplyLoading = true);
@@ -1877,6 +1895,21 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Auto-Categorize button
+              _autoCategorizeLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3AED)))
+                  : TextButton.icon(
+                      onPressed: _autoCategorize,
+                      icon: const Icon(Icons.auto_fix_high_outlined, size: 15, color: Color(0xFF7C3AED)),
+                      label: const Text('Auto-Cat', style: TextStyle(fontSize: 12, color: Color(0xFF7C3AED), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF7C3AED), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

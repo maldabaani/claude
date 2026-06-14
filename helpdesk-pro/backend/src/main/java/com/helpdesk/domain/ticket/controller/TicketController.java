@@ -348,4 +348,20 @@ public class TicketController {
         SmartReply reply = aiTriageService.generateSmartReply(ticket.title(), ticket.description(), history);
         return ResponseEntity.ok(reply);
     }
+
+    @PostMapping("/{id}/ai-auto-categorize")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> autoCategorize(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        TriageSuggestion suggestion = aiTriageService.suggest(ticket.title(), ticket.description());
+        Priority priority;
+        try {
+            priority = Priority.valueOf(suggestion.priority().toUpperCase());
+        } catch (Exception e) {
+            priority = Priority.MEDIUM;
+        }
+        UpdateTicketRequest update = new UpdateTicketRequest(null, null, priority, suggestion.category(), null, null);
+        TicketResponse updated = ticketService.update(id, update);
+        return ResponseEntity.ok(ApiResponse.ok("Ticket categorized by AI", updated));
+    }
 }

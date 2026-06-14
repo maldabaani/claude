@@ -120,4 +120,8 @@ export class TicketService {
   getSmartReply(ticketId: string): Observable<{ reply: string; tone: string }> {
     return this.http.post<{ reply: string; tone: string }>(`${this.base}/${ticketId}/ai-smart-reply`, {});
   }
+
+  autoCategorize(ticketId: string): Observable<{ data: { priority: string; category: string } }> {
+    return this.http.post<any>(`${this.base}/${ticketId}/ai-auto-categorize`, {});
+  }
 }
