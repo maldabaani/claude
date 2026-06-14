@@ -112,4 +112,8 @@ export class TicketService {
   getAiSummary(ticketId: string): Observable<{ summary: string }> {
     return this.http.post<{ summary: string }>(`${this.base}/${ticketId}/ai-summary`, {});
   }
+
+  getAiSentiment(ticketId: string): Observable<{ sentiment: string; score: number; action: string }> {
+    return this.http.post<{ sentiment: string; score: number; action: string }>(`${this.base}/${ticketId}/ai-sentiment`, {});
+  }
 }

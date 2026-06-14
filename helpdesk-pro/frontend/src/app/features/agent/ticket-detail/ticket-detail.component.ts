@@ -265,6 +265,80 @@ import { environment } from '../../../../environments/environment';
                 </div>
               </div>
 
+              <!-- Sentiment Panel -->
+              <div *ngIf="sentiment()" class="mt-3 rounded-xl border border-amber-200 overflow-hidden" style="background:#FFFBEB">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #FDE68A">
+                  <span class="text-xs font-bold text-amber-700">😊 Customer Sentiment</span>
+                  <button (click)="dismissSentiment()" class="text-amber-300 hover:text-amber-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                      [ngClass]="{
+                        'bg-green-100 text-green-700': sentiment()!.sentiment === 'positive',
+                        'bg-gray-100 text-gray-600': sentiment()!.sentiment === 'neutral',
+                        'bg-red-100 text-red-700': sentiment()!.sentiment === 'negative' || sentiment()!.sentiment === 'frustrated',
+                        'bg-orange-100 text-orange-700': sentiment()!.sentiment === 'urgent'
+                      }">{{ sentiment()!.sentiment | titlecase }}</span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2">
+                      <div class="h-2 rounded-full transition-all"
+                        [style.width.%]="sentiment()!.score * 10"
+                        [ngClass]="{
+                          'bg-green-400': sentiment()!.score >= 7,
+                          'bg-amber-400': sentiment()!.score >= 4 && sentiment()!.score < 7,
+                          'bg-red-400': sentiment()!.score < 4
+                        }"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-500">{{ sentiment()!.score }}/10</span>
+                  </div>
+                  <p class="text-xs text-amber-800">💡 {{ sentiment()!.action }}</p>
+                </div>
+              </div>
+              <div *ngIf="sentimentError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ sentimentError() }}
+              </div>
+
+              <!-- Sentiment Panel -->
+              <div *ngIf="sentiment()" class="mt-3 rounded-xl border border-amber-200 overflow-hidden" style="background:#FFFBEB">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #FDE68A">
+                  <span class="text-xs font-bold text-amber-700">😊 Customer Sentiment</span>
+                  <button (click)="dismissSentiment()" class="text-amber-300 hover:text-amber-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                      [ngClass]="{
+                        'bg-green-100 text-green-700': sentiment()!.sentiment === 'positive',
+                        'bg-gray-100 text-gray-600': sentiment()!.sentiment === 'neutral',
+                        'bg-red-100 text-red-700': sentiment()!.sentiment === 'negative' || sentiment()!.sentiment === 'frustrated',
+                        'bg-orange-100 text-orange-700': sentiment()!.sentiment === 'urgent'
+                      }">
+                      {{ sentiment()!.sentiment | titlecase }}
+                    </span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2">
+                      <div class="h-2 rounded-full transition-all"
+                        [style.width.%]="sentiment()!.score * 10"
+                        [ngClass]="{
+                          'bg-green-400': sentiment()!.score >= 7,
+                          'bg-amber-400': sentiment()!.score >= 4 && sentiment()!.score < 7,
+                          'bg-red-400': sentiment()!.score < 4
+                        }"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-500">{{ sentiment()!.score }}/10</span>
+                  </div>
+                  <p class="text-xs text-amber-800">💡 {{ sentiment()!.action }}</p>
+                </div>
+              </div>
+              <div *ngIf="sentimentError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ sentimentError() }}
+              </div>
+
               <!-- AI Summary Panel -->
               <div *ngIf="aiSummary()" class="mt-3 rounded-xl border border-teal-200 overflow-hidden" style="background:#F0FDFA">
                 <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #99F6E4">
@@ -351,6 +425,12 @@ import { environment } from '../../../../environments/environment';
                           class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50">
                     <i [class]="aiLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-sparkles'" style="font-size:14px"></i>
                     {{ aiLoading() ? 'Thinking…' : 'AI Suggest' }}
+                  </button>
+                  <button type="button" (click)="requestSentiment()"
+                          [disabled]="sentimentLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-amber-200 text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50">
+                    <i [class]="sentimentLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-heart'" style="font-size:14px"></i>
+                    {{ sentimentLoading() ? 'Analyzing…' : 'Sentiment' }}
                   </button>
                   <button type="button" (click)="requestAiSummary()"
                           [disabled]="aiSummaryLoading()"
@@ -1219,6 +1299,9 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   aiSummary = signal<string | null>(null);
   aiSummaryLoading = signal(false);
   aiSummaryError = signal<string | null>(null);
+  sentiment = signal<{ sentiment: string; score: number; action: string } | null>(null);
+  sentimentLoading = signal(false);
+  sentimentError = signal<string | null>(null);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2219,5 +2302,19 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   dismissAiSummary() {
     this.aiSummary.set(null);
     this.aiSummaryError.set(null);
+  }
+
+  requestSentiment() {
+    this.sentimentLoading.set(true);
+    this.sentimentError.set(null);
+    this.ticketService.getAiSentiment(this.ticket()!.id).subscribe({
+      next: (res) => { this.sentiment.set(res); this.sentimentLoading.set(false); },
+      error: () => { this.sentimentError.set('Failed to analyze sentiment.'); this.sentimentLoading.set(false); }
+    });
+  }
+
+  dismissSentiment() {
+    this.sentiment.set(null);
+    this.sentimentError.set(null);
   }
 }

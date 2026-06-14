@@ -1483,6 +1483,11 @@ class _CommentsTabState extends State<_CommentsTab> {
   String? _summaryError;
   String? _aiSummary;
 
+  // Sentiment state
+  bool _sentimentLoading = false;
+  String? _sentimentError;
+  Map<String, dynamic>? _sentiment;
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1534,6 +1539,42 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissAiSummary() => setState(() { _aiSummary = null; _summaryError = null; });
+
+  Future<void> _requestSentiment() async {
+    setState(() { _sentimentLoading = true; _sentimentError = null; });
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSentiment(widget.ticketId), data: {});
+      setState(() {
+        _sentiment = Map<String, dynamic>.from(response.data);
+        _sentimentLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _sentimentError = 'Failed to analyze sentiment.';
+        _sentimentLoading = false;
+      });
+    }
+  }
+
+  void _dismissSentiment() => setState(() { _sentiment = null; _sentimentError = null; });
+
+  Color _sentimentColor(String sentiment) {
+    switch (sentiment) {
+      case 'positive': return const Color(0xFF16A34A);
+      case 'negative':
+      case 'frustrated': return const Color(0xFFDC2626);
+      case 'urgent': return const Color(0xFFEA580C);
+      default: return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _scoreColor(int score) {
+    if (score >= 7) return const Color(0xFF4ADE80);
+    if (score >= 4) return const Color(0xFFFBBF24);
+    return const Color(0xFFF87171);
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   @override
   Widget build(BuildContext context) {
@@ -1659,6 +1700,91 @@ class _CommentsTabState extends State<_CommentsTab> {
             child: Text(_aiError, style: const TextStyle(fontSize: 12, color: AppColors.error)),
           ),
 
+        // ── Sentiment Card ───────────────────────────────────────────────────
+        if (_sentiment != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.favorite_outline, size: 16, color: Color(0xFFD97706)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('Customer Sentiment',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
+                ),
+                GestureDetector(
+                  onTap: _dismissSentiment,
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFFD97706)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: () {
+                      final s = _sentiment!['sentiment'] as String? ?? '';
+                      if (s == 'positive') return const Color(0xFFDCFCE7);
+                      if (s == 'negative' || s == 'frustrated') return const Color(0xFFFEE2E2);
+                      if (s == 'urgent') return const Color(0xFFFFEDD5);
+                      return const Color(0xFFF1F5F9);
+                    }(),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    (_sentiment!['sentiment'] as String? ?? 'neutral').toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: () {
+                        final s = _sentiment!['sentiment'] as String? ?? '';
+                        if (s == 'positive') return const Color(0xFF15803D);
+                        if (s == 'negative' || s == 'frustrated') return const Color(0xFFDC2626);
+                        if (s == 'urgent') return const Color(0xFFEA580C);
+                        return const Color(0xFF475569);
+                      }(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: ((_sentiment!['score'] as num? ?? 5) / 10).toDouble(),
+                      backgroundColor: const Color(0xFFE5E7EB),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        (_sentiment!['score'] as num? ?? 5) >= 7
+                            ? const Color(0xFF4ADE80)
+                            : (_sentiment!['score'] as num? ?? 5) >= 4
+                                ? const Color(0xFFFBBF24)
+                                : const Color(0xFFF87171),
+                      ),
+                      minHeight: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('${_sentiment!['score'] ?? 5}/10',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              ]),
+              const SizedBox(height: 8),
+              Text('💡 ${_sentiment!['action'] ?? ''}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+            ]),
+          ),
+        if (_sentimentError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            child: Text(_sentimentError!, style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
+          ),
+
         // ── AI Summary Card ─────────────────────────────────────────────────
         if (_aiSummary != null)
           Container(
@@ -1736,6 +1862,21 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Sentiment button
+              _sentimentLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)))
+                  : TextButton.icon(
+                      onPressed: _requestSentiment,
+                      icon: const Icon(Icons.favorite_outline, size: 15, color: Color(0xFFD97706)),
+                      label: const Text('Sentiment', style: TextStyle(fontSize: 12, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFFD97706), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
