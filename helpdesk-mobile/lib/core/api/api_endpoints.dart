@@ -175,6 +175,7 @@ class ApiEndpoints {
   static String ticketAiSentiment(String id) => '/tickets/$id/ai-sentiment';
   static String ticketAiSmartReply(String id) => '/tickets/$id/ai-smart-reply';
   static String ticketAiAutoCategorize(String id) => '/tickets/$id/ai-auto-categorize';
+  static String ticketAiDuplicates(String id) => '/tickets/$id/ai-duplicates';
 
   // Automation Rules
   static const String automationRules = '/automation-rules';

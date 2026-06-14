@@ -124,4 +124,8 @@ export class TicketService {
   autoCategorize(ticketId: string): Observable<{ data: { priority: string; category: string } }> {
     return this.http.post<any>(`${this.base}/${ticketId}/ai-auto-categorize`, {});
   }
+
+  detectDuplicates(ticketId: string): Observable<{ duplicates: { id: string; ticketNumber: string; title: string; similarityScore: number; reason: string }[] }> {
+    return this.http.post<any>(`${this.base}/${ticketId}/ai-duplicates`, {});
+  }
 }

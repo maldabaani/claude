@@ -2,6 +2,8 @@ package com.helpdesk.domain.ticket.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.helpdesk.domain.ticket.dto.DuplicateCandidate;
+import com.helpdesk.domain.ticket.dto.DuplicateDetectionResult;
 import com.helpdesk.domain.ticket.dto.SentimentResult;
 import com.helpdesk.domain.ticket.dto.SmartReply;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
@@ -240,6 +242,89 @@ public class AiTriageService {
         } catch (Exception e) {
             log.warn("AI smart reply failed for ticket '{}': {}", title, e.getMessage());
             return new SmartReply("Thank you for reaching out. We will look into this and get back to you shortly.", "professional");
+        }
+    }
+
+    public DuplicateDetectionResult detectDuplicates(String currentId, String currentTitle, String currentDescription,
+                                                      List<Map<String, String>> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return new DuplicateDetectionResult(List.of());
+        }
+        try {
+            StringBuilder candidateList = new StringBuilder();
+            for (Map<String, String> c : candidates) {
+                candidateList.append("ID:").append(c.get("id"))
+                        .append(" #").append(c.get("ticketNumber"))
+                        .append(": ").append(c.get("title")).append("\n");
+            }
+
+            String prompt = """
+                    You are a helpdesk duplicate detection assistant. Given the current ticket and a list of recent tickets, \
+                    identify any that are likely duplicates or closely related. \
+                    Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
+
+                    Required JSON format:
+                    {"duplicates":[{"id":"<ticket id>","similarityScore":<1-100>,"reason":"<one sentence explanation>"}]}
+                    Return an empty array if no duplicates found. Only include tickets with similarityScore >= 60.
+
+                    Current ticket title: %s
+                    Current ticket description: %s
+
+                    Recent tickets to compare:
+                    %s
+                    """.formatted(
+                    currentTitle != null ? currentTitle : "(no title)",
+                    currentDescription != null ? currentDescription : "(no description)",
+                    candidateList
+            );
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 1024,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode root = objectMapper.readTree(text);
+            JsonNode dupsNode = root.path("duplicates");
+
+            // Build a lookup map from id -> candidate info
+            Map<String, Map<String, String>> candidateMap = new java.util.HashMap<>();
+            for (Map<String, String> c : candidates) {
+                candidateMap.put(c.get("id"), c);
+            }
+
+            List<DuplicateCandidate> results = new java.util.ArrayList<>();
+            if (dupsNode.isArray()) {
+                for (JsonNode dup : dupsNode) {
+                    String id = dup.path("id").asText();
+                    if (!id.equals(currentId) && candidateMap.containsKey(id)) {
+                        Map<String, String> meta = candidateMap.get(id);
+                        results.add(new DuplicateCandidate(
+                                id,
+                                meta.getOrDefault("ticketNumber", ""),
+                                meta.getOrDefault("title", ""),
+                                dup.path("similarityScore").asInt(60),
+                                dup.path("reason").asText("")
+                        ));
+                    }
+                }
+            }
+            results.sort((a, b) -> b.similarityScore() - a.similarityScore());
+            return new DuplicateDetectionResult(results);
+        } catch (Exception e) {
+            log.warn("AI duplicate detection failed for ticket '{}': {}", currentTitle, e.getMessage());
+            return new DuplicateDetectionResult(List.of());
         }
     }
 

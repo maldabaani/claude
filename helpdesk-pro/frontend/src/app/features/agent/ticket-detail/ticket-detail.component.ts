@@ -467,6 +467,25 @@ import { environment } from '../../../../environments/environment';
                 <p *ngIf="ticket()!.slaBreached" class="text-xs text-red-500 font-medium mt-1">SLA Breached</p>
               </div>
 
+              <!-- Duplicate Detection -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Duplicates</label>
+                  <button (click)="checkDuplicates()" [disabled]="duplicatesLoading()"
+                          class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50">
+                    <i [class]="duplicatesLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-search'" style="font-size:11px"></i>
+                    {{ duplicatesLoading() ? '…' : 'Check' }}
+                  </button>
+                </div>
+                <div *ngIf="duplicatesChecked() && duplicates().length === 0" class="text-xs text-slate-400">No duplicates found</div>
+                <div *ngFor="let dup of duplicates()" class="mb-2 p-2 rounded-lg border border-rose-100 bg-rose-50">
+                  <a [routerLink]="['/agent/tickets', dup.id]" class="text-xs font-bold text-rose-700 hover:underline">#{{ dup.ticketNumber }}</a>
+                  <span class="ml-1 text-xs text-rose-600 font-semibold">{{ dup.similarityScore }}% match</span>
+                  <p class="text-xs text-slate-600 mt-0.5 leading-snug">{{ dup.title }}</p>
+                  <p class="text-xs text-slate-400 mt-0.5 italic">{{ dup.reason }}</p>
+                </div>
+              </div>
+
               <!-- Manual Due Date -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Due Date</label>
@@ -1280,6 +1299,9 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   sentimentError = signal<string | null>(null);
   smartReplyLoading = signal(false);
   autoCategorizeLoading = signal(false);
+  duplicates = signal<{ id: string; ticketNumber: string; title: string; similarityScore: number; reason: string }[]>([]);
+  duplicatesLoading = signal(false);
+  duplicatesChecked = signal(false);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2315,6 +2337,18 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
         this.autoCategorizeLoading.set(false);
       },
       error: () => { this.autoCategorizeLoading.set(false); }
+    });
+  }
+
+  checkDuplicates() {
+    this.duplicatesLoading.set(true);
+    this.ticketService.detectDuplicates(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.duplicates.set(res.duplicates || []);
+        this.duplicatesChecked.set(true);
+        this.duplicatesLoading.set(false);
+      },
+      error: () => { this.duplicatesLoading.set(false); }
     });
   }
 }

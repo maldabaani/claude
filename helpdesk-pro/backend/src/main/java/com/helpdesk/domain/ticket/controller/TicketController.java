@@ -8,6 +8,7 @@ import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
+import com.helpdesk.domain.ticket.dto.DuplicateDetectionResult;
 import com.helpdesk.domain.ticket.dto.SentimentResult;
 import com.helpdesk.domain.ticket.dto.SmartReply;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
@@ -363,5 +364,28 @@ public class TicketController {
         UpdateTicketRequest update = new UpdateTicketRequest(null, null, priority, suggestion.category(), null, null);
         TicketResponse updated = ticketService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Ticket categorized by AI", updated));
+    }
+
+    @PostMapping("/{id}/ai-duplicates")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<DuplicateDetectionResult> detectDuplicates(@PathVariable UUID id) {
+        TicketResponse current = ticketService.findById(id);
+        Page<TicketResponse> recent = ticketService.findAll(
+                com.helpdesk.domain.ticket.entity.TicketStatus.OPEN, null, null, null, null, null, null, null, null, null, false, false,
+                PageRequest.of(0, 50));
+        List<Map<String, String>> candidates = recent.getContent().stream()
+                .filter(t -> !t.id().equals(id))
+                .map(t -> {
+                    java.util.HashMap<String, String> m = new java.util.HashMap<>();
+                    m.put("id", t.id().toString());
+                    m.put("ticketNumber", String.valueOf(t.ticketNumber()));
+                    m.put("title", t.title() != null ? t.title() : "");
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        DuplicateDetectionResult result = aiTriageService.detectDuplicates(
+                id.toString(), current.title(), current.description(), candidates);
+
+        return ResponseEntity.ok(result);
     }
 }

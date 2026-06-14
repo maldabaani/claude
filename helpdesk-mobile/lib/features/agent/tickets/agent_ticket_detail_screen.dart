@@ -1494,6 +1494,11 @@ class _CommentsTabState extends State<_CommentsTab> {
   // Auto-Categorize state
   bool _autoCategorizeLoading = false;
 
+  // Duplicate Detection state
+  bool _duplicatesLoading = false;
+  bool _duplicatesChecked = false;
+  List<Map<String, dynamic>> _duplicates = [];
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1563,6 +1568,19 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissSentiment() => setState(() { _sentiment = null; _sentimentError = null; });
+
+  Future<void> _checkDuplicates() async {
+    setState(() => _duplicatesLoading = true);
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiDuplicates(widget.ticketId), data: {});
+      final dups = (response.data['duplicates'] as List? ?? [])
+          .map((d) => Map<String, dynamic>.from(d as Map))
+          .toList();
+      if (mounted) setState(() { _duplicates = dups; _duplicatesChecked = true; _duplicatesLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() => _duplicatesLoading = false);
+    }
+  }
 
   Future<void> _autoCategorize() async {
     setState(() => _autoCategorizeLoading = true);
@@ -1818,6 +1836,62 @@ class _CommentsTabState extends State<_CommentsTab> {
             child: Text(_sentimentError!, style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
           ),
 
+        // ── Duplicate Detection Card ─────────────────────────────────────────
+        if (_duplicatesChecked)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE11D48).withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.content_copy_outlined, size: 16, color: Color(0xFFE11D48)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('Potential Duplicates',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFE11D48))),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _duplicatesChecked = false),
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFFE11D48)),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              if (_duplicates.isEmpty)
+                const Text('No duplicates found.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))
+              else
+                ..._duplicates.map((dup) => Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECDD3)),
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text('#${dup['ticketNumber']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFBE123C))),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: const Color(0xFFFFE4E6), borderRadius: BorderRadius.circular(10)),
+                          child: Text('${dup['similarityScore']}% match', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFBE123C))),
+                        ),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(dup['title'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                      const SizedBox(height: 2),
+                      Text(dup['reason'] ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic)),
+                    ]),
+                  ),
+                )),
+            ]),
+          ),
+
         // ── AI Summary Card ─────────────────────────────────────────────────
         if (_aiSummary != null)
           Container(
@@ -1895,6 +1969,21 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Duplicate Detection button
+              _duplicatesLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE11D48)))
+                  : TextButton.icon(
+                      onPressed: _checkDuplicates,
+                      icon: const Icon(Icons.content_copy_outlined, size: 15, color: Color(0xFFE11D48)),
+                      label: const Text('Dupes', style: TextStyle(fontSize: 12, color: Color(0xFFE11D48), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFFE11D48), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
