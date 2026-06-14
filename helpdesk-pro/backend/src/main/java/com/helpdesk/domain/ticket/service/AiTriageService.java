@@ -2,6 +2,7 @@ package com.helpdesk.domain.ticket.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.helpdesk.domain.ticket.dto.SentimentResult;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import org.slf4j.Logger;
@@ -142,6 +143,48 @@ public class AiTriageService {
         }
         JsonNode s = objectMapper.readTree(text);
         return new TicketSummary(s.path("summary").asText("Unable to generate summary."));
+    }
+
+    public SentimentResult analyzeSentiment(String title, String description, String latestComment) {
+        try {
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("You are a helpdesk sentiment analysis assistant. Analyze the customer tone/emotion from the following support ticket and respond with ONLY valid JSON — no markdown, no explanation, no code fences.\n\n");
+            prompt.append("Required JSON format:\n");
+            prompt.append("{\"sentiment\":\"<one of: positive, neutral, negative, frustrated, urgent>\",\"score\":<1-10>,\"action\":\"<short recommended action>\"}\n\n");
+            prompt.append("Where score 1=very negative, 10=very positive.\n\n");
+            prompt.append("Ticket title: ").append(title != null ? title : "(no title)").append("\n");
+            prompt.append("Ticket description: ").append(description != null ? description : "(no description)").append("\n");
+            if (latestComment != null && !latestComment.isBlank()) {
+                prompt.append("Latest customer comment: ").append(latestComment).append("\n");
+            }
+
+            Map<String, Object> body = Map.of(
+                    "model", "claude-haiku-4-5-20251001",
+                    "max_tokens", 256,
+                    "messages", List.of(Map.of("role", "user", "content", prompt.toString()))
+            );
+
+            JsonNode response = restClient.post()
+                    .uri("/v1/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String text = response.at("/content/0/text").asText().strip();
+            if (text.startsWith("```")) {
+                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+            }
+            JsonNode s = objectMapper.readTree(text);
+            return new SentimentResult(
+                    s.path("sentiment").asText("neutral"),
+                    s.path("score").asInt(5),
+                    s.path("action").asText("Review and respond to the customer.")
+            );
+        } catch (Exception e) {
+            log.warn("AI sentiment analysis failed for ticket '{}': {}", title, e.getMessage());
+            return new SentimentResult("neutral", 5, "Review and respond to the customer.");
+        }
     }
 
 }

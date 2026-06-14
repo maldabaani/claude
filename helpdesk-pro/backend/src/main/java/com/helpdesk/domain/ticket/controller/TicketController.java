@@ -8,6 +8,7 @@ import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
+import com.helpdesk.domain.ticket.dto.SentimentResult;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
@@ -321,5 +322,15 @@ public class TicketController {
         TicketSummary summary = aiTriageService.summarize(
                 ticket.title(), ticket.description(), commentBodies);
         return ResponseEntity.ok(summary);
+    }
+    @PostMapping("/{id}/ai-sentiment")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<SentimentResult> getAiSentiment(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<com.helpdesk.domain.comment.entity.Comment> comments = commentRepository.findByTicketId(id, false);
+        String latestComment = comments.isEmpty() ? null : comments.get(comments.size() - 1).getBody();
+        SentimentResult result = aiTriageService.analyzeSentiment(
+                ticket.title(), ticket.description(), latestComment);
+        return ResponseEntity.ok(result);
     }
 }
