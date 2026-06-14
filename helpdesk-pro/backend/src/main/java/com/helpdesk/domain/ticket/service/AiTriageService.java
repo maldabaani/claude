@@ -78,7 +78,10 @@ public class AiTriageService {
     }
 
     private TriageSuggestion parseResponse(JsonNode response) throws Exception {
-        String text = response.at("/content/0/text").asText();
+        String text = response.at("/content/0/text").asText().strip();
+        if (text.startsWith("```")) {
+            text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+        }
         JsonNode s = objectMapper.readTree(text);
         return new TriageSuggestion(
                 s.path("category").asText("other"),
