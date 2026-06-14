@@ -400,6 +400,12 @@ import { environment } from '../../../../environments/environment';
                     <i [class]="aiSummaryLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-align-left'" style="font-size:14px"></i>
                     {{ aiSummaryLoading() ? 'Summarizing…' : 'AI Summary' }}
                   </button>
+                  <button type="button" (click)="requestSmartReply()"
+                          [disabled]="smartReplyLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50">
+                    <i [class]="smartReplyLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-reply'" style="font-size:14px"></i>
+                    {{ smartReplyLoading() ? 'Drafting…' : 'Smart Reply' }}
+                  </button>
                 </div>
                 <button (click)="sendReply()"
                         [disabled]="replyControl.invalid || submitting"
@@ -1264,6 +1270,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   sentiment = signal<{ sentiment: string; score: number; action: string } | null>(null);
   sentimentLoading = signal(false);
   sentimentError = signal<string | null>(null);
+  smartReplyLoading = signal(false);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2278,5 +2285,16 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   dismissSentiment() {
     this.sentiment.set(null);
     this.sentimentError.set(null);
+  }
+
+  requestSmartReply() {
+    this.smartReplyLoading.set(true);
+    this.ticketService.getSmartReply(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.replyControl.setValue(res.reply);
+        this.smartReplyLoading.set(false);
+      },
+      error: () => { this.smartReplyLoading.set(false); }
+    });
   }
 }

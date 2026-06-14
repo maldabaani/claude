@@ -116,4 +116,8 @@ export class TicketService {
   getAiSentiment(ticketId: string): Observable<{ sentiment: string; score: number; action: string }> {
     return this.http.post<{ sentiment: string; score: number; action: string }>(`${this.base}/${ticketId}/ai-sentiment`, {});
   }
+
+  getSmartReply(ticketId: string): Observable<{ reply: string; tone: string }> {
+    return this.http.post<{ reply: string; tone: string }>(`${this.base}/${ticketId}/ai-smart-reply`, {});
+  }
 }
