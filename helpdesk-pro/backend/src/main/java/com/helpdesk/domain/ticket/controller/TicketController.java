@@ -9,6 +9,7 @@ import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
 import com.helpdesk.domain.ticket.dto.SentimentResult;
+import com.helpdesk.domain.ticket.dto.SmartReply;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
@@ -332,5 +333,19 @@ public class TicketController {
         SentimentResult result = aiTriageService.analyzeSentiment(
                 ticket.title(), ticket.description(), latestComment);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{id}/ai-smart-reply")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<SmartReply> getSmartReply(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<com.helpdesk.domain.comment.entity.Comment> comments = commentRepository.findByTicketId(id, false);
+        List<Map<String, String>> history = comments.stream()
+                .map(c -> Map.of(
+                        "role", "agent",
+                        "body", c.getBody() != null ? c.getBody() : ""))
+                .collect(java.util.stream.Collectors.toList());
+        SmartReply reply = aiTriageService.generateSmartReply(ticket.title(), ticket.description(), history);
+        return ResponseEntity.ok(reply);
     }
 }
