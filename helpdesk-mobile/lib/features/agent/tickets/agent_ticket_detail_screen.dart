@@ -1478,6 +1478,11 @@ class _CommentsTabState extends State<_CommentsTab> {
   String _aiError = '';
   Map<String, dynamic>? _aiSuggestion;
 
+  // AI Summary state
+  bool _summaryLoading = false;
+  String? _summaryError;
+  String? _aiSummary;
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1511,6 +1516,24 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissAiSuggestion() => setState(() { _aiSuggestion = null; _aiError = ''; });
+
+  Future<void> _requestAiSummary() async {
+    setState(() { _summaryLoading = true; _summaryError = null; });
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSummary(widget.ticketId), data: {});
+      setState(() {
+        _aiSummary = response.data['summary'] as String;
+        _summaryLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _summaryError = 'Failed to generate summary.';
+        _summaryLoading = false;
+      });
+    }
+  }
+
+  void _dismissAiSummary() => setState(() { _aiSummary = null; _summaryError = null; });
 
   @override
   Widget build(BuildContext context) {
@@ -1636,6 +1659,40 @@ class _CommentsTabState extends State<_CommentsTab> {
             child: Text(_aiError, style: const TextStyle(fontSize: 12, color: AppColors.error)),
           ),
 
+        // ── AI Summary Card ─────────────────────────────────────────────────
+        if (_aiSummary != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDFA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF0D9488).withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.summarize_outlined, size: 16, color: Color(0xFF0D9488)),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('AI Summary',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
+                ),
+                GestureDetector(
+                  onTap: _dismissAiSummary,
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF0D9488)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Text(_aiSummary!, style: const TextStyle(fontSize: 13, color: Color(0xFF134E4A), height: 1.5)),
+            ]),
+          ),
+
+        if (_summaryError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            child: Text(_summaryError!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          ),
+
         // ── Reply Box ───────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -1664,6 +1721,21 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF7C3AED), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // AI Summary button
+              _summaryLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0D9488)))
+                  : TextButton.icon(
+                      onPressed: _requestAiSummary,
+                      icon: const Icon(Icons.summarize_outlined, size: 15, color: Color(0xFF0D9488)),
+                      label: const Text('AI Summary', style: TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

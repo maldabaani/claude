@@ -1,5 +1,6 @@
 package com.helpdesk.domain.ticket.controller;
 
+import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.tag.TagResponse;
 import com.helpdesk.domain.tag.TagService;
 import com.helpdesk.domain.ticket.dto.BulkTicketRequest;
@@ -7,6 +8,7 @@ import com.helpdesk.domain.ticket.dto.TicketSplitRequest;
 import com.helpdesk.domain.ticket.dto.CreateTicketRequest;
 import com.helpdesk.domain.ticket.dto.TicketResponse;
 import com.helpdesk.domain.ticket.dto.SnoozeRequest;
+import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import com.helpdesk.domain.ticket.dto.UpdateTicketRequest;
 import com.helpdesk.domain.ticket.service.AiTriageService;
@@ -47,6 +49,7 @@ public class TicketController {
     private final TicketWatcherRepository ticketWatcherRepository;
     private final TagService tagService;
     private final AiTriageService aiTriageService;
+    private final CommentRepository commentRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> findAll(
@@ -306,5 +309,17 @@ public class TicketController {
         TicketResponse ticket = ticketService.findById(id);
         TriageSuggestion suggestion = aiTriageService.suggest(ticket.title(), ticket.description());
         return ResponseEntity.ok(ApiResponse.ok(suggestion));
+    }
+
+    @PostMapping("/{id}/ai-summary")
+    @PreAuthorize("hasAnyRole('AGENT','TEAM_LEAD','ADMIN')")
+    public ResponseEntity<TicketSummary> getAiSummary(@PathVariable UUID id) {
+        TicketResponse ticket = ticketService.findById(id);
+        List<String> commentBodies = commentRepository.findByTicketId(id, true).stream()
+                .map(c -> c.getBody())
+                .collect(java.util.stream.Collectors.toList());
+        TicketSummary summary = aiTriageService.summarize(
+                ticket.title(), ticket.description(), commentBodies);
+        return ResponseEntity.ok(summary);
     }
 }

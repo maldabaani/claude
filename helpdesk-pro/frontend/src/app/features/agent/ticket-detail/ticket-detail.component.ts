@@ -265,6 +265,25 @@ import { environment } from '../../../../environments/environment';
                 </div>
               </div>
 
+              <!-- AI Summary Panel -->
+              <div *ngIf="aiSummary()" class="mt-3 rounded-xl border border-teal-200 overflow-hidden" style="background:#F0FDFA">
+                <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #99F6E4">
+                  <span class="text-xs font-bold text-teal-700">🧠 AI Summary</span>
+                  <button (click)="dismissAiSummary()" class="text-teal-300 hover:text-teal-600 transition-colors leading-none">
+                    <i class="pi pi-times" style="font-size:11px"></i>
+                  </button>
+                </div>
+                <div class="p-4">
+                  <p class="text-sm text-gray-700 leading-relaxed">{{ aiSummary() }}</p>
+                </div>
+              </div>
+
+              <!-- AI Summary error -->
+              <div *ngIf="aiSummaryError()" class="flex items-center gap-1.5 mt-2 text-xs text-red-500">
+                <i class="pi pi-exclamation-circle" style="font-size:11px"></i>
+                {{ aiSummaryError() }}
+              </div>
+
               <!-- AI Suggestion Panel -->
               <div *ngIf="aiSuggestion()" class="mt-3 rounded-xl border border-indigo-200 overflow-hidden" style="background:#F5F3FF">
                 <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid #DDD6FE">
@@ -332,6 +351,12 @@ import { environment } from '../../../../environments/environment';
                           class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50">
                     <i [class]="aiLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-sparkles'" style="font-size:14px"></i>
                     {{ aiLoading() ? 'Thinking…' : 'AI Suggest' }}
+                  </button>
+                  <button type="button" (click)="requestAiSummary()"
+                          [disabled]="aiSummaryLoading()"
+                          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors disabled:opacity-50">
+                    <i [class]="aiSummaryLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-align-left'" style="font-size:14px"></i>
+                    {{ aiSummaryLoading() ? 'Summarizing…' : 'AI Summary' }}
                   </button>
                 </div>
                 <button (click)="sendReply()"
@@ -1189,6 +1214,11 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   aiLoading = signal(false);
   aiError = signal('');
   aiSuggestion = signal<{category: string; priority: string; suggestedResponse: string} | null>(null);
+
+  // AI summary state
+  aiSummary = signal<string | null>(null);
+  aiSummaryLoading = signal(false);
+  aiSummaryError = signal<string | null>(null);
   aiSuggestCategory = '';
   aiSuggestPriority = '';
   aiSuggestResponse = '';
@@ -2169,5 +2199,25 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
   dismissAiSuggestion(): void {
     this.aiSuggestion.set(null);
     this.aiError.set('');
+  }
+
+  requestAiSummary() {
+    this.aiSummaryLoading.set(true);
+    this.aiSummaryError.set(null);
+    this.ticketService.getAiSummary(this.ticket()!.id).subscribe({
+      next: (res) => {
+        this.aiSummary.set(res.summary);
+        this.aiSummaryLoading.set(false);
+      },
+      error: () => {
+        this.aiSummaryError.set('Failed to generate summary.');
+        this.aiSummaryLoading.set(false);
+      }
+    });
+  }
+
+  dismissAiSummary() {
+    this.aiSummary.set(null);
+    this.aiSummaryError.set(null);
   }
 }

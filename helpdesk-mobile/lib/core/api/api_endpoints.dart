@@ -171,6 +171,7 @@ class ApiEndpoints {
 
   // AI Triage
   static String ticketAiSuggestions(String id) => '/tickets/$id/ai-suggestions';
+  static String ticketAiSummary(String id) => '/tickets/$id/ai-summary';
 
   // Automation Rules
   static const String automationRules = '/automation-rules';

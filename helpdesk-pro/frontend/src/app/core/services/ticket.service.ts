@@ -108,4 +108,8 @@ export class TicketService {
       `${this.base}/${ticketId}/ai-suggestions`, {}
     ).pipe(map(r => r.data));
   }
+
+  getAiSummary(ticketId: string): Observable<{ summary: string }> {
+    return this.http.post<{ summary: string }>(`${this.base}/${ticketId}/ai-summary`, {});
+  }
 }
