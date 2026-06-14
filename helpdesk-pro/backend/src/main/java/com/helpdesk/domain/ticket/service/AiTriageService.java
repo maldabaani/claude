@@ -3,6 +3,7 @@ package com.helpdesk.domain.ticket.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.helpdesk.domain.ticket.dto.SentimentResult;
+import com.helpdesk.domain.ticket.dto.SmartReply;
 import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import org.slf4j.Logger;
