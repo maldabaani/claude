@@ -1488,6 +1488,9 @@ class _CommentsTabState extends State<_CommentsTab> {
   String? _sentimentError;
   Map<String, dynamic>? _sentiment;
 
+  // Smart Reply state
+  bool _smartReplyLoading = false;
+
   // Editable fields shown in the suggestion card
   final _aiCategoryCtrl = TextEditingController();
   final _aiPriorityCtrl = TextEditingController();
@@ -1557,6 +1560,18 @@ class _CommentsTabState extends State<_CommentsTab> {
   }
 
   void _dismissSentiment() => setState(() { _sentiment = null; _sentimentError = null; });
+
+  Future<void> _requestSmartReply() async {
+    setState(() => _smartReplyLoading = true);
+    try {
+      final response = await _api.post(ApiEndpoints.ticketAiSmartReply(widget.ticketId), data: {});
+      final reply = response.data['reply'] as String? ?? '';
+      widget.commentController.text = reply;
+      if (mounted) setState(() => _smartReplyLoading = false);
+    } catch (e) {
+      if (mounted) setState(() => _smartReplyLoading = false);
+    }
+  }
 
   Color _sentimentColor(String sentiment) {
     switch (sentiment) {
@@ -1862,6 +1877,21 @@ class _CommentsTabState extends State<_CommentsTab> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF0D9488), width: 1)),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+              const SizedBox(width: 6),
+              // Smart Reply button
+              _smartReplyLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669)))
+                  : TextButton.icon(
+                      onPressed: _requestSmartReply,
+                      icon: const Icon(Icons.reply_outlined, size: 15, color: Color(0xFF059669)),
+                      label: const Text('Smart Reply', style: TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFF059669), width: 1)),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
