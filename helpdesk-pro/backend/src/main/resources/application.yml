@@ -67,3 +67,8 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+anthropic:
+  api:
+    key: ${ANTHROPIC_API_KEY}
+
