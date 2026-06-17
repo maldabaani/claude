@@ -3,7 +3,6 @@ package com.helpdesk.domain.kb.service;
 import com.helpdesk.domain.kb.dto.KbArticleRequest;
 import com.helpdesk.domain.kb.dto.KbArticleResponse;
 import com.helpdesk.domain.kb.dto.KbCategoryResponse;
-import com.helpdesk.domain.kb.dto.RateRequest;
 import com.helpdesk.domain.kb.entity.KbArticle;
 import com.helpdesk.domain.kb.entity.KbArticleRating;
 import com.helpdesk.domain.kb.entity.KbCategory;

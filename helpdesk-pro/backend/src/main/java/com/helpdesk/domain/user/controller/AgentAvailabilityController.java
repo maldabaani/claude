@@ -2,7 +2,6 @@ package com.helpdesk.domain.user.controller;
 
 import com.helpdesk.domain.user.dto.AgentAvailabilityResponse;
 import com.helpdesk.domain.user.dto.UpdateAvailabilityRequest;
-import com.helpdesk.domain.user.entity.Role;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
 import com.helpdesk.shared.response.ApiResponse;

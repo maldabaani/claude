@@ -23,9 +23,11 @@ public class NotificationPreference {
     @Column(name = "event_type", nullable = false, length = 50)
     private String eventType;
 
+    @Builder.Default
     @Column(name = "email_enabled", nullable = false)
     private boolean emailEnabled = true;
 
+    @Builder.Default
     @Column(name = "in_app_enabled", nullable = false)
     private boolean inAppEnabled = true;
 

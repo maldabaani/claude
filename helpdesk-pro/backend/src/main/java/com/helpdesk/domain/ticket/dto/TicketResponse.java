@@ -1,6 +1,5 @@
 package com.helpdesk.domain.ticket.dto;
 
-import com.helpdesk.domain.team.Team;
 import com.helpdesk.domain.ticket.entity.Priority;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.user.dto.UserResponse;

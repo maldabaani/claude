@@ -9,7 +9,6 @@ import com.helpdesk.domain.webhook.WebhookService;
 import com.helpdesk.domain.ticket.entity.Ticket;
 import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.ticket.repository.TicketRepository;
-import com.helpdesk.domain.ticket.service.TicketService;
 import com.helpdesk.domain.user.entity.Role;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
