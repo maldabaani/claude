@@ -45,6 +45,8 @@ import org.springframework.context.ApplicationEventPublisher;
 @RequiredArgsConstructor
 public class TicketService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TicketService.class);
+
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final SlaPolicyRepository slaPolicyRepository;
@@ -102,8 +104,12 @@ public class TicketService {
         notificationService.notifyTicketCreated(saved);
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
         webhookService.fireEvent("ticket.created", toResponse(saved));
-        if (saved.getCategory() != null) {
+        if (saved.getCategory() != null && !saved.getCategory().isBlank()) {
+            log.info("Publishing TicketCategorizedEvent for ticket {} with category '{}'",
+                    saved.getTicketNumber(), saved.getCategory());
             eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), saved.getCategory()));
+        } else {
+            log.info("Ticket {} created with no category - skipping agent trigger event", saved.getTicketNumber());
         }
         return toResponse(saved);
     }

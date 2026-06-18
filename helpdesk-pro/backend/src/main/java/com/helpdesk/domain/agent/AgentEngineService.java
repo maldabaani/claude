@@ -47,15 +47,20 @@ public class AgentEngineService {
     @Transactional
     public void process(UUID ticketId, Long agentDefinitionId, AgentDefinition definition) {
         try {
+            log.info("AI agent '{}' invoked for ticket {} (capability={})", definition.getName(), ticketId, definition.getCapability());
             if (executionLogRepository.existsByTicketIdAndAgentDefinitionId(ticketId, agentDefinitionId)) {
+                log.info("AI agent '{}' skipping ticket {} - already processed by this agent", definition.getName(), ticketId);
                 return;
             }
 
             Ticket ticket = ticketService.getTicket(ticketId);
             if (ticket.isClosedByAi() || ticket.getStatus() == TicketStatus.CLOSED) {
+                log.info("AI agent '{}' skipping ticket {} - ticket already closed", definition.getName(), ticket.getTicketNumber());
                 return;
             }
             if (!definition.getTriggerCategory().equalsIgnoreCase(ticket.getCategory())) {
+                log.info("AI agent '{}' skipping ticket {} - trigger category '{}' does not match ticket category '{}'",
+                        definition.getName(), ticket.getTicketNumber(), definition.getTriggerCategory(), ticket.getCategory());
                 return;
             }
             if (!matchesKeywords(ticket, definition.getKeywords())) {
