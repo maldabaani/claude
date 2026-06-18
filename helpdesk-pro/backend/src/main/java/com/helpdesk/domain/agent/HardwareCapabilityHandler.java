@@ -1,12 +1,14 @@
 package com.helpdesk.domain.agent;
 
 import com.helpdesk.domain.ticket.entity.Ticket;
+import com.helpdesk.domain.ticket.entity.TicketStatus;
 import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import com.helpdesk.domain.ticket.repository.TicketRepository;
 
 @Component
 @RequiredArgsConstructor
@@ -14,6 +16,7 @@ public class HardwareCapabilityHandler implements AgentCapabilityHandler {
 
     private static final Logger log = LoggerFactory.getLogger(HardwareCapabilityHandler.class);
     private final UserRepository userRepository;
+    private final TicketRepository ticketRepository;
 
     @Override
     public String getCapabilityKey() {
@@ -27,7 +30,9 @@ public class HardwareCapabilityHandler implements AgentCapabilityHandler {
 
         log.info("Hardware AI agent for ticket {} - flagged for manual follow-up with {}",
                 ticket.getTicketNumber(), requester.getEmail());
-
+                ticket.setStatus(TicketStatus.CLOSED);
+                ticketRepository.save(ticket);
+            
         return "AI Hardware Agent: " + requester.getEmail() + " has requested hardware assistance. " +
                 "Please reach out to the customer manually to arrange a replacement or repair.";
     }
