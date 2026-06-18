@@ -69,6 +69,7 @@ export const routes: Routes = [
       { path: 'teams', loadComponent: () => import('./features/admin/teams/teams.component').then(m => m.TeamsComponent) },
       { path: 'nps', loadComponent: () => import('./features/admin/nps/nps-dashboard.component').then(m => m.NpsDashboardComponent) },
       { path: 'automation-rules', loadComponent: () => import('./features/admin/automation-rules/automation-rules.component').then(m => m.AutomationRulesComponent) },
+      { path: 'ai-agents', loadComponent: () => import('./features/admin/ai-agents/ai-agents.component').then(m => m.AiAgentsComponent) },
       { path: 'customers/:id', loadComponent: () => import('./features/shared/customer-profile/customer-profile.component').then(m => m.CustomerProfileComponent) },
     ],
   },
