@@ -5,6 +5,7 @@ import com.helpdesk.domain.notification.entity.Notification;
 import com.helpdesk.domain.notification.entity.NotificationType;
 import com.helpdesk.domain.notification.repository.NotificationRepository;
 import com.helpdesk.domain.ticket.entity.Ticket;
+import com.helpdesk.domain.user.entity.User;
 import com.helpdesk.domain.user.repository.UserRepository;
 import com.helpdesk.shared.exception.ResourceNotFoundException;
 import jakarta.mail.internet.MimeMessage;
