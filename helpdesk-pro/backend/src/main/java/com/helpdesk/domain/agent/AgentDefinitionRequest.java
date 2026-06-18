@@ -7,7 +7,7 @@ public record AgentDefinitionRequest(
         String description,
         String triggerCategory,
         List<String> keywords,
-        AgentCapability capability,
+        String capability,
         boolean autoClose,
         boolean active
 ) {}

@@ -7,12 +7,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AgentDefinitionService {
 
+    private static final List<String> TICKET_CATEGORIES =
+            List.of("technical", "billing", "account", "feature_request", "other");
+
     private final AgentDefinitionRepository repository;
+    private final AgentCapabilityDefinitionRepository capabilityRepository;
+    private final List<AgentCapabilityHandler> capabilityHandlers;
     private final ObjectMapper objectMapper;
 
     public List<AgentDefinitionResponse> getAll() {
@@ -62,8 +69,34 @@ public class AgentDefinitionService {
         repository.deleteById(id);
     }
 
-    public List<AgentCapability> getCapabilities() {
-        return List.of(AgentCapability.values());
+    public List<AgentCapabilityResponse> getCapabilities() {
+        Set<String> registeredKeys = capabilityHandlers.stream()
+                .map(AgentCapabilityHandler::getCapabilityKey)
+                .collect(Collectors.toSet());
+        return capabilityRepository.findAll().stream()
+                .map(c -> new AgentCapabilityResponse(c.getKey(), c.getLabel(), c.getDescription(),
+                        registeredKeys.contains(c.getKey())))
+                .toList();
+    }
+
+    @Transactional
+    public AgentCapabilityResponse createCapability(AgentCapabilityRequest request) {
+        String key = request.key().trim().toUpperCase().replace(' ', '_');
+        if (capabilityRepository.existsByKeyIgnoreCase(key)) {
+            throw new IllegalArgumentException("Capability already exists: " + key);
+        }
+        AgentCapabilityDefinition saved = capabilityRepository.save(AgentCapabilityDefinition.builder()
+                .key(key)
+                .label(request.label())
+                .description(request.description())
+                .build());
+        boolean hasHandler = capabilityHandlers.stream()
+                .anyMatch(h -> h.getCapabilityKey().equals(saved.getKey()));
+        return new AgentCapabilityResponse(saved.getKey(), saved.getLabel(), saved.getDescription(), hasHandler);
+    }
+
+    public List<String> getTicketCategories() {
+        return TICKET_CATEGORIES;
     }
 
     private AgentDefinitionResponse toResponse(AgentDefinition d) {

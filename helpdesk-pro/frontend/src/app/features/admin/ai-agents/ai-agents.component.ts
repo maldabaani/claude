@@ -6,7 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { AgentDefinition, AgentDefinitionRequest, AgentDefinitionService } from '../../../core/services/agent-definition.service';
+import { AgentCapabilityOption, AgentDefinition, AgentDefinitionRequest, AgentDefinitionService } from '../../../core/services/agent-definition.service';
 
 @Component({
   selector: 'app-ai-agents',
@@ -39,7 +39,8 @@ import { AgentDefinition, AgentDefinitionRequest, AgentDefinitionService } from 
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trigger Category</label>
-            <input pInputText [(ngModel)]="form.triggerCategory" class="w-full" placeholder="e.g. account" />
+            <p-select [options]="categoryOptions()" [(ngModel)]="form.triggerCategory"
+                      optionLabel="label" optionValue="value" class="w-full" placeholder="Select category" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Description</label>
@@ -49,10 +50,39 @@ import { AgentDefinition, AgentDefinitionRequest, AgentDefinitionService } from 
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Keywords (comma separated)</label>
             <input pInputText [(ngModel)]="keywordsText" class="w-full" placeholder="password, reset, locked out" />
           </div>
-          <div>
+          <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Capability</label>
-            <p-select [options]="capabilityOptions()" [(ngModel)]="form.capability"
-                      optionLabel="label" optionValue="value" class="w-full" placeholder="Select capability" />
+            <div class="flex gap-2">
+              <p-select [options]="capabilityOptions()" [(ngModel)]="form.capability"
+                        optionLabel="label" optionValue="value" class="flex-1" placeholder="Select capability" />
+              <button (click)="showNewCapability.set(!showNewCapability())"
+                      type="button"
+                      class="px-3 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+                <i class="pi pi-plus" style="font-size:11px"></i> New capability
+              </button>
+            </div>
+            <p *ngIf="form.capability && !selectedCapabilityHasHandler()" class="text-xs text-amber-600 mt-1.5">
+              <i class="pi pi-exclamation-triangle" style="font-size:10px"></i>
+              No backend handler registered for this capability yet — a developer must add one before this agent can act.
+            </p>
+
+            <div *ngIf="showNewCapability()" class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input pInputText [(ngModel)]="newCapability.key" class="w-full" placeholder="Key, e.g. HARDWARE_REPLACEMENT" />
+                <input pInputText [(ngModel)]="newCapability.label" class="w-full" placeholder="Label, e.g. Hardware Replacement" />
+                <input pInputText [(ngModel)]="newCapability.description" class="w-full sm:col-span-2" placeholder="Description (optional)" />
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button (click)="addCapability()" type="button"
+                        class="px-4 py-1.5 rounded-lg text-xs font-bold text-white" style="background:#7C3AED">
+                  Add capability
+                </button>
+                <button (click)="showNewCapability.set(false)" type="button"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
           <div class="flex items-end gap-6 pb-1.5">
             <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
@@ -108,7 +138,11 @@ import { AgentDefinition, AgentDefinitionRequest, AgentDefinitionService } from 
                   {{ agent.triggerCategory }}
                 </span>
               </td>
-              <td class="px-5 py-3.5 text-sm text-gray-600">{{ agent.capability }}</td>
+              <td class="px-5 py-3.5 text-sm text-gray-600">
+                {{ capabilityLabel(agent.capability) }}
+                <i *ngIf="!capabilityHasHandler(agent.capability)" class="pi pi-exclamation-triangle text-amber-500 ml-1"
+                   style="font-size:11px" title="No backend handler registered"></i>
+              </td>
               <td class="px-5 py-3.5 text-sm text-gray-600">{{ agent.autoClose ? 'Yes' : 'No' }}</td>
               <td class="px-5 py-3.5">
                 <span *ngIf="agent.active" class="text-xs font-bold px-2.5 py-1 rounded-full" style="background:#DCFCE7;color:#15803D">Active</span>
@@ -137,7 +171,11 @@ export class AiAgentsComponent implements OnInit {
   loading = signal(true);
   showForm = signal(false);
   editingId = signal<number | null>(null);
+  capabilities = signal<AgentCapabilityOption[]>([]);
   capabilityOptions = signal<{ label: string; value: string }[]>([]);
+  categoryOptions = signal<{ label: string; value: string }[]>([]);
+  showNewCapability = signal(false);
+  newCapability = { key: '', label: '', description: '' };
 
   keywordsText = '';
   form: AgentDefinitionRequest = this.emptyForm();
@@ -146,8 +184,46 @@ export class AiAgentsComponent implements OnInit {
 
   ngOnInit() {
     this.load();
+    this.loadCapabilities();
+    this.service.getCategories().subscribe(categories => {
+      this.categoryOptions.set(categories.map(c => ({ label: c, value: c })));
+    });
+  }
+
+  loadCapabilities() {
     this.service.getCapabilities().subscribe(capabilities => {
-      this.capabilityOptions.set(capabilities.map(c => ({ label: c, value: c })));
+      this.capabilities.set(capabilities);
+      this.capabilityOptions.set(capabilities.map(c => ({ label: c.label, value: c.key })));
+    });
+  }
+
+  selectedCapabilityHasHandler(): boolean {
+    const cap = this.capabilities().find(c => c.key === this.form.capability);
+    return cap ? cap.hasHandler : true;
+  }
+
+  capabilityLabel(key: string): string {
+    return this.capabilities().find(c => c.key === key)?.label ?? key;
+  }
+
+  capabilityHasHandler(key: string): boolean {
+    return this.capabilities().find(c => c.key === key)?.hasHandler ?? true;
+  }
+
+  addCapability() {
+    if (!this.newCapability.key || !this.newCapability.label) {
+      this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Key and label are required' });
+      return;
+    }
+    this.service.createCapability(this.newCapability).subscribe({
+      next: created => {
+        this.loadCapabilities();
+        this.form.capability = created.key;
+        this.showNewCapability.set(false);
+        this.newCapability = { key: '', label: '', description: '' };
+        this.messageService.add({ severity: 'success', summary: 'Added', detail: 'Capability added — register a backend handler to activate it' });
+      },
+      error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to add capability' }),
     });
   }
 

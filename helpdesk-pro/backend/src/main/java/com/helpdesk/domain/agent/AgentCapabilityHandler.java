@@ -4,7 +4,7 @@ import com.helpdesk.domain.ticket.entity.Ticket;
 
 public interface AgentCapabilityHandler {
 
-    AgentCapability getCapability();
+    String getCapabilityKey();
 
     /**
      * Performs the capability's action and returns the comment body to post on the ticket.

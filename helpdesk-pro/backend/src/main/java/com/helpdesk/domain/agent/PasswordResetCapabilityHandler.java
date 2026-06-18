@@ -25,8 +25,8 @@ public class PasswordResetCapabilityHandler implements AgentCapabilityHandler {
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
-    public AgentCapability getCapability() {
-        return AgentCapability.PASSWORD_RESET;
+    public String getCapabilityKey() {
+        return "PASSWORD_RESET";
     }
 
     @Override

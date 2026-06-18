@@ -33,9 +33,8 @@ public class AgentDefinition {
     @Builder.Default
     private String keywords = "[]";
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private AgentCapability capability;
+    private String capability;
 
     @Column(name = "auto_close", nullable = false)
     @Builder.Default

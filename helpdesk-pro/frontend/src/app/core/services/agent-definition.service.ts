@@ -28,6 +28,19 @@ export interface AgentDefinitionRequest {
   active: boolean;
 }
 
+export interface AgentCapabilityOption {
+  key: string;
+  label: string;
+  description?: string;
+  hasHandler: boolean;
+}
+
+export interface AgentCapabilityRequest {
+  key: string;
+  label: string;
+  description?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentDefinitionService {
   private base = `${environment.apiUrl}/agent-definitions`;
@@ -38,8 +51,16 @@ export class AgentDefinitionService {
     return this.http.get<ApiResponse<AgentDefinition[]>>(this.base).pipe(map(r => r.data));
   }
 
-  getCapabilities(): Observable<string[]> {
-    return this.http.get<ApiResponse<string[]>>(`${this.base}/capabilities`).pipe(map(r => r.data));
+  getCapabilities(): Observable<AgentCapabilityOption[]> {
+    return this.http.get<ApiResponse<AgentCapabilityOption[]>>(`${this.base}/capabilities`).pipe(map(r => r.data));
+  }
+
+  createCapability(data: AgentCapabilityRequest): Observable<AgentCapabilityOption> {
+    return this.http.post<ApiResponse<AgentCapabilityOption>>(`${this.base}/capabilities`, data).pipe(map(r => r.data));
+  }
+
+  getCategories(): Observable<string[]> {
+    return this.http.get<ApiResponse<string[]>>(`${this.base}/categories`).pipe(map(r => r.data));
   }
 
   create(data: AgentDefinitionRequest): Observable<AgentDefinition> {

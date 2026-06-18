@@ -33,12 +33,12 @@ public class AgentEngineService {
     private final List<AgentCapabilityHandler> capabilityHandlers;
     private final ObjectMapper objectMapper;
 
-    private Map<AgentCapability, AgentCapabilityHandler> handlersByCapability;
+    private Map<String, AgentCapabilityHandler> handlersByCapability;
 
-    private Map<AgentCapability, AgentCapabilityHandler> handlers() {
+    private Map<String, AgentCapabilityHandler> handlers() {
         if (handlersByCapability == null) {
             handlersByCapability = capabilityHandlers.stream()
-                    .collect(Collectors.toMap(AgentCapabilityHandler::getCapability, h -> h));
+                    .collect(Collectors.toMap(AgentCapabilityHandler::getCapabilityKey, h -> h));
         }
         return handlersByCapability;
     }

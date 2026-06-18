@@ -22,8 +22,18 @@ public class AgentDefinitionController {
     }
 
     @GetMapping("/capabilities")
-    public ResponseEntity<ApiResponse<List<AgentCapability>>> getCapabilities() {
+    public ResponseEntity<ApiResponse<List<AgentCapabilityResponse>>> getCapabilities() {
         return ResponseEntity.ok(ApiResponse.ok(service.getCapabilities()));
+    }
+
+    @PostMapping("/capabilities")
+    public ResponseEntity<ApiResponse<AgentCapabilityResponse>> createCapability(@RequestBody AgentCapabilityRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Capability added", service.createCapability(request)));
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<List<String>>> getCategories() {
+        return ResponseEntity.ok(ApiResponse.ok(service.getTicketCategories()));
     }
 
     @PostMapping
