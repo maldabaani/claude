@@ -17,6 +17,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
 
     Optional<Ticket> findByIdAndDeletedAtIsNull(UUID id);
 
+    @Query("SELECT DISTINCT t.category FROM Ticket t WHERE t.deletedAt IS NULL AND t.category IS NOT NULL AND t.category <> ''")
+    List<String> findDistinctCategories();
+
     @Query("SELECT t FROM Ticket t WHERE t.deletedAt IS NULL AND t.slaBreached = false AND t.dueDate < :now AND t.status NOT IN ('RESOLVED', 'CLOSED')")
     List<Ticket> findSlaBreachedTickets(@Param("now") Instant now);
 

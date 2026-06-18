@@ -1,14 +1,21 @@
 package com.helpdesk.domain.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.helpdesk.domain.template.TicketTemplateRepository;
+import com.helpdesk.domain.ticket.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +28,8 @@ public class AgentDefinitionService {
     private final AgentCapabilityDefinitionRepository capabilityRepository;
     private final List<AgentCapabilityHandler> capabilityHandlers;
     private final ObjectMapper objectMapper;
+    private final TicketTemplateRepository ticketTemplateRepository;
+    private final TicketRepository ticketRepository;
 
     public List<AgentDefinitionResponse> getAll() {
         return repository.findAll().stream().map(this::toResponse).toList();
@@ -96,7 +105,20 @@ public class AgentDefinitionService {
     }
 
     public List<String> getTicketCategories() {
-        return TICKET_CATEGORIES;
+        // Canonical AI-triage categories first, then any distinct categories actually
+        // used by ticket templates and existing tickets (e.g. "Hardware"). Deduped
+        // case-insensitively so the agent trigger-category dropdown reflects reality.
+        Map<String, String> byLower = new LinkedHashMap<>();
+        for (String c : TICKET_CATEGORIES) {
+            byLower.putIfAbsent(c.toLowerCase(Locale.ROOT), c);
+        }
+        Stream.concat(
+                        ticketTemplateRepository.findDistinctCategories().stream(),
+                        ticketRepository.findDistinctCategories().stream())
+                .filter(c -> c != null && !c.isBlank())
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .forEach(c -> byLower.putIfAbsent(c.toLowerCase(Locale.ROOT), c));
+        return new ArrayList<>(byLower.values());
     }
 
     private AgentDefinitionResponse toResponse(AgentDefinition d) {
