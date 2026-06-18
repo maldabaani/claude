@@ -35,7 +35,7 @@ import { AgentCapabilityOption, AgentDefinition, AgentDefinitionRequest, AgentDe
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Agent Name</label>
-            <input pInputText [(ngModel)]="form.name" class="w-full" placeholder="e.g. Account Access Agent" />
+            <input pInputText [(ngModel)]="form.name" class="w-full" placeholder="e.g. Account Access Agent" autocomplete="off" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trigger Category</label>
@@ -44,11 +44,11 @@ import { AgentCapabilityOption, AgentDefinition, AgentDefinitionRequest, AgentDe
           </div>
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Description</label>
-            <input pInputText [(ngModel)]="form.description" class="w-full" placeholder="What does this agent do?" />
+            <input pInputText [(ngModel)]="form.description" class="w-full" placeholder="What does this agent do?" autocomplete="off" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Keywords (comma separated)</label>
-            <input pInputText [(ngModel)]="keywordsText" class="w-full" placeholder="password, reset, locked out" />
+            <input pInputText [(ngModel)]="keywordsText" class="w-full" placeholder="password, reset, locked out" autocomplete="off" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1.5">Capability</label>
@@ -68,9 +68,9 @@ import { AgentCapabilityOption, AgentDefinition, AgentDefinitionRequest, AgentDe
 
             <div *ngIf="showNewCapability()" class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input pInputText [(ngModel)]="newCapability.key" class="w-full" placeholder="Key, e.g. HARDWARE_REPLACEMENT" />
-                <input pInputText [(ngModel)]="newCapability.label" class="w-full" placeholder="Label, e.g. Hardware Replacement" />
-                <input pInputText [(ngModel)]="newCapability.description" class="w-full sm:col-span-2" placeholder="Description (optional)" />
+                <input pInputText [(ngModel)]="newCapability.key" class="w-full" placeholder="Key, e.g. HARDWARE_REPLACEMENT" autocomplete="off" />
+                <input pInputText [(ngModel)]="newCapability.label" class="w-full" placeholder="Label, e.g. Hardware Replacement" autocomplete="off" />
+                <input pInputText [(ngModel)]="newCapability.description" class="w-full sm:col-span-2" placeholder="Description (optional)" autocomplete="off" />
               </div>
               <div class="flex gap-2 mt-3">
                 <button (click)="addCapability()" type="button"
