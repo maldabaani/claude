@@ -25,11 +25,10 @@ public class HardwareCapabilityHandler implements AgentCapabilityHandler {
         User requester = userRepository.findById(ticket.getCreatedById())
                 .orElseThrow(() -> new IllegalStateException("Requester not found for ticket " + ticket.getTicketNumber()));
 
-
-        log.info("Hardware AI agent working for ticket {} - would email {}",
+        log.info("Hardware AI agent for ticket {} - flagged for manual follow-up with {}",
                 ticket.getTicketNumber(), requester.getEmail());
 
-        return "AI Hardware Agent: " + requester.getEmail() + " has requested hardware assistance. Email delivery is currently paused pending mail server setup - please reach out to the customer manually for now to provide support.";
+        return "AI Hardware Agent: " + requester.getEmail() + " has requested hardware assistance. " +
+                "Please reach out to the customer manually to arrange a replacement or repair.";
     }
-
 }
