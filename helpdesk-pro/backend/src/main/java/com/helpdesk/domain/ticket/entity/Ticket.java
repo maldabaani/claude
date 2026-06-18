@@ -72,6 +72,10 @@ public class Ticket extends AuditableEntity {
     @Builder.Default
     private boolean slaBreached = false;
 
+    @Column(name = "closed_by_ai")
+    @Builder.Default
+    private boolean closedByAi = false;
+
     @Column(name = "manual_due_date")
     private Instant manualDueDate;
 

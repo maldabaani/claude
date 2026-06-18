@@ -18,6 +18,7 @@ class TicketModel {
   final String? resolvedAt;
   final String createdAt;
   final String updatedAt;
+  final bool closedByAi;
 
   const TicketModel({
     required this.id,
@@ -39,6 +40,7 @@ class TicketModel {
     this.resolvedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.closedByAi = false,
   });
 
   factory TicketModel.fromJson(Map<String, dynamic> json) => TicketModel(
@@ -61,6 +63,7 @@ class TicketModel {
     resolvedAt: json['resolvedAt'],
     createdAt: json['createdAt'] ?? DateTime.now().toIso8601String(),
     updatedAt: json['updatedAt'] ?? DateTime.now().toIso8601String(),
+    closedByAi: json['closedByAi'] ?? false,
   );
 
   String get assignedAgentName => assignedAgent?['fullName'] ?? 'Unassigned';

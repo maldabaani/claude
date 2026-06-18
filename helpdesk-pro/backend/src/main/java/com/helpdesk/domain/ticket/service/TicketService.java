@@ -38,6 +38,8 @@ import com.helpdesk.domain.comment.repository.CommentRepository;
 import com.helpdesk.domain.helptopic.HelpTopic;
 import com.helpdesk.domain.helptopic.HelpTopicRepository;
 import com.helpdesk.domain.roundrobin.RoundRobinService;
+import com.helpdesk.domain.ticket.event.TicketCategorizedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +59,7 @@ public class TicketService {
     private final HelpTopicRepository helpTopicRepository;
     private final RoundRobinService roundRobinService;
     private final com.helpdesk.domain.team.TeamRepository teamRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public TicketResponse create(CreateTicketRequest request, User currentUser) {
@@ -152,13 +155,20 @@ public class TicketService {
     @Transactional
     public TicketResponse update(UUID id, UpdateTicketRequest request) {
         Ticket ticket = getTicket(id);
+        boolean categorizedAsAccount = request.category() != null
+                && "account".equalsIgnoreCase(request.category())
+                && !"account".equalsIgnoreCase(ticket.getCategory());
         if (request.title() != null) ticket.setTitle(request.title());
         if (request.description() != null) ticket.setDescription(request.description());
         if (request.priority() != null) ticket.setPriority(request.priority());
         if (request.category() != null) ticket.setCategory(request.category());
         if (request.departmentId() != null) ticket.setDepartmentId(request.departmentId());
         if (request.tags() != null) ticket.setTags(request.tags());
-        return toResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        if (categorizedAsAccount) {
+            eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), "account"));
+        }
+        return toResponse(saved);
     }
 
     @Transactional
@@ -275,6 +285,19 @@ public class TicketService {
         return toResponse(target);
     }
 
+    @Transactional
+    public void closeByAi(UUID id) {
+        Ticket ticket = getTicket(id);
+        if (!ticket.getStatus().canTransitionTo(TicketStatus.CLOSED)) return;
+        ticket.setStatus(TicketStatus.CLOSED);
+        ticket.setClosedAt(Instant.now());
+        ticket.setClosedByAi(true);
+        Ticket saved = ticketRepository.save(ticket);
+        notificationService.notifyStatusChanged(saved);
+        auditLogService.log("TICKET", saved.getId(), "STATUS_CHANGED", null, null, "{\"status\":\"CLOSED\",\"closedByAi\":true}");
+        webhookService.fireEvent("ticket.updated", toResponse(saved));
+    }
+
     private void autoAssign(Ticket ticket) {
         boolean enabled = Boolean.parseBoolean(
             systemSettingRepository.findById("autoAssignTickets").map(s -> s.getValue()).orElse("false"));
@@ -339,7 +362,8 @@ public class TicketService {
                 team != null ? team.getName() : null,
                 team != null ? team.getColor() : null,
                 splitFrom != null ? splitFrom.getId() : null,
-                splitFrom != null ? splitFrom.getTicketNumber() : null
+                splitFrom != null ? splitFrom.getTicketNumber() : null,
+                ticket.isClosedByAi()
         );
     }
 

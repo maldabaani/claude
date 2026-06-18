@@ -441,6 +441,10 @@ import { environment } from '../../../../environments/environment';
                 </label>
                 <p-select [options]="statusOptions" [(ngModel)]="currentStatus" (onChange)="updateStatus()"
                           optionLabel="label" optionValue="value" class="w-full" />
+                <div *ngIf="ticket()!.closedByAi" class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-violet-50 text-violet-600 border border-violet-200">
+                  <i class="pi pi-android" style="font-size:11px"></i>
+                  Closed by AI Agent
+                </div>
               </div>
 
               <!-- Priority -->

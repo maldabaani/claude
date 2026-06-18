@@ -772,6 +772,25 @@ class _DetailsTabState extends State<_DetailsTab> {
                 PriorityBadge(priority: ticket['priority'] ?? 'MEDIUM'),
               ])),
             ]),
+            if (ticket['closedByAi'] == true) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F3FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDDD6FE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.smart_toy_outlined, size: 14, color: Color(0xFF7C3AED)),
+                    SizedBox(width: 4),
+                    Text('Closed by AI Agent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF7C3AED))),
+                  ],
+                ),
+              ),
+            ],
           ]),
           const SizedBox(height: 12),
           _InfoCard(children: [

@@ -118,6 +118,17 @@ public class NotificationService {
         });
     }
 
+    public void sendPasswordResetEmail(User user, String temporaryPassword) {
+        String subject = "Your password has been reset";
+        String details = "Your temporary password: <strong>" + temporaryPassword + "</strong><br><br>" +
+            "Please log in and change your password as soon as possible.";
+        String body = buildEmail("Password Reset",
+            "Hi " + user.getFullName() + ",",
+            "We've reset your password as requested via your support ticket.",
+            details);
+        sendEmail(user.getEmail(), subject, body);
+    }
+
     public void notifySnoozeWakeUp(Ticket ticket) {
         if (ticket.getAssignedAgentId() == null) return;
         String msg = "Ticket #" + ticket.getTicketNumber() + " is back from snooze";

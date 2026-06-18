@@ -41,6 +41,7 @@ export interface Ticket {
   parentTicketTitle?: string | null;
   splitFromId?: string | null;
   splitFromNumber?: string | null;
+  closedByAi?: boolean;
 }
 
 export interface Comment {

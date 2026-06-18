@@ -36,5 +36,6 @@ public record TicketResponse(
         String teamName,
         String teamColor,
         java.util.UUID splitFromId,
-        String splitFromNumber
+        String splitFromNumber,
+        boolean closedByAi
 ) {}
