@@ -102,6 +102,9 @@ public class TicketService {
         notificationService.notifyTicketCreated(saved);
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
         webhookService.fireEvent("ticket.created", toResponse(saved));
+        if (saved.getCategory() != null) {
+            eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), saved.getCategory()));
+        }
         return toResponse(saved);
     }
 
