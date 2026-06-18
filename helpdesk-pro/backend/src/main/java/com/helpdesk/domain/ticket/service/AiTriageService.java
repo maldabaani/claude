@@ -10,11 +10,7 @@ import com.helpdesk.domain.ticket.dto.TicketSummary;
 import com.helpdesk.domain.ticket.dto.TriageSuggestion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.Map;
@@ -27,42 +23,32 @@ public class AiTriageService {
     private static final TriageSuggestion FALLBACK = new TriageSuggestion(
             "other", "medium", "Unable to generate suggestion automatically.");
 
-    private final RestClient restClient;
+    private final AiLlmClient llmClient;
     private final ObjectMapper objectMapper;
 
-    public AiTriageService(
-            @Value("${anthropic.api.key:}") String apiKey,
-            ObjectMapper objectMapper) {
+    public AiTriageService(AiLlmClient llmClient, ObjectMapper objectMapper) {
+        this.llmClient = llmClient;
         this.objectMapper = objectMapper;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);
-        factory.setReadTimeout(15_000);
-        this.restClient = RestClient.builder()
-                .baseUrl("https://api.anthropic.com")
-                .defaultHeader("x-api-key", apiKey)
-                .defaultHeader("anthropic-version", "2023-06-01")
-                .requestFactory(factory)
-                .build();
+    }
+
+    private String stripFences(String text) {
+        text = text.strip();
+        if (text.startsWith("```")) {
+            text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
+        }
+        return text;
     }
 
     public TriageSuggestion suggest(String title, String description) {
         try {
             String prompt = buildPrompt(title, description);
-
-            Map<String, Object> body = Map.of(
-                    "model", "claude-haiku-4-5-20251001",
-                    "max_tokens", 512,
-                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            String text = stripFences(llmClient.complete(prompt, 512));
+            JsonNode s = objectMapper.readTree(text);
+            return new TriageSuggestion(
+                    s.path("category").asText("other"),
+                    s.path("priority").asText("medium"),
+                    s.path("suggested_response").asText(FALLBACK.suggestedResponse())
             );
-
-            JsonNode response = restClient.post()
-                    .uri("/v1/messages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            return parseResponse(response);
         } catch (Exception e) {
             log.warn("AI triage failed for ticket '{}': {}", title, e.getMessage());
             return FALLBACK;
@@ -87,19 +73,6 @@ public class AiTriageService {
         );
     }
 
-    private TriageSuggestion parseResponse(JsonNode response) throws Exception {
-        String text = response.at("/content/0/text").asText().strip();
-        if (text.startsWith("```")) {
-            text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
-        }
-        JsonNode s = objectMapper.readTree(text);
-        return new TriageSuggestion(
-                s.path("category").asText("other"),
-                s.path("priority").asText("medium"),
-                s.path("suggested_response").asText(FALLBACK.suggestedResponse())
-        );
-    }
-
     public TicketSummary summarize(String title, String description, List<String> commentBodies) {
         try {
             StringBuilder commentsSection = new StringBuilder();
@@ -111,7 +84,7 @@ public class AiTriageService {
             }
 
             String prompt = """
-                    You are a helpdesk assistant. Summarize the following support ticket in 3-4 concise sentences.                     Respond with ONLY valid JSON \u2014 no markdown, no explanation, no code fences.
+                    You are a helpdesk assistant. Summarize the following support ticket in 3-4 concise sentences.                     Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
 
                     Required JSON format:
                     {"summary":"<3-4 sentence concise summary of the ticket and its current status>"}
@@ -124,33 +97,13 @@ public class AiTriageService {
                     commentsSection
             );
 
-            Map<String, Object> body = Map.of(
-                    "model", "claude-haiku-4-5-20251001",
-                    "max_tokens", 512,
-                    "messages", List.of(Map.of("role", "user", "content", prompt))
-            );
-
-            JsonNode response = restClient.post()
-                    .uri("/v1/messages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            return parseSummaryResponse(response);
+            String text = stripFences(llmClient.complete(prompt, 512));
+            JsonNode s = objectMapper.readTree(text);
+            return new TicketSummary(s.path("summary").asText("Unable to generate summary."));
         } catch (Exception e) {
             log.warn("AI summarization failed for ticket \'{}\': {}", title, e.getMessage());
             return new TicketSummary("Unable to generate summary.");
         }
-    }
-
-    private TicketSummary parseSummaryResponse(JsonNode response) throws Exception {
-        String text = response.at("/content/0/text").asText().strip();
-        if (text.startsWith("```")) {
-            text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
-        }
-        JsonNode s = objectMapper.readTree(text);
-        return new TicketSummary(s.path("summary").asText("Unable to generate summary."));
     }
 
     public SentimentResult analyzeSentiment(String title, String description, String latestComment) {
@@ -166,23 +119,7 @@ public class AiTriageService {
                 prompt.append("Latest customer comment: ").append(latestComment).append("\n");
             }
 
-            Map<String, Object> body = Map.of(
-                    "model", "claude-haiku-4-5-20251001",
-                    "max_tokens", 256,
-                    "messages", List.of(Map.of("role", "user", "content", prompt.toString()))
-            );
-
-            JsonNode response = restClient.post()
-                    .uri("/v1/messages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            String text = response.at("/content/0/text").asText().strip();
-            if (text.startsWith("```")) {
-                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
-            }
+            String text = stripFences(llmClient.complete(prompt.toString(), 256));
             JsonNode s = objectMapper.readTree(text);
             return new SentimentResult(
                     s.path("sentiment").asText("neutral"),
@@ -222,23 +159,7 @@ public class AiTriageService {
                     conv
             );
 
-            Map<String, Object> body = Map.of(
-                    "model", "claude-haiku-4-5-20251001",
-                    "max_tokens", 512,
-                    "messages", List.of(Map.of("role", "user", "content", prompt))
-            );
-
-            JsonNode response = restClient.post()
-                    .uri("/v1/messages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            String text = response.at("/content/0/text").asText().strip();
-            if (text.startsWith("```")) {
-                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
-            }
+            String text = stripFences(llmClient.complete(prompt, 512));
             JsonNode s = objectMapper.readTree(text);
             return new SmartReply(
                     s.path("reply").asText("Thank you for reaching out. We will look into this and get back to you shortly."),
@@ -283,27 +204,10 @@ public class AiTriageService {
                     candidateList
             );
 
-            Map<String, Object> body = Map.of(
-                    "model", "claude-haiku-4-5-20251001",
-                    "max_tokens", 1024,
-                    "messages", List.of(Map.of("role", "user", "content", prompt))
-            );
-
-            JsonNode response = restClient.post()
-                    .uri("/v1/messages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            String text = response.at("/content/0/text").asText().strip();
-            if (text.startsWith("```")) {
-                text = text.replaceFirst("^```[a-zA-Z]*\\n?", "").replaceFirst("```$", "").strip();
-            }
+            String text = stripFences(llmClient.complete(prompt, 1024));
             JsonNode root = objectMapper.readTree(text);
             JsonNode dupsNode = root.path("duplicates");
 
-            // Build a lookup map from id -> candidate info
             Map<String, Map<String, String>> candidateMap = new java.util.HashMap<>();
             for (Map<String, String> c : candidates) {
                 candidateMap.put(c.get("id"), c);
