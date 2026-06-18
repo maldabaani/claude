@@ -105,11 +105,11 @@ public class TicketService {
         auditLogService.log("TICKET", saved.getId(), "CREATED", currentUser.getId());
         webhookService.fireEvent("ticket.created", toResponse(saved));
         if (saved.getCategory() != null && !saved.getCategory().isBlank()) {
-            log.info("Publishing TicketCategorizedEvent for ticket {} with category '{}'",
+            log.debug("Publishing TicketCategorizedEvent for ticket {} with category '{}'",
                     saved.getTicketNumber(), saved.getCategory());
             eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), saved.getCategory()));
         } else {
-            log.info("Ticket {} created with no category - skipping agent trigger event", saved.getTicketNumber());
+            log.debug("Ticket {} created with no category - skipping agent trigger event", saved.getTicketNumber());
         }
         return toResponse(saved);
     }

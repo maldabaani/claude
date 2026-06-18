@@ -47,9 +47,9 @@ public class AgentEngineService {
     @Transactional
     public void process(UUID ticketId, Long agentDefinitionId, AgentDefinition definition) {
         try {
-            log.info("AI agent '{}' invoked for ticket {} (capability={})", definition.getName(), ticketId, definition.getCapability());
+            log.debug("AI agent '{}' invoked for ticket {} (capability={})", definition.getName(), ticketId, definition.getCapability());
             if (executionLogRepository.existsByTicketIdAndAgentDefinitionId(ticketId, agentDefinitionId)) {
-                log.info("AI agent '{}' skipping ticket {} - already processed by this agent", definition.getName(), ticketId);
+                log.debug("AI agent '{}' skipping ticket {} - already processed by this agent", definition.getName(), ticketId);
                 return;
             }
 

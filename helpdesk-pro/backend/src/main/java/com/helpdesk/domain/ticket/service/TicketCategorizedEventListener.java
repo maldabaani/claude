@@ -26,7 +26,7 @@ public class TicketCategorizedEventListener {
     public void onTicketCategorized(TicketCategorizedEvent event) {
         List<AgentDefinition> definitions = agentDefinitionRepository
                 .findByActiveTrueAndTriggerCategoryIgnoreCase(event.category());
-        log.info("TicketCategorizedEvent received for ticket {} with category '{}' - matched {} active agent definition(s): {}",
+        log.debug("TicketCategorizedEvent received for ticket {} with category '{}' - matched {} active agent definition(s): {}",
                 event.ticketId(), event.category(), definitions.size(),
                 definitions.stream().map(AgentDefinition::getName).toList());
         for (AgentDefinition definition : definitions) {
