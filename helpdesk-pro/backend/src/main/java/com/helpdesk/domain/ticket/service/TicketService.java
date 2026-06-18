@@ -155,9 +155,8 @@ public class TicketService {
     @Transactional
     public TicketResponse update(UUID id, UpdateTicketRequest request) {
         Ticket ticket = getTicket(id);
-        boolean categorizedAsAccount = request.category() != null
-                && "account".equalsIgnoreCase(request.category())
-                && !"account".equalsIgnoreCase(ticket.getCategory());
+        boolean categoryChanged = request.category() != null
+                && !request.category().equalsIgnoreCase(ticket.getCategory());
         if (request.title() != null) ticket.setTitle(request.title());
         if (request.description() != null) ticket.setDescription(request.description());
         if (request.priority() != null) ticket.setPriority(request.priority());
@@ -165,8 +164,8 @@ public class TicketService {
         if (request.departmentId() != null) ticket.setDepartmentId(request.departmentId());
         if (request.tags() != null) ticket.setTags(request.tags());
         Ticket saved = ticketRepository.save(ticket);
-        if (categorizedAsAccount) {
-            eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), "account"));
+        if (categoryChanged) {
+            eventPublisher.publishEvent(new TicketCategorizedEvent(saved.getId(), saved.getCategory()));
         }
         return toResponse(saved);
     }
