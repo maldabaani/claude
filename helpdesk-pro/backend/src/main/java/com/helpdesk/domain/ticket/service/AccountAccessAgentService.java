@@ -75,13 +75,16 @@ public class AccountAccessAgentService {
             requester.setPasswordHash(passwordEncoder.encode(temporaryPassword));
             userRepository.save(requester);
 
-            notificationService.sendPasswordResetEmail(requester, temporaryPassword);
+            // Email sending is paused until mail server details are configured.
+            // TODO: switch back to notificationService.sendPasswordResetEmail(requester, temporaryPassword);
+            log.info("AI agent password reset for ticket {} - would email {} with temporary password: {}",
+                    ticket.getTicketNumber(), requester.getEmail(), temporaryPassword);
 
             Comment comment = Comment.builder()
                     .ticketId(ticketId)
                     .authorId(AI_AGENT_USER_ID)
-                    .body("AI Agent: a temporary password has been generated and emailed to " + requester.getEmail() +
-                            ". The customer should log in and change it as soon as possible.")
+                    .body("AI Agent: a temporary password has been generated for " + requester.getEmail() +
+                            ". Email delivery is currently paused pending mail server setup - please share the credential with the customer manually for now.")
                     .internal(false)
                     .build();
             commentRepository.save(comment);
