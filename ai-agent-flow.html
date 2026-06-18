@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Account Access AI Agent — Flow & Reusability</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fc;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #7c3aed;
+    --accent-light: #ede9fe;
+    --green: #16a34a;
+    --green-light: #dcfce7;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    padding: 40px 24px 24px;
+    text-align: center;
+  }
+  header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 800;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .card h2 {
+    margin-top: 0;
+    font-size: 19px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge.agent { background: var(--accent-light); color: var(--accent); }
+  .badge.guard { background: var(--amber-light); color: var(--amber); }
+  .badge.action { background: var(--green-light); color: var(--green); }
+  #diagram {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #111827;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 0;
+  }
+  .pill {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 Account Access AI Agent</h1>
+  <p>Trigger → Queue → Guards → Action → Close — and how this pattern reuses for future agents</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Flow Diagram</h2>
+    <div id="diagram">
+      <pre class="mermaid">
+flowchart TD
+    A["PATCH /tickets/:id<br/>category = account"] --> B{"old category != account<br/>AND new category == account?"}
+    B -- no --> Z["Just save, no event"]
+    B -- yes --> C["Save ticket<br/>publish TicketCategorizedEvent"]
+    C --> D["@TransactionalEventListener<br/>AFTER_COMMIT"]
+    D --> E["AccountAccessAgentService.process()<br/>@Async aiAgentExecutor — pool size 1"]
+    E --> F{"Already closedByAi<br/>or status CLOSED?"}
+    F -- yes --> Z2["Skip — idempotent"]
+    F -- no --> G{"category still account?"}
+    G -- no --> Z2
+    G -- yes --> H{"Keyword match:<br/>password / reset / locked out ...?"}
+    H -- no --> I["Log: skipping —<br/>not a recognized intent.<br/>Leave OPEN for human"]
+    H -- yes --> J["Look up requester User"]
+    J --> K{"User found?"}
+    K -- no --> L["Log warning, abort"]
+    K -- yes --> M["Generate temp password<br/>SecureRandom + BCrypt encode<br/>save User"]
+    M --> N["Log temp password<br/>(email sending PAUSED)"]
+    N --> O["Post comment as<br/>'AI Agent' system user"]
+    O --> P["ticketService.closeByAi()<br/>status=CLOSED, closedByAi=true<br/>notify + audit + webhook"]
+    P --> Q["Frontend reads closedByAi<br/>shows 'Closed by AI Agent' badge"]
+
+    classDef agent fill:#ede9fe,stroke:#7c3aed,color:#1f2937;
+    classDef guard fill:#fef3c7,stroke:#d97706,color:#1f2937;
+    classDef action fill:#dcfce7,stroke:#16a34a,color:#1f2937;
+    class E agent;
+    class F,G,H guard;
+    class P,Q action;
+      </pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>What each block actually is in code</h2>
+    <table>
+      <tr><th>Step</th><th>File</th><th>What it does</th></tr>
+      <tr><td>Trigger</td><td><code>TicketService.update()</code></td><td>Detects category transition into <code>"account"</code>, publishes <code>TicketCategorizedEvent</code></td></tr>
+      <tr><td>Listener</td><td><code>TicketCategorizedEventListener</code></td><td><code>@TransactionalEventListener(AFTER_COMMIT)</code> — only fires once the DB change is durable</td></tr>
+      <tr><td>Queue</td><td><code>AsyncConfig</code></td><td>Single-thread executor bean <code>aiAgentExecutor</code> — strict FIFO, one ticket at a time</td></tr>
+      <tr><td>Guards + Action</td><td><code>AccountAccessAgentService.process()</code></td><td>Idempotency check → scope check (keywords) → reset password → log → comment → close</td></tr>
+      <tr><td>Close</td><td><code>TicketService.closeByAi()</code></td><td>Reuses existing status-transition validation, sets <code>closedByAi=true</code>, fires normal notify/audit/webhook</td></tr>
+      <tr><td>Persistence</td><td><code>V48 migration</code>, <code>Ticket.java</code>, <code>TicketResponse.java</code></td><td><code>closed_by_ai</code> column + seeded "AI Agent" system user for comment authorship</td></tr>
+      <tr><td>UI</td><td><code>ticket-detail.component.ts</code>, <code>ticket_model.dart</code></td><td>Violet "Closed by AI Agent" badge on web + mobile</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Reusable skeleton <span class="badge agent">same every time</span></h2>
+    <div class="pill-row">
+      <span class="pill">Event-driven trigger</span>
+      <span class="pill">AFTER_COMMIT listener</span>
+      <span class="pill">Dedicated single/small-pool executor</span>
+      <span class="pill">Idempotency guard</span>
+      <span class="pill">Scope guard</span>
+      <span class="pill">try/catch wrapper</span>
+      <span class="pill">Resolved-by-agent flag + badge</span>
+    </div>
+    <p style="margin-top:16px;color:var(--muted)">
+      Every future single-purpose agent (KB-search-and-reply, duplicate-merge bot, SLA-escalation bot, etc.)
+      can be built as a new <code>&lt;Name&gt;AgentService</code> + matching event/listener pair, dropped into
+      this same harness — without re-deriving the plumbing.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>What changes per new agent <span class="badge guard">customize</span></h2>
+    <table>
+      <tr><th>Piece</th><th>Account-Access Agent (built)</th><th>Example: future "KB Auto-Resolve" agent</th></tr>
+      <tr><td>Trigger event</td><td>Category set to <code>account</code></td><td>New ticket created in <code>"how-to"</code> category</td></tr>
+      <tr><td>Scope guard</td><td>Keyword match for password/reset</td><td>Confidence score from a KB similarity search</td></tr>
+      <tr><td>Action</td><td>Reset password, log temp credential</td><td>Search KB articles, draft a reply using <code>AiTriageService</code>-style Claude call</td></tr>
+      <tr><td>Resolution</td><td>Close ticket, <code>closedByAi=true</code></td><td>Post draft as internal note, leave OPEN for human approval (per your earlier "always require approval" pattern for riskier actions)</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
