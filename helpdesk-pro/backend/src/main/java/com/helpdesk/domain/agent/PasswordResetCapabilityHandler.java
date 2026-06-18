@@ -15,7 +15,7 @@ import java.security.SecureRandom;
 @RequiredArgsConstructor
 public class PasswordResetCapabilityHandler implements AgentCapabilityHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetCapabilityHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(HardwareCapabilityHandler.class);
 
     private static final String TEMP_PASSWORD_CHARS =
             "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%";
