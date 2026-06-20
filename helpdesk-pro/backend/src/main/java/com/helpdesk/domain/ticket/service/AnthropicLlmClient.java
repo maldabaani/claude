@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@ConditionalOnProperty(name = "ai.provider", havingValue = "anthropic", matchIfMissing = true)
+@ConditionalOnProperty(name = "ai.provider", havingValue = "anthropic")
 public class AnthropicLlmClient implements AiLlmClient {
 
     private static final String MODEL = "claude-haiku-4-5-20251001";

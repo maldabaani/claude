@@ -13,10 +13,10 @@ import java.util.Map;
 
 /**
  * Talks to a locally running Ollama instance instead of the Anthropic API.
- * Enabled by setting {@code ai.provider=ollama}.
+ * Default provider; set {@code ai.provider=anthropic} to use Anthropic instead.
  */
 @Service
-@ConditionalOnProperty(name = "ai.provider", havingValue = "ollama")
+@ConditionalOnProperty(name = "ai.provider", havingValue = "ollama", matchIfMissing = true)
 public class OllamaLlmClient implements AiLlmClient {
 
     private final RestClient restClient;
