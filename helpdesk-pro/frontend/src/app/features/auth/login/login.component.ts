@@ -262,7 +262,12 @@ export class LoginComponent {
           this.auth.redirectAfterLogin();
         }
       },
-      error: () => { this.error = 'Invalid email or password. Please try again.'; this.loading = false; },
+      error: (err) => {
+        this.error = err.status === 0
+          ? 'Cannot reach the server. Is the backend running?'
+          : (err.error?.message || 'Invalid email or password. Please try again.');
+        this.loading = false;
+      },
     });
   }
 
