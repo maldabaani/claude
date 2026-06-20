@@ -1,27 +1,40 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, QueryList, ViewChildren, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { SelectModule } from 'primeng/select';
-import { PaginatorModule, PaginatorState } from 'primeng/paginator';
-import { CheckboxModule } from 'primeng/checkbox';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
+import gsap from 'gsap';
 import { TicketService } from '../../../core/services/ticket.service';
 import { UserService } from '../../../core/services/user.service';
 import { SavedViewService, SavedView } from '../../../core/services/saved-view.service';
 import { Ticket, TicketStatus, Priority } from '../../../core/models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { PriorityBadgeComponent } from '../../../shared/components/priority-badge/priority-badge.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { HlmTableComponent, HlmTdComponent, HlmThComponent, HlmTrowComponent } from '../../../shared/ui/hlm-table/hlm-table.component';
+import { HlmButtonComponent } from '../../../shared/ui/hlm-button/hlm-button.component';
+import { HlmBadgeComponent, BadgeVariants } from '../../../shared/ui/hlm-badge/hlm-badge.component';
+import { HlmInputDirective } from '../../../shared/ui/hlm-input/hlm-input.component';
+import { HlmCheckboxDirective } from '../../../shared/ui/hlm-checkbox/hlm-checkbox.component';
+import { HlmSelectDirective } from '../../../shared/ui/hlm-select/hlm-select.component';
+import { HlmPaginationComponent, HlmPageEvent } from '../../../shared/ui/hlm-pagination/hlm-pagination.component';
+
+const PRIORITY_BADGE_VARIANT: Record<Priority, BadgeVariants['variant']> = {
+  CRITICAL: 'critical',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+};
 
 @Component({
   selector: 'app-ticket-queue',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule,
-    SelectModule, PaginatorModule, CheckboxModule, ButtonModule, InputTextModule,
-    StatusBadgeComponent, PriorityBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe],
+  imports: [
+    CommonModule, RouterLink, FormsModule,
+    StatusBadgeComponent, SkeletonLoaderComponent, TimeAgoPipe,
+    HlmTableComponent, HlmTdComponent, HlmThComponent, HlmTrowComponent,
+    HlmButtonComponent, HlmBadgeComponent, HlmInputDirective, HlmCheckboxDirective,
+    HlmSelectDirective, HlmPaginationComponent,
+  ],
   template: `
     <div class="space-y-5">
 
@@ -42,8 +55,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
             <i class="pi pi-bookmark text-slate-400" style="font-size:15px"></i>
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Saved Views</span>
           </div>
-          <button (click)="showSaveForm.set(!showSaveForm())"
-                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+          <button hlmButton variant="outline" size="sm" (click)="showSaveForm.set(!showSaveForm())">
             <i class="pi pi-plus" style="font-size:12px"></i>
             Save Current Filters
           </button>
@@ -52,18 +64,14 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <!-- Save form -->
         <div *ngIf="showSaveForm()" class="px-5 py-3 flex items-center gap-3"
              style="border-bottom:1px solid #F1F5F9;background:#F8FAFC">
-          <input pInputText [(ngModel)]="newViewName"
+          <input hlmInput [(ngModel)]="newViewName"
                  placeholder="View name e.g. 'Open Critical Tickets'"
-                 class="flex-1 text-sm"
+                 class="flex-1"
                  (keydown.enter)="saveView()" />
-          <button (click)="saveView()"
-                  [disabled]="!newViewName.trim()"
-                  class="px-4 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                  style="background:#2563EB">
+          <button hlmButton [disabled]="!newViewName.trim()" (click)="saveView()">
             Save
           </button>
-          <button (click)="showSaveForm.set(false); newViewName = ''"
-                  class="px-4 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+          <button hlmButton variant="outline" (click)="showSaveForm.set(false); newViewName = ''">
             Cancel
           </button>
         </div>
@@ -95,16 +103,15 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         <i class="pi pi-filter text-slate-400 shrink-0" style="font-size:16px"></i>
         <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filter by:</span>
 
-        <p-select [options]="statusOptions" [(ngModel)]="selectedStatus" (onChange)="load()"
-                  optionLabel="label" optionValue="value" placeholder="All statuses"
-                  [style]="{'width':'160px'}" />
+        <select hlmSelect [(ngModel)]="selectedStatus" (ngModelChange)="load()">
+          <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
 
-        <p-select [options]="priorityOptions" [(ngModel)]="selectedPriority" (onChange)="load()"
-                  optionLabel="label" optionValue="value" placeholder="All priorities"
-                  [style]="{'width':'160px'}" />
+        <select hlmSelect [(ngModel)]="selectedPriority" (ngModelChange)="load()">
+          <option *ngFor="let opt of priorityOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
 
-        <button (click)="resetFilters()"
-                class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors border border-gray-200">
+        <button hlmButton variant="outline" size="sm" (click)="resetFilters()">
           <i class="pi pi-refresh" style="font-size:14px"></i>
           Reset
         </button>
@@ -125,57 +132,56 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
            style="background:#EFF6FF;border-color:#BFDBFE">
         <span class="text-sm font-bold text-blue-700">{{ selectedIds().size }} selected</span>
         <div class="flex items-center gap-2 ml-2">
-          <button pButton size="small" severity="success" label="Resolve" (click)="executeBulk('RESOLVE')" [loading]="bulkLoading()"></button>
-          <button pButton size="small" severity="secondary" label="Close" (click)="executeBulk('CLOSE')" [loading]="bulkLoading()"></button>
-          <p-select [options]="agents()" optionLabel="fullName" optionValue="id" placeholder="Assign to..."
-                    [ngModel]="bulkAgentId()" (ngModelChange)="onBulkAgentChange($event)" class="text-sm" />
+          <button hlmButton size="sm" (click)="executeBulk('RESOLVE')" [disabled]="bulkLoading()">Resolve</button>
+          <button hlmButton variant="outline" size="sm" (click)="executeBulk('CLOSE')" [disabled]="bulkLoading()">Close</button>
+          <select hlmSelect [ngModel]="bulkAgentId()" (ngModelChange)="onBulkAgentChange($event)">
+            <option [ngValue]="null" disabled selected>Assign to...</option>
+            <option *ngFor="let agent of agents()" [value]="agent.id">{{ agent.fullName }}</option>
+          </select>
         </div>
-        <button pButton size="small" text="true" severity="secondary" label="Clear" (click)="clearSelection()" class="ml-auto"></button>
+        <button hlmButton variant="ghost" size="sm" (click)="clearSelection()" class="ml-auto">Clear</button>
       </div>
 
       <!-- Data table -->
-      <div class="bg-white rounded-xl border border-gray-100 overflow-hidden"
-           style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-
-        <!-- Table header -->
-        <div class="grid gap-4 px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
-             style="grid-template-columns:40px 130px 1fr 90px 110px 150px 100px 80px;background:#FAFAFA;border-bottom:1px solid #F1F5F9">
-          <th class="w-10" style="list-style:none;font-weight:normal">
-            <p-checkbox [ngModel]="isAllSelected()" [binary]="true" (onChange)="toggleSelectAll()" />
-          </th>
-          <span>Ticket ID</span>
-          <span>Subject</span>
-          <span>Priority</span>
-          <span>Status</span>
-          <span>Assigned To</span>
-          <span>Due Date</span>
-          <span>Age</span>
-        </div>
+      <hlm-table class="overflow-hidden">
+        <hlm-trow class="grid-cols-[40px_130px_1fr_90px_110px_150px_100px_80px] px-6 py-3 bg-[#FAFAFA] border-b border-[#F1F5F9]">
+          <hlm-th class="w-10">
+            <input type="checkbox" hlmCheckbox [checked]="isAllSelected()" (change)="toggleSelectAll()" />
+          </hlm-th>
+          <hlm-th>Ticket ID</hlm-th>
+          <hlm-th>Subject</hlm-th>
+          <hlm-th>Priority</hlm-th>
+          <hlm-th>Status</hlm-th>
+          <hlm-th>Assigned To</hlm-th>
+          <hlm-th>Due Date</hlm-th>
+          <hlm-th>Age</hlm-th>
+        </hlm-trow>
 
         <app-skeleton-loader *ngIf="loading()" type="table" [count]="8" class="block px-4 py-2" />
 
-        <div *ngIf="!loading()">
-          <div *ngFor="let ticket of tickets(); let last = last"
-               class="grid gap-4 items-center px-6 py-3.5 hover:bg-slate-50/70 cursor-pointer transition-colors group"
-               style="grid-template-columns:40px 130px 1fr 90px 110px 150px 100px 80px"
+        <ng-container *ngIf="!loading()">
+          <hlm-trow #row *ngFor="let ticket of tickets(); let last = last"
+               class="grid-cols-[40px_130px_1fr_90px_110px_150px_100px_80px] px-6 py-3.5 hover:bg-slate-50/70 cursor-pointer group"
                [style.border-bottom]="!last ? '1px solid #F8FAFC' : 'none'"
                [routerLink]="['/agent/tickets', ticket.id]">
 
-            <td class="w-10" style="list-style:none" (click)="onCheckboxCellClick($event)">
-              <p-checkbox [ngModel]="isSelected(ticket.id)" [binary]="true" (onChange)="toggleSelect(ticket.id)" />
-            </td>
+            <hlm-td class="w-10" (click)="onCheckboxCellClick($event)">
+              <input type="checkbox" hlmCheckbox [checked]="isSelected(ticket.id)" (change)="toggleSelect(ticket.id)" />
+            </hlm-td>
 
-            <span class="text-xs font-mono font-bold" style="color:#2563EB">{{ ticket.ticketNumber }}</span>
+            <hlm-td class="text-xs font-mono font-bold" style="color:#2563EB">{{ ticket.ticketNumber }}</hlm-td>
 
-            <span class="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors"
+            <hlm-td class="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors"
                   [style.opacity]="ticket.status === 'SNOOZED' ? '0.6' : '1'">
               <span *ngIf="ticket.status === 'SNOOZED'" class="mr-1">💤</span>{{ ticket.title }}
-            </span>
+            </hlm-td>
 
-            <app-priority-badge [priority]="ticket.priority" />
-            <app-status-badge [status]="ticket.status" />
+            <hlm-td>
+              <hlm-badge [variant]="priorityVariant(ticket.priority)">{{ ticket.priority }}</hlm-badge>
+            </hlm-td>
+            <hlm-td><app-status-badge [status]="ticket.status" /></hlm-td>
 
-            <div class="flex items-center gap-2 min-w-0">
+            <hlm-td class="flex items-center gap-2 min-w-0">
               <div *ngIf="ticket.assignedAgent"
                    class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                    style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -189,16 +195,18 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
               <span class="text-xs text-slate-500 truncate font-medium">
                 {{ ticket.assignedAgent?.fullName || 'Unassigned' }}
               </span>
-            </div>
+            </hlm-td>
 
-            <span *ngIf="ticket.manualDueDate"
-                  class="text-xs font-semibold"
-                  [style.color]="isTicketOverdue(ticket) ? '#EF4444' : '#374151'">
-              {{ ticket.manualDueDate | date:'MMM d' }}
-            </span>
-            <span *ngIf="!ticket.manualDueDate" class="text-xs text-slate-300">—</span>
-            <span class="text-xs text-slate-400 font-medium">{{ ticket.createdAt | timeAgo }}</span>
-          </div>
+            <hlm-td>
+              <span *ngIf="ticket.manualDueDate"
+                    class="text-xs font-semibold"
+                    [style.color]="isTicketOverdue(ticket) ? '#EF4444' : '#374151'">
+                {{ ticket.manualDueDate | date:'MMM d' }}
+              </span>
+              <span *ngIf="!ticket.manualDueDate" class="text-xs text-slate-300">—</span>
+            </hlm-td>
+            <hlm-td class="text-xs text-slate-400 font-medium">{{ ticket.createdAt | timeAgo }}</hlm-td>
+          </hlm-trow>
 
           <div *ngIf="tickets().length === 0" class="py-16 text-center">
             <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -208,16 +216,14 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
             <p class="text-sm font-semibold text-slate-400">No tickets match your filters</p>
             <p class="text-xs text-slate-300 mt-1">Try adjusting or resetting your filters</p>
           </div>
-        </div>
-      </div>
+        </ng-container>
+      </hlm-table>
 
-      <p-paginator [totalRecords]="totalElements()" [rows]="pageSize" (onPageChange)="onPage($event)"
-                   styleClass="bg-white rounded-xl border border-gray-100"
-                   [style]="{'box-shadow':'0 1px 3px rgba(0,0,0,0.04)'}" />
+      <hlm-pagination [page]="currentPage" [rows]="pageSize" [totalRecords]="totalElements()" (pageChange)="onPage($event)" />
     </div>
   `,
 })
-export class TicketQueueComponent implements OnInit {
+export class TicketQueueComponent implements OnInit, AfterViewInit {
   tickets = signal<Ticket[]>([]);
   loading = signal(true);
   totalElements = signal(0);
@@ -255,6 +261,8 @@ export class TicketQueueComponent implements OnInit {
     ...(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Priority[]).map(p => ({ label: p, value: p }))
   ];
 
+  @ViewChildren('row', { read: ElementRef }) rowEls!: QueryList<ElementRef<HTMLElement>>;
+
   constructor(
     private ticketService: TicketService,
     private userService: UserService,
@@ -271,6 +279,18 @@ export class TicketQueueComponent implements OnInit {
     this.savedViewService.getAll().subscribe(views => this.savedViews.set(views));
   }
 
+  ngAfterViewInit() {}
+
+  private animateRowsIn() {
+    const els = this.rowEls?.map(r => r.nativeElement) ?? [];
+    if (!els.length) return;
+    gsap.fromTo(
+      els,
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, stagger: 0.05, duration: 0.4, ease: 'power2.out' },
+    );
+  }
+
   load() {
     this.loading.set(true);
     const params: any = { page: this.currentPage, size: this.pageSize };
@@ -279,7 +299,12 @@ export class TicketQueueComponent implements OnInit {
     if (this.searchQuery()) params.search = this.searchQuery();
     if (this.showSnoozed) params.includeSnoozed = 'true';
     this.ticketService.getTickets(params).subscribe({
-      next: (page) => { this.tickets.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
+      next: (page) => {
+        this.tickets.set(page.content);
+        this.totalElements.set(page.totalElements);
+        this.loading.set(false);
+        requestAnimationFrame(() => this.animateRowsIn());
+      },
       error: () => this.loading.set(false),
     });
   }
@@ -298,7 +323,7 @@ export class TicketQueueComponent implements OnInit {
     this.load();
   }
 
-  onPage(e: PaginatorState) { this.currentPage = e.page ?? 0; this.load(); }
+  onPage(e: HlmPageEvent) { this.currentPage = e.page; this.load(); }
 
   // ── Saved Views ──
 
@@ -368,6 +393,10 @@ export class TicketQueueComponent implements OnInit {
       next: () => { this.clearSelection(); this.bulkAgentId.set(null); this.bulkLoading.set(false); this.load(); },
       error: () => this.bulkLoading.set(false)
     });
+  }
+
+  priorityVariant(priority: Priority): BadgeVariants['variant'] {
+    return PRIORITY_BADGE_VARIANT[priority] ?? 'default';
   }
 
   isTicketOverdue(ticket: any): boolean {
