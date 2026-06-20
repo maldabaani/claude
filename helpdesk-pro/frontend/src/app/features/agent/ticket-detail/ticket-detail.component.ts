@@ -997,7 +997,7 @@ import { HlmModalComponent } from '../../../shared/ui/hlm-modal/hlm-modal.compon
           <span class="font-semibold text-gray-900 text-sm">{{ m.name }}</span>
           <span *ngIf="m.description" class="text-xs text-slate-400">{{ m.description }}</span>
           <div class="flex flex-wrap gap-1 mt-1">
-            <span *ngFor="let a of $any(m.actions)"
+            <span *ngFor="let a of parseMacroActions(m.actions)"
                   class="text-xs px-2 py-0.5 rounded-full font-medium"
                   style="background:#EEF2FF;color:#4338CA">{{ a.type }}: {{ a.value }}</span>
           </div>
@@ -2174,6 +2174,14 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
       next: ms => this.macros.set(ms),
       error: () => {}
     });
+  }
+
+  parseMacroActions(actions: string): { type: string; value: string }[] {
+    try {
+      return JSON.parse(actions) ?? [];
+    } catch {
+      return [];
+    }
   }
 
   openMacroOverlay() {
