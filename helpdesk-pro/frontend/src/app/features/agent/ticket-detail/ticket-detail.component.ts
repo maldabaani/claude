@@ -3,17 +3,6 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { SelectButtonModule } from 'primeng/selectbutton';
-import { TooltipModule } from 'primeng/tooltip';
-import { TextareaModule } from 'primeng/textarea';
-import { PopoverModule } from 'primeng/popover';
-import { InputTextModule } from 'primeng/inputtext';
-import { DialogModule } from 'primeng/dialog';
-import { DatePickerModule } from 'primeng/datepicker';
-import { CheckboxModule } from 'primeng/checkbox';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { TicketService } from '../../../core/services/ticket.service';
 import { KeyboardShortcutService } from '../../../core/services/keyboard-shortcut.service';
 import { TagService, Tag as ManagedTag } from '../../../core/services/tag.service';
@@ -38,13 +27,17 @@ import { PriorityBadgeComponent } from '../../../shared/components/priority-badg
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { environment } from '../../../../environments/environment';
+import { HlmButtonComponent } from '../../../shared/ui/hlm-button/hlm-button.component';
+import { HlmInputDirective } from '../../../shared/ui/hlm-input/hlm-input.component';
+import { HlmCheckboxDirective } from '../../../shared/ui/hlm-checkbox/hlm-checkbox.component';
+import { HlmSelectDirective } from '../../../shared/ui/hlm-select/hlm-select.component';
+import { HlmModalComponent } from '../../../shared/ui/hlm-modal/hlm-modal.component';
 
 @Component({
   selector: 'app-agent-ticket-detail',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, FormsModule, DatePipe,
-    ButtonModule, SelectModule, SelectButtonModule, TooltipModule, TextareaModule,
-    PopoverModule, InputTextModule, DialogModule, DatePickerModule, CheckboxModule, InputNumberModule,
+    HlmButtonComponent, HlmInputDirective, HlmCheckboxDirective, HlmSelectDirective, HlmModalComponent,
     StatusBadgeComponent, PriorityBadgeComponent, TimeAgoPipe, SkeletonLoaderComponent],
   template: `
     <app-skeleton-loader *ngIf="loading()" type="card" />
@@ -91,8 +84,7 @@ import { environment } from '../../../../environments/environment';
         </a>
         <button *ngIf="!ticket()?.snoozedUntil" (click)="showSnoozeDialog = true"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors"
-                pTooltip="Snooze ticket (S)"
-                tooltipPosition="bottom">
+                title="Snooze ticket (S)">
           <span>💤</span>
           Snooze
         </button>
@@ -183,20 +175,22 @@ import { environment } from '../../../../environments/environment';
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-gray-900 text-sm">Reply</h3>
                 <div class="flex items-center gap-2">
-                  <button type="button" (click)="cannedPanel.toggle($event)"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                    <i class="pi pi-bookmark" style="font-size:12px"></i>
-                    Canned
-                  </button>
-                  <p-popover #cannedPanel>
-                    <div style="width:320px">
+                  <div class="relative">
+                    <button type="button" (click)="showCannedPanel.set(!showCannedPanel())"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                      <i class="pi pi-bookmark" style="font-size:12px"></i>
+                      Canned
+                    </button>
+                    <div *ngIf="showCannedPanel()"
+                         class="absolute right-0 z-50 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden"
+                         style="width:320px">
                       <div class="p-3 border-b border-gray-100">
-                        <input pInputText class="w-full text-sm" placeholder="Search responses..."
+                        <input hlmInput class="w-full" placeholder="Search responses..."
                                [ngModel]="cannedSearch()" (ngModelChange)="setCannedSearch($event)" />
                       </div>
                       <div class="max-h-64 overflow-y-auto">
                         <div *ngFor="let r of filteredCanned()"
-                             (click)="insertCanned(r); cannedPanel.hide()"
+                             (click)="insertCanned(r); showCannedPanel.set(false)"
                              class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 transition-colors">
                           <p class="text-sm font-semibold text-gray-900">{{ r.title }}</p>
                           <p class="text-xs text-slate-400 mt-0.5 truncate">{{ r.body }}</p>
@@ -206,9 +200,23 @@ import { environment } from '../../../../environments/environment';
                         </div>
                       </div>
                     </div>
-                  </p-popover>
-                  <p-selectbutton [options]="noteModeOptions" [(ngModel)]="noteMode"
-                                  optionLabel="label" optionValue="value" />
+                  </div>
+                  <div class="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-semibold">
+                    <button type="button" (click)="noteMode = 'public'"
+                            class="px-3 py-1.5 transition-colors"
+                            [class.bg-primary-600]="noteMode === 'public'"
+                            [class.text-white]="noteMode === 'public'"
+                            [class.text-gray-600]="noteMode !== 'public'">
+                      Public
+                    </button>
+                    <button type="button" (click)="noteMode = 'internal'"
+                            class="px-3 py-1.5 transition-colors border-l border-gray-200"
+                            [class.bg-amber-500]="noteMode === 'internal'"
+                            [class.text-white]="noteMode === 'internal'"
+                            [class.text-gray-600]="noteMode !== 'internal'">
+                      Internal
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -220,7 +228,7 @@ import { environment } from '../../../../environments/environment';
               </div>
 
               <div class="relative">
-                <textarea #replyTextarea pTextarea [formControl]="replyControl" rows="4" class="w-full"
+                <textarea #replyTextarea hlmInput [formControl]="replyControl" rows="4" class="w-full"
                           [placeholder]="noteMode === 'internal'
                             ? 'Add an internal note visible only to your team... Use &#64; to mention agents'
                             : 'Type a reply to the customer...'"
@@ -332,8 +340,7 @@ import { environment } from '../../../../environments/environment';
                   <div class="grid grid-cols-2 gap-3">
                     <div>
                       <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
-                      <select [(ngModel)]="aiSuggestCategory"
-                              class="w-full text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-indigo-400">
+                      <select hlmSelect [(ngModel)]="aiSuggestCategory" class="w-full">
                         <option value="technical">Technical</option>
                         <option value="billing">Billing</option>
                         <option value="account">Account</option>
@@ -343,8 +350,9 @@ import { environment } from '../../../../environments/environment';
                     </div>
                     <div>
                       <label class="block text-xs font-semibold text-slate-500 mb-1">Priority</label>
-                      <p-select [options]="priorityOptions" [(ngModel)]="aiSuggestPriority"
-                                optionLabel="label" optionValue="value" class="w-full" />
+                      <select hlmSelect [(ngModel)]="aiSuggestPriority" class="w-full">
+                        <option *ngFor="let opt of priorityOptions" [value]="opt.value">{{ opt.label }}</option>
+                      </select>
                     </div>
                   </div>
                   <div>
@@ -412,8 +420,7 @@ import { environment } from '../../../../environments/environment';
                         class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         [style.background]="noteMode === 'internal' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : 'linear-gradient(135deg,#2563EB,#1D4ED8)'"
                         style="box-shadow:0 2px 8px rgba(0,0,0,0.15)"
-                        pTooltip="Focus reply textarea (R)"
-                        tooltipPosition="top">
+                        title="Focus reply textarea (R)">
                   <i class="pi pi-send" style="font-size:16px"></i>
                   {{ submitting ? 'Sending...' : (noteMode === 'internal' ? 'Add Note' : 'Send Reply') }}
                 </button>
@@ -439,8 +446,9 @@ import { environment } from '../../../../environments/environment';
                   Status
                   <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(E) resolve</span>
                 </label>
-                <p-select [options]="statusOptions" [(ngModel)]="currentStatus" (onChange)="updateStatus()"
-                          optionLabel="label" optionValue="value" class="w-full" />
+                <select hlmSelect [(ngModel)]="currentStatus" (ngModelChange)="updateStatus()" class="w-full">
+                  <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+                </select>
                 <div *ngIf="ticket()!.closedByAi" class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-violet-50 text-violet-600 border border-violet-200">
                   <i class="pi pi-android" style="font-size:11px"></i>
                   Closed by AI Agent
@@ -454,7 +462,7 @@ import { environment } from '../../../../environments/environment';
                   <app-priority-badge [priority]="ticket()!.priority" />
                   <button (click)="autoCategorize()" [disabled]="autoCategorizeLoading()"
                           class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-50"
-                          pTooltip="AI sets category & priority automatically" tooltipPosition="top">
+                          title="AI sets category & priority automatically">
                     <i [class]="autoCategorizeLoading() ? 'pi pi-spinner pi-spin' : 'pi pi-bolt'" style="font-size:11px"></i>
                     {{ autoCategorizeLoading() ? '…' : 'Auto' }}
                   </button>
@@ -493,14 +501,9 @@ import { environment } from '../../../../environments/environment';
               <!-- Manual Due Date -->
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Due Date</label>
-                <p-datepicker [(ngModel)]="manualDueDateValue"
-                              (onSelect)="onManualDueDateChange($event)"
-                              (onClear)="clearManualDueDate()"
-                              [showClear]="true"
-                              dateFormat="M d, yy"
-                              [showTime]="false"
-                              class="w-full"
-                              placeholder="Set due date" />
+                <input type="date" hlmInput class="w-full"
+                       [value]="dateInputValue(manualDueDateValue)"
+                       (change)="onManualDueDateInput($event)" />
                 <p *ngIf="isManualOverdue()" class="text-xs text-red-500 font-medium mt-1">Overdue!</p>
               </div>
 
@@ -528,9 +531,9 @@ import { environment } from '../../../../environments/environment';
                   Assigned To
                   <span class="ml-1 text-slate-300 font-normal normal-case tracking-normal" style="font-size:10px">(A) assign me</span>
                 </label>
-                <p-select [options]="agentOptions" [(ngModel)]="currentAgentId" (onChange)="assignAgent()"
-                          optionLabel="label" optionValue="value" class="w-full"
-                          placeholder="Unassigned" />
+                <select hlmSelect [(ngModel)]="currentAgentId" (ngModelChange)="assignAgent()" class="w-full">
+                  <option *ngFor="let opt of agentOptions" [ngValue]="opt.value">{{ opt.label }}</option>
+                </select>
               </div>
 
               <!-- Department -->
@@ -631,22 +634,20 @@ import { environment } from '../../../../environments/environment';
                            (blur)="saveCustomValues()"
                            placeholder="{{ field.name }}" />
                     <!-- DROPDOWN -->
-                    <p-select *ngIf="field.fieldType === 'DROPDOWN'"
-                              [options]="field.options"
-                              [ngModel]="customValues()[field.fieldKey]"
-                              (ngModelChange)="onCustomValueChangeAndSave(field.fieldKey, $event)"
-                              class="w-full" />
+                    <select *ngIf="field.fieldType === 'DROPDOWN'" hlmSelect class="w-full"
+                            [ngModel]="customValues()[field.fieldKey]"
+                            (ngModelChange)="onCustomValueChangeAndSave(field.fieldKey, $event)">
+                      <option *ngFor="let opt of field.options" [value]="opt">{{ opt }}</option>
+                    </select>
                     <!-- DATE -->
-                    <p-datepicker *ngIf="field.fieldType === 'DATE'"
-                                  [ngModel]="customDateValues()[field.fieldKey]"
-                                  (ngModelChange)="onCustomDateChange(field.fieldKey, $event)"
-                                  dateFormat="yy-mm-dd"
-                                  class="w-full" />
+                    <input *ngIf="field.fieldType === 'DATE'" type="date" hlmInput class="w-full"
+                           [value]="dateInputValue(customDateValues()[field.fieldKey])"
+                           (change)="onCustomDateInput(field.fieldKey, $event)" />
                     <!-- CHECKBOX -->
                     <div *ngIf="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2">
-                      <p-checkbox [ngModel]="customValues()[field.fieldKey] === 'true'"
-                                  (ngModelChange)="onCustomValueChangeAndSave(field.fieldKey, $event ? 'true' : 'false')"
-                                  [binary]="true" />
+                      <input type="checkbox" hlmCheckbox
+                             [checked]="customValues()[field.fieldKey] === 'true'"
+                             (change)="onCustomValueChangeAndSave(field.fieldKey, $any($event.target).checked ? 'true' : 'false')" />
                       <span class="text-xs text-gray-600">{{ field.name }}</span>
                     </div>
                   </div>
@@ -823,16 +824,16 @@ import { environment } from '../../../../environments/environment';
                 <div class="flex gap-2">
                   <div class="flex-1">
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Hours</label>
-                    <p-inputnumber [(ngModel)]="logHours" [min]="0" [max]="99" class="w-full" inputStyleClass="w-full text-sm" />
+                    <input type="number" hlmInput class="w-full" min="0" max="99" [(ngModel)]="logHours" />
                   </div>
                   <div class="flex-1">
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Minutes</label>
-                    <p-inputnumber [(ngModel)]="logMins" [min]="0" [max]="59" class="w-full" inputStyleClass="w-full text-sm" />
+                    <input type="number" hlmInput class="w-full" min="0" max="59" [(ngModel)]="logMins" />
                   </div>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Note (optional)</label>
-                  <textarea pTextarea [(ngModel)]="logNote" rows="2" class="w-full text-xs" placeholder="What did you work on?"></textarea>
+                  <textarea hlmInput [(ngModel)]="logNote" rows="2" class="w-full text-xs" placeholder="What did you work on?"></textarea>
                 </div>
                 <div class="flex gap-2 justify-end">
                   <button (click)="showLogTimeForm = false; logHours = 0; logMins = 0; logNote = ''"
@@ -910,18 +911,19 @@ import { environment } from '../../../../environments/environment';
               <div *ngIf="showAddSubTicketForm" class="rounded-xl p-3 space-y-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Subject</label>
-                  <input pInputText class="w-full text-sm" placeholder="Sub-ticket subject..."
+                  <input hlmInput class="w-full text-sm" placeholder="Sub-ticket subject..."
                          [(ngModel)]="newSubSubject" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
-                  <textarea pTextarea [(ngModel)]="newSubDescription" rows="2" class="w-full text-xs"
+                  <textarea hlmInput [(ngModel)]="newSubDescription" rows="2" class="w-full text-xs"
                             placeholder="Describe the issue..."></textarea>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Priority</label>
-                  <p-select [options]="priorityOptions" [(ngModel)]="newSubPriority"
-                            optionLabel="label" optionValue="value" class="w-full" />
+                  <select hlmSelect class="w-full" [(ngModel)]="newSubPriority">
+                    <option *ngFor="let opt of priorityOptions" [value]="opt.value">{{ opt.label }}</option>
+                  </select>
                 </div>
                 <div class="flex gap-2 justify-end">
                   <button (click)="showAddSubTicketForm = false; newSubSubject = ''; newSubDescription = ''"
@@ -985,9 +987,8 @@ import { environment } from '../../../../environments/environment';
     </div>
 
     <!-- Macro overlay -->
-    <p-dialog [(visible)]="macroOverlayVisible" [modal]="true" header="⚡ Run Macro"
-              [style]="{width:'420px'}" [draggable]="false">
-      <div class="space-y-2 pt-1">
+    <hlm-modal [(visible)]="macroOverlayVisible" header="⚡ Run Macro" width="420px">
+      <div class="space-y-2 p-5">
         <p class="text-sm text-slate-500 mb-3">Select a macro to apply multiple actions to this ticket at once.</p>
         <div *ngIf="macros().length === 0" class="text-center py-6 text-slate-400 text-sm">No macros available</div>
         <div *ngFor="let m of macros()"
@@ -1002,12 +1003,11 @@ import { environment } from '../../../../environments/environment';
           </div>
         </div>
       </div>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Snooze dialog -->
-    <p-dialog [(visible)]="showSnoozeDialog" [modal]="true" header="💤 Snooze Ticket"
-              [style]="{width:'420px'}" [closable]="true">
-      <div class="space-y-3 p-2">
+    <hlm-modal [(visible)]="showSnoozeDialog" header="💤 Snooze Ticket" width="420px">
+      <div class="space-y-3 p-5">
         <p class="text-sm text-slate-500">Hide this ticket from the queue until a future time. It will automatically reappear when the time arrives.</p>
         <div class="grid grid-cols-2 gap-2">
           <button (click)="snooze(snoozeIn(1))"
@@ -1033,29 +1033,27 @@ import { environment } from '../../../../environments/environment';
                  class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-amber-400"
                  style="font-family:inherit" />
         </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="showSnoozeDialog = false">
+            Cancel
+          </button>
+          <button (click)="snoozeCustom(customSnoozeDate)"
+                  [disabled]="!customSnoozeDate"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#D97706">
+            Snooze
+          </button>
+        </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="showSnoozeDialog = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="snoozeCustom(customSnoozeDate)"
-                [disabled]="!customSnoozeDate"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#D97706">
-          Snooze
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Merge dialog -->
-    <p-dialog [(visible)]="mergeDialogVisible" [modal]="true" header="Merge Ticket"
-              [style]="{width:'480px'}" [closable]="true">
-      <div class="space-y-4 p-2">
+    <hlm-modal [(visible)]="mergeDialogVisible" header="Merge Ticket" width="480px">
+      <div class="space-y-4 p-5">
         <p class="text-sm text-slate-500">Search for a target ticket to merge this ticket into. All comments will be moved to the target ticket and this ticket will be closed.</p>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
-          <input pInputText class="w-full text-sm"
+          <input hlmInput class="w-full text-sm"
                  placeholder="Enter subject or ticket ID..."
                  [ngModel]="mergeSearch()"
                  (ngModelChange)="onMergeSearch($event)" />
@@ -1075,29 +1073,27 @@ import { environment } from '../../../../environments/environment';
         <div *ngIf="mergeSearch().length > 1 && mergeResults().length === 0" class="text-xs text-slate-400 text-center py-3">
           No matching tickets found
         </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="mergeDialogVisible = false">
+            Cancel
+          </button>
+          <button (click)="confirmMerge()"
+                  [disabled]="!mergeTargetId() || merging"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#2563EB">
+            {{ merging ? 'Merging...' : 'Merge' }}
+          </button>
+        </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="mergeDialogVisible = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="confirmMerge()"
-                [disabled]="!mergeTargetId() || merging"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#2563EB">
-          {{ merging ? 'Merging...' : 'Merge' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Add Ticket Link dialog -->
-    <p-dialog [(visible)]="addLinkDialogVisible" [modal]="true" header="Link Ticket"
-              [style]="{width:'480px'}" [closable]="true">
-      <div class="space-y-4 p-2">
+    <hlm-modal [(visible)]="addLinkDialogVisible" header="Link Ticket" width="480px">
+      <div class="space-y-4 p-5">
         <p class="text-sm text-slate-500">Search for a ticket to link and select the relationship type.</p>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
-          <input pInputText class="w-full text-sm"
+          <input hlmInput class="w-full text-sm"
                  placeholder="Enter subject or ticket number..."
                  [ngModel]="linkSearch()"
                  (ngModelChange)="onLinkSearch($event)" />
@@ -1119,32 +1115,31 @@ import { environment } from '../../../../environments/environment';
         </div>
         <div *ngIf="linkTargetId()">
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Relationship type</label>
-          <p-select [options]="linkTypeOptions" [(ngModel)]="selectedLinkType"
-                    optionLabel="label" optionValue="value" class="w-full" />
+          <select hlmSelect class="w-full" [(ngModel)]="selectedLinkType">
+            <option *ngFor="let opt of linkTypeOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="addLinkDialogVisible = false">
+            Cancel
+          </button>
+          <button (click)="confirmAddLink()"
+                  [disabled]="!linkTargetId() || !selectedLinkType || addingLink"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#2563EB">
+            {{ addingLink ? 'Linking...' : 'Add Link' }}
+          </button>
         </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="addLinkDialogVisible = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="confirmAddLink()"
-                [disabled]="!linkTargetId() || !selectedLinkType || addingLink"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#2563EB">
-          {{ addingLink ? 'Linking...' : 'Add Link' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Set Parent dialog -->
-    <p-dialog [(visible)]="showSetParentDialog" [modal]="true" header="Set Parent Ticket"
-              [style]="{width:'480px'}" [closable]="true">
-      <div class="space-y-4 p-2">
+    <hlm-modal [(visible)]="showSetParentDialog" header="Set Parent Ticket" width="480px">
+      <div class="space-y-4 p-5">
         <p class="text-sm text-slate-500">Search for a ticket to set as the parent of this ticket.</p>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search tickets</label>
-          <input pInputText class="w-full text-sm"
+          <input hlmInput class="w-full text-sm"
                  placeholder="Enter subject or ticket number..."
                  [ngModel]="parentSearch()"
                  (ngModelChange)="onParentSearch($event)" />
@@ -1164,47 +1159,46 @@ import { environment } from '../../../../environments/environment';
         <div *ngIf="parentSearch().length > 1 && parentResults().length === 0" class="text-xs text-slate-400 text-center py-3">
           No matching tickets found
         </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="showSetParentDialog = false">
+            Cancel
+          </button>
+          <button (click)="confirmSetParent()"
+                  [disabled]="!parentTargetId() || settingParent"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#2563EB">
+            {{ settingParent ? 'Setting...' : 'Set Parent' }}
+          </button>
+        </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="showSetParentDialog = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="confirmSetParent()"
-                [disabled]="!parentTargetId() || settingParent"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#2563EB">
-          {{ settingParent ? 'Setting...' : 'Set Parent' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Split Ticket dialog -->
-    <p-dialog [(visible)]="splitDialogVisible" [modal]="true" header="Split Ticket"
-              [style]="{width:'520px'}" [closable]="true">
-      <div class="space-y-4 p-2">
+    <hlm-modal [(visible)]="splitDialogVisible" header="Split Ticket" width="520px">
+      <div class="space-y-4 p-5">
         <p class="text-sm text-slate-500">Create a new ticket from this one. Optionally move selected comments to the new ticket.</p>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">New ticket subject</label>
-          <input pInputText class="w-full text-sm" placeholder="Subject..."
+          <input hlmInput class="w-full text-sm" placeholder="Subject..."
                  [(ngModel)]="splitSubject" />
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
-          <textarea pTextarea [(ngModel)]="splitDescription" rows="3" class="w-full text-sm"
+          <textarea hlmInput [(ngModel)]="splitDescription" rows="3" class="w-full text-sm"
                     placeholder="Describe the issue..."></textarea>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Department</label>
-            <p-select [options]="departmentOptions()" [(ngModel)]="splitDepartmentId"
-                      optionLabel="label" optionValue="value" class="w-full"
-                      placeholder="Select department" />
+            <select hlmSelect class="w-full" [(ngModel)]="splitDepartmentId">
+              <option *ngFor="let opt of departmentOptions()" [value]="opt.value">{{ opt.label }}</option>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Priority</label>
-            <p-select [options]="priorityOptions" [(ngModel)]="splitPriority"
-                      optionLabel="label" optionValue="value" class="w-full" />
+            <select hlmSelect class="w-full" [(ngModel)]="splitPriority">
+              <option *ngFor="let opt of priorityOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
           </div>
         </div>
         <div *ngIf="publicComments().length > 0">
@@ -1213,9 +1207,9 @@ import { environment } from '../../../../environments/environment';
             <div *ngFor="let c of publicComments(); let last = last"
                  class="flex items-start gap-3 px-4 py-3"
                  [style.border-bottom]="!last ? '1px solid #F1F5F9' : 'none'">
-              <p-checkbox [(ngModel)]="splitCommentIds"
-                          [value]="c.id"
-                          [binary]="false" />
+              <input type="checkbox" hlmCheckbox
+                     [checked]="splitCommentIds.includes(c.id)"
+                     (change)="toggleSplitComment(c.id, $any($event.target).checked)" />
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-gray-700">{{ c.author.fullName }}</p>
                 <p class="text-xs text-slate-500 mt-0.5 truncate">{{ c.body }}</p>
@@ -1223,29 +1217,27 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
         </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="splitDialogVisible = false">
+            Cancel
+          </button>
+          <button (click)="confirmSplit()"
+                  [disabled]="!splitSubject.trim() || splitting"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#7C3AED">
+            {{ splitting ? 'Splitting...' : 'Split Ticket' }}
+          </button>
+        </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="splitDialogVisible = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="confirmSplit()"
-                [disabled]="!splitSubject.trim() || splitting"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#7C3AED">
-          {{ splitting ? 'Splitting...' : 'Split Ticket' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
 
     <!-- Link to Issue dialog -->
-    <p-dialog [(visible)]="linkIssueDialogVisible" [modal]="true" header="Link to Issue"
-              [style]="{width:'480px'}" [closable]="true">
-      <div class="space-y-4 p-2">
+    <hlm-modal [(visible)]="linkIssueDialogVisible" header="Link to Issue" width="480px">
+      <div class="space-y-4 p-5">
         <p class="text-sm text-slate-500">Search for an issue to link this ticket to.</p>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Search issues</label>
-          <input pInputText class="w-full text-sm"
+          <input hlmInput class="w-full text-sm"
                  placeholder="Issue title..."
                  [ngModel]="issueSearch()"
                  (ngModelChange)="onIssueSearch($event)" />
@@ -1267,20 +1259,19 @@ import { environment } from '../../../../environments/environment';
         <div *ngIf="issueSearch().length > 1 && issueResults().length === 0" class="text-xs text-slate-400 text-center py-3">
           No issues found
         </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button hlmButton variant="outline" (click)="linkIssueDialogVisible = false">
+            Cancel
+          </button>
+          <button (click)="confirmLinkIssue()"
+                  [disabled]="!selectedIssueId() || linkingIssue"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
+                  style="background:#2563EB">
+            {{ linkingIssue ? 'Linking...' : 'Link Issue' }}
+          </button>
+        </div>
       </div>
-      <ng-template pTemplate="footer">
-        <button (click)="linkIssueDialogVisible = false"
-                class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-          Cancel
-        </button>
-        <button (click)="confirmLinkIssue()"
-                [disabled]="!selectedIssueId() || linkingIssue"
-                class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50"
-                style="background:#2563EB">
-          {{ linkingIssue ? 'Linking...' : 'Link Issue' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+    </hlm-modal>
   `,
 })
 export class AgentTicketDetailComponent implements OnInit, OnDestroy {
@@ -1522,6 +1513,7 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
 
   cannedResponses = signal<CannedResponseModel[]>([]);
   cannedSearch = signal('');
+  showCannedPanel = signal(false);
 
   filteredCanned(): CannedResponseModel[] {
     const q = this.cannedSearch().toLowerCase();
@@ -2046,6 +2038,34 @@ export class AgentTicketDetailComponent implements OnInit, OnDestroy {
     if (!id) return;
     this.manualDueDateValue = null;
     this.ticketService.updateDueDate(id, null).subscribe(t => this.ticket.set(t));
+  }
+
+  dateInputValue(d: Date | null): string {
+    return d ? d.toISOString().substring(0, 10) : '';
+  }
+
+  onManualDueDateInput(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    if (!value) {
+      this.clearManualDueDate();
+      return;
+    }
+    const date = new Date(value);
+    this.manualDueDateValue = date;
+    this.onManualDueDateChange(date);
+  }
+
+  onCustomDateInput(key: string, event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.onCustomDateChange(key, value ? new Date(value) : null);
+  }
+
+  toggleSplitComment(id: string, checked: boolean) {
+    if (checked) {
+      if (!this.splitCommentIds.includes(id)) this.splitCommentIds.push(id);
+    } else {
+      this.splitCommentIds = this.splitCommentIds.filter(c => c !== id);
+    }
   }
 
   isManualOverdue(): boolean {
