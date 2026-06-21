@@ -285,8 +285,8 @@ cd helpdesk-pro/backend
 
 # Set environment variables (or export them)
 export JWT_SECRET="dev-secret-key-change-in-production-min-32-chars"
-export DB_USER=helpdesk
-export DB_PASS=helpdesk
+export DB_USER=admin
+export DB_PASS=admin
 
 ./mvnw spring-boot:run
 ```
@@ -357,8 +357,8 @@ docker compose down -v
 
 | Variable | Default | Description |
 |---|---|---|
-| `DB_USER` | `helpdesk` | PostgreSQL username |
-| `DB_PASS` | `helpdesk` | PostgreSQL password |
+| `DB_USER` | `admin` | PostgreSQL username |
+| `DB_PASS` | `admin` | PostgreSQL password |
 | `JWT_SECRET` | *(required)* | Min 32-character secret key for JWT signing |
 | `JWT_ACCESS_EXPIRY` | `3600000` | Access token TTL in milliseconds (1 hour) |
 | `JWT_REFRESH_EXPIRY` | `604800000` | Refresh token TTL in milliseconds (7 days) |

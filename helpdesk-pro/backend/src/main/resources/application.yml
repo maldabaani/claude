@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/helpdesk
-    username: ${DB_USER:helpdesk}
-    password: ${DB_PASS:helpdesk}
+    username: ${DB_USER:admin}
+    password: ${DB_PASS:admin}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
