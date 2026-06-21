@@ -77,5 +77,5 @@ ai:
 
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:llama3.2:1b}
+  model: ${OLLAMA_MODEL:qwen2.5:32b}
 

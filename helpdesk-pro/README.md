@@ -371,7 +371,7 @@ docker compose down -v
 | `ENCRYPTION_KEY` | *(required in prod)* | 32-char key for encrypting sensitive config (e.g. SMTP passwords) |
 | `AI_PROVIDER` | `ollama` | LLM backend for AI agent automation & smart replies: `ollama` (local, default) or `anthropic` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL of a locally running Ollama instance |
-| `OLLAMA_MODEL` | `llama3.2:1b` | Ollama model tag to use (must already be pulled, e.g. via `ollama pull llama3.2:1b`) |
+| `OLLAMA_MODEL` | `qwen2.5:32b` | Ollama model tag to use (must already be pulled, e.g. via `ollama pull qwen2.5:32b`; needs ~32GB RAM, use a smaller tag like `llama3.2:1b` on lighter machines) |
 | `ANTHROPIC_API_KEY` | *(empty)* | API key for the Anthropic Claude API; only used when `AI_PROVIDER=anthropic` |
 
 ### Frontend
