@@ -39,12 +39,14 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 | Layer | Technology |
 |---|---|
 | Backend | Java 21, Spring Boot 3.2, Spring Security 6, Spring Data JPA |
-| Database | PostgreSQL 16 + Flyway migrations (V1–V44) |
+| Database | PostgreSQL 16 + Flyway migrations (V1–V52) |
 | Authentication | JWT (access token + refresh token) + TOTP 2FA |
 | Real-time | WebSocket (STOMP over SockJS) |
 | Email | JavaMailSender (SMTP) |
+| AI / LLM | Ollama (local, default) or Anthropic API (opt-in) for AI agent automation & smart replies |
 | Frontend | Angular 18 (standalone components) |
-| UI Library | PrimeNG + TailwindCSS |
+| UI Library | Hand-rolled `hlm-*` component library (spartan-ng style) on agent screens, PrimeNG elsewhere + TailwindCSS |
+| Animation | GSAP |
 | State | Angular Signals |
 | Build | Maven (backend), Angular CLI (frontend) |
 | Container | Docker + Docker Compose |
@@ -87,6 +89,7 @@ HelpDesk Pro is a SaaS-ready support ticket management system with three distinc
 - **Saved Views** — create named filter presets for ticket queues
 - **Time Tracking** — log time spent per ticket
 - **Agent Availability** — set online/busy/offline status with per-channel toggles (email, chat, phone)
+- **AI Agent Engine** — automated agents match incoming tickets by category + keyword list and execute a capability handler (e.g. password reset, hardware troubleshooting), posting the result as a ticket comment and optionally auto-closing the ticket. Smart-reply suggestions and capability execution are powered by a pluggable LLM client (local Ollama by default, Anthropic API as opt-in — see `AI_PROVIDER` below). ⚠️ Capabilities that mutate user state (e.g. `PASSWORD_RESET`) act on any ticket matching their keyword list, including seeded/demo tickets — review agent keyword lists before enabling in an environment with real data.
 
 ### Admin Controls
 - Full CRUD for users, departments, SLA policies, and all configuration entities
@@ -196,11 +199,12 @@ helpdesk-pro/
 │   │   │   └── services/           # All feature services
 │   │   ├── shared/
 │   │   │   ├── components/         # status-badge, priority-badge, skeleton-loader
+│   │   │   ├── ui/                 # hlm-* components (button, card, dialog, table, select, ...)
 │   │   │   └── pipes/              # timeAgo
 │   │   ├── features/
 │   │   │   ├── auth/               # login, register, 2fa
 │   │   │   ├── customer/           # portal, submit-ticket, my-tickets, ticket-detail
-│   │   │   ├── agent/              # dashboard, ticket-queue, ticket-detail
+│   │   │   ├── agent/              # dashboard, ticket-queue, ticket-detail (hlm-* UI, GSAP animations)
 │   │   │   └── admin/
 │   │   │       ├── overview/
 │   │   │       ├── tickets/
@@ -365,6 +369,10 @@ docker compose down -v
 | `UPLOAD_PATH` | `./uploads` | File attachment storage path |
 | `FRONTEND_URL` | `http://localhost:4200` | Allowed CORS origin |
 | `ENCRYPTION_KEY` | *(required in prod)* | 32-char key for encrypting sensitive config (e.g. SMTP passwords) |
+| `AI_PROVIDER` | `ollama` | LLM backend for AI agent automation & smart replies: `ollama` (local, default) or `anthropic` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL of a locally running Ollama instance |
+| `OLLAMA_MODEL` | `llama3.2:1b` | Ollama model tag to use (must already be pulled, e.g. via `ollama pull llama3.2:1b`) |
+| `ANTHROPIC_API_KEY` | *(empty)* | API key for the Anthropic Claude API; only used when `AI_PROVIDER=anthropic` |
 
 ### Frontend
 
@@ -523,6 +531,7 @@ backend/src/main/resources/db/migration/
 | V16–V25 | Help topics, email inboxes, organizations, issues, saved views, tasks, watchers, analytics views |
 | V26–V35 | Macros, ticket merging, parent-child tickets, time tracking, agent availability, teams |
 | V36–V44 | Business hours, round robin, NPS, agent performance views, SNOOZED status constraint fix |
+| V45–V52 | Ticket splitting, automation rules, seed customer tickets, AI agent support, AI agent definitions & capability definitions, hardware agent |
 
 ---
 
