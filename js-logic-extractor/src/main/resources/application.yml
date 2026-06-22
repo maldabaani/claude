@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: js-logic-extractor
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5-20250929}
+          max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}
+          temperature: ${ANTHROPIC_TEMPERATURE:0.0}
+    retry:
+      max-attempts: 5
+      backoff:
+        initial-interval: 2s
+        multiplier: 2.0
+        max-interval: 30s
+      on-http-codes: 429,500,502,503,504
+
+server:
+  port: ${SERVER_PORT:8085}
+
+jsprocessor:
+  default-output-directory: ./output
+  included-extensions: .js,.jsx,.mjs,.cjs,.ts,.tsx
+  excluded-directory-names: node_modules,.git,dist,build,coverage,out,.next,.turbo,vendor
+  max-file-size-bytes: 300000
+  max-concurrent-requests: 8
+  skip-existing-results: true
+
+logging:
+  level:
+    com.jslogicextractor: INFO

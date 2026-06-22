@@ -1,0 +1,39 @@
+package com.jslogicextractor.orchestration;
+
+import com.jslogicextractor.config.ExtractionProperties;
+import org.springframework.stereotype.Component;
+
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class JobRegistry {
+
+    private final Map<UUID, ExtractionJob> jobs = new ConcurrentHashMap<>();
+    private final ExtractionProperties defaults;
+
+    public JobRegistry(ExtractionProperties defaults) {
+        this.defaults = defaults;
+    }
+
+    public ExtractionJob register(Path repositoryRoot, Path outputDirectoryOverride, Integer maxConcurrencyOverride) {
+        UUID id = UUID.randomUUID();
+        // Default output dir is namespaced per job id so concurrent jobs never clobber each other's files;
+        // callers that want resumable re-runs can pass the same outputDirectory explicitly.
+        Path outputDirectory = outputDirectoryOverride != null
+                ? outputDirectoryOverride
+                : defaults.defaultOutputDirectory().resolve(id.toString());
+        int maxConcurrency = maxConcurrencyOverride != null ? maxConcurrencyOverride : defaults.maxConcurrentRequests();
+
+        ExtractionJob job = new ExtractionJob(id, repositoryRoot, outputDirectory, maxConcurrency);
+        jobs.put(id, job);
+        return job;
+    }
+
+    public Optional<ExtractionJob> find(UUID id) {
+        return Optional.ofNullable(jobs.get(id));
+    }
+}

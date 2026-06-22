@@ -1,0 +1,164 @@
+package com.jslogicextractor.orchestration;
+
+import com.jslogicextractor.agent.AgentSelector;
+import com.jslogicextractor.agent.ExtractionResult;
+import com.jslogicextractor.agent.LogicExtractionAgent;
+import com.jslogicextractor.config.ExtractionProperties;
+import com.jslogicextractor.output.ExtractionResultWriter;
+import com.jslogicextractor.scanner.RepositoryScannerService;
+import com.jslogicextractor.scanner.SourceFile;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class JsRepositoryProcessingOrchestratorTest {
+
+    @TempDir
+    Path repoRoot;
+
+    @Test
+    void processesAllFilesWithBoundedConcurrencyAndIsolatesFailures() throws IOException {
+        write(repoRoot.resolve("a.js"), "const a = 1;");
+        write(repoRoot.resolve("b.js"), "const b = 2;");
+        write(repoRoot.resolve("c.js"), "const c = 3;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+
+        AtomicInteger activeCalls = new AtomicInteger();
+        AtomicInteger maxObservedConcurrency = new AtomicInteger();
+        int concurrencyLimit = 2;
+
+        LogicExtractionAgent agent = new LogicExtractionAgent() {
+            @Override
+            public String name() {
+                return "test-agent";
+            }
+
+            @Override
+            public ExtractionResult extract(SourceFile file) {
+                int current = activeCalls.incrementAndGet();
+                maxObservedConcurrency.updateAndGet(prev -> Math.max(prev, current));
+                try {
+                    Thread.sleep(50);
+                    if (file.relativePath().equals("b.js")) {
+                        throw new RuntimeException("boom");
+                    }
+                    return ExtractionResult.success(file, name(), "{}", 1, null);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    activeCalls.decrementAndGet();
+                }
+            }
+        };
+
+        AgentSelector selector = new AgentSelector(List.of(agent));
+        List<ExtractionResult> writtenResults = new CopyOnWriteArrayList<>();
+        Set<String> existing = new HashSet<>();
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) {
+                return existing.contains(relativePath);
+            }
+
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {
+                writtenResults.add(result);
+            }
+
+            @Override
+            public void writeSummary(ExtractionJob job) {
+            }
+        };
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            JsRepositoryProcessingOrchestrator orchestrator =
+                    new JsRepositoryProcessingOrchestrator(scanner, selector, writer, executor, properties);
+
+            ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), concurrencyLimit);
+
+            orchestrator.run(job);
+
+            assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
+            assertThat(job.totalCount()).isEqualTo(3);
+            assertThat(job.succeededCount()).isEqualTo(2);
+            assertThat(job.failedCount()).isEqualTo(1);
+            assertThat(writtenResults).hasSize(2);
+            assertThat(maxObservedConcurrency.get()).isLessThanOrEqualTo(concurrencyLimit);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void skipsFilesWithExistingResultsWhenEnabled() throws IOException {
+        write(repoRoot.resolve("a.js"), "const a = 1;");
+        write(repoRoot.resolve("b.js"), "const b = 2;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+
+        AtomicInteger callCount = new AtomicInteger();
+        LogicExtractionAgent agent = new LogicExtractionAgent() {
+            @Override
+            public String name() {
+                return "test-agent";
+            }
+
+            @Override
+            public ExtractionResult extract(SourceFile file) {
+                callCount.incrementAndGet();
+                return ExtractionResult.success(file, name(), "{}", 1, null);
+            }
+        };
+
+        AgentSelector selector = new AgentSelector(List.of(agent));
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) {
+                return relativePath.equals("a.js");
+            }
+
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {
+            }
+
+            @Override
+            public void writeSummary(ExtractionJob job) {
+            }
+        };
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            JsRepositoryProcessingOrchestrator orchestrator =
+                    new JsRepositoryProcessingOrchestrator(scanner, selector, writer, executor, properties);
+            ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+
+            orchestrator.run(job);
+
+            assertThat(callCount.get()).isEqualTo(1);
+            assertThat(job.succeededCount()).isEqualTo(2);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private void write(Path path, String content) throws IOException {
+        Files.writeString(path, content);
+    }
+}
