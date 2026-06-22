@@ -16,17 +16,16 @@ POST /api/v1/extraction-jobs  --(202, jobId)-->  caller
 JobRegistry.register()  -- resolves output dir + concurrency, returns ExtractionJob
         |
         v
-JsRepositoryProcessingOrchestrator.run(job)        <- runs on a virtual thread, off the HTTP thread
+JsRepositoryProcessingOrchestrator.run(job)        <- dispatched off the HTTP thread
         |
         +-- RepositoryScannerService.scan(root)    -- walks the tree once, filters by extension/
         |                                              excluded dirs/max size, reads file content
         |
-        +-- for each SourceFile (fanned out via CompletableFuture, one task per file):
-        |       Semaphore.acquire()                -- bounds *real* concurrency against Claude
-        |       AgentSelector.next()                -- round-robins across LogicExtractionAgent beans
-        |       agent.extract(file)                  -- builds the prompt, calls Claude, parses usage
-        |       ExtractionResultWriter.write(...)     -- one JSON file per source file
-        |       Semaphore.release()
+        +-- fixed thread pool sized to job.maxConcurrency() -- the pool size IS the throttle
+        |       for each SourceFile (one CompletableFuture per file):
+        |           AgentSelector.next()           -- round-robins across LogicExtractionAgent beans
+        |           agent.extract(file)               -- builds the prompt, calls Claude, parses usage
+        |           ExtractionResultWriter.write(...)  -- one JSON file per source file
         |
         +-- CompletableFuture.allOf(...).join()
         |
@@ -38,10 +37,10 @@ GET /api/v1/extraction-jobs/{jobId}                 -- poll progress at any poin
 
 ### Scaling: single agent today, multiple collaborating agents tomorrow
 
-- **Within a run**: thousands of per-file tasks are fanned out onto a virtual-thread executor
-  (cheap to spin up), but real concurrency against the Anthropic API is capped by a `Semaphore`
-  sized from `jsprocessor.max-concurrent-requests` (or the per-request `maxConcurrency` override).
-  Raising that one number is the scaling knob for a single run.
+- **Within a run**: each job gets its own fixed-size thread pool, sized to
+  `jsprocessor.max-concurrent-requests` (or the per-request `maxConcurrency` override) — the pool
+  size is itself the concurrency throttle against the Anthropic API, no virtual threads required
+  (JDK 17 target). Raising that one number is the scaling knob for a single run.
 - **Across agents**: `JsRepositoryProcessingOrchestrator` depends on `AgentSelector`, which
   round-robins across every `LogicExtractionAgent` bean in the Spring context. Today there is one
   (`ClaudeLogicExtractionAgent`). Registering a second bean — e.g. backed by a different API key,

@@ -9,9 +9,9 @@ import java.util.concurrent.Executors;
 @Configuration
 public class AsyncExecutorConfig {
 
-    // Virtual threads make fan-out cheap; real Claude concurrency is throttled per-job via a Semaphore instead.
+    // Only used to kick off whole jobs off the HTTP thread, so it scales with concurrent job count, not file count.
     @Bean(destroyMethod = "shutdown")
     public ExecutorService extractionExecutor() {
-        return Executors.newVirtualThreadPerTaskExecutor();
+        return Executors.newCachedThreadPool();
     }
 }

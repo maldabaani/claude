@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.Executors;
 
 @Service
 public class JsRepositoryProcessingOrchestrator {
@@ -24,18 +24,15 @@ public class JsRepositoryProcessingOrchestrator {
     private final RepositoryScannerService scanner;
     private final AgentSelector agentSelector;
     private final ExtractionResultWriter resultWriter;
-    private final ExecutorService extractionExecutor;
     private final boolean skipExistingResults;
 
     public JsRepositoryProcessingOrchestrator(RepositoryScannerService scanner,
                                                AgentSelector agentSelector,
                                                ExtractionResultWriter resultWriter,
-                                               ExecutorService extractionExecutor,
                                                ExtractionProperties properties) {
         this.scanner = scanner;
         this.agentSelector = agentSelector;
         this.resultWriter = resultWriter;
-        this.extractionExecutor = extractionExecutor;
         this.skipExistingResults = properties.skipExistingResults();
     }
 
@@ -56,11 +53,16 @@ public class JsRepositoryProcessingOrchestrator {
                 job.id(), files.size(), job.repositoryRoot(), job.maxConcurrency(), agentSelector.agentCount());
 
         if (!files.isEmpty()) {
-            Semaphore throttle = new Semaphore(job.maxConcurrency());
-            List<CompletableFuture<Void>> futures = files.stream()
-                    .map(file -> CompletableFuture.runAsync(() -> processFile(job, file, throttle), extractionExecutor))
-                    .toList();
-            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            // Platform threads (no virtual threads pre-JDK21): pool size itself is the concurrency throttle.
+            ExecutorService fileExecutor = Executors.newFixedThreadPool(job.maxConcurrency());
+            try {
+                List<CompletableFuture<Void>> futures = files.stream()
+                        .map(file -> CompletableFuture.runAsync(() -> processFile(job, file), fileExecutor))
+                        .toList();
+                CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            } finally {
+                fileExecutor.shutdown();
+            }
         }
 
         job.markCompleted();
@@ -69,15 +71,9 @@ public class JsRepositoryProcessingOrchestrator {
                 job.id(), job.succeededCount(), job.failedCount(), job.totalCount());
     }
 
-    private void processFile(ExtractionJob job, SourceFile file, Semaphore throttle) {
+    private void processFile(ExtractionJob job, SourceFile file) {
         if (skipExistingResults && resultWriter.exists(job, file.relativePath())) {
             job.recordResult(true);
-            return;
-        }
-        try {
-            throttle.acquire();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
             return;
         }
         try {
@@ -88,8 +84,6 @@ public class JsRepositoryProcessingOrchestrator {
         } catch (Exception e) {
             log.error("Unexpected error processing {}: {}", file.relativePath(), e.getMessage(), e);
             job.recordResult(false);
-        } finally {
-            throttle.release();
         }
     }
 }

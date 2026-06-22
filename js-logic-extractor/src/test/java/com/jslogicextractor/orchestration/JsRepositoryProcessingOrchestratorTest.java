@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,24 +83,19 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-        try {
-            JsRepositoryProcessingOrchestrator orchestrator =
-                    new JsRepositoryProcessingOrchestrator(scanner, selector, writer, executor, properties);
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, properties);
 
-            ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), concurrencyLimit);
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), concurrencyLimit);
 
-            orchestrator.run(job);
+        orchestrator.run(job);
 
-            assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
-            assertThat(job.totalCount()).isEqualTo(3);
-            assertThat(job.succeededCount()).isEqualTo(2);
-            assertThat(job.failedCount()).isEqualTo(1);
-            assertThat(writtenResults).hasSize(2);
-            assertThat(maxObservedConcurrency.get()).isLessThanOrEqualTo(concurrencyLimit);
-        } finally {
-            executor.shutdownNow();
-        }
+        assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
+        assertThat(job.totalCount()).isEqualTo(3);
+        assertThat(job.succeededCount()).isEqualTo(2);
+        assertThat(job.failedCount()).isEqualTo(1);
+        assertThat(writtenResults).hasSize(2);
+        assertThat(maxObservedConcurrency.get()).isLessThanOrEqualTo(concurrencyLimit);
     }
 
     @Test
@@ -143,19 +136,14 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-        try {
-            JsRepositoryProcessingOrchestrator orchestrator =
-                    new JsRepositoryProcessingOrchestrator(scanner, selector, writer, executor, properties);
-            ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, properties);
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
 
-            orchestrator.run(job);
+        orchestrator.run(job);
 
-            assertThat(callCount.get()).isEqualTo(1);
-            assertThat(job.succeededCount()).isEqualTo(2);
-        } finally {
-            executor.shutdownNow();
-        }
+        assertThat(callCount.get()).isEqualTo(1);
+        assertThat(job.succeededCount()).isEqualTo(2);
     }
 
     private void write(Path path, String content) throws IOException {
