@@ -33,6 +33,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class BatchExtractionServiceTest {
@@ -153,6 +155,92 @@ class BatchExtractionServiceTest {
             assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).contains("boom");
         });
+    }
+
+    @Test
+    void splitsFilesAcrossMultipleChunksWhenRequestCapIsExceeded() {
+        BatchExtractionProperties tightProperties = new BatchExtractionProperties(
+                "claude-sonnet-4-5-20250929", 4096, 0.0, Duration.ofMillis(10), Duration.ofMinutes(1),
+                1, 200_000_000L);
+        BatchExtractionService chunkedService =
+                new BatchExtractionService(anthropicClient, tightProperties, promptTemplates, resultWriter);
+
+        when(anthropicClient.messages()).thenReturn(messageService);
+        when(messageService.batches()).thenReturn(batchService);
+
+        SourceFile fileA = file("a.js", "const a = 1;");
+        SourceFile fileB = file("b.js", "const b = 2;");
+
+        MessageBatch batch1 = batch("batch_1", MessageBatch.ProcessingStatus.ENDED);
+        MessageBatch batch2 = batch("batch_2", MessageBatch.ProcessingStatus.ENDED);
+        when(batchService.create(any(BatchCreateParams.class))).thenReturn(batch1, batch2);
+        when(batchService.resultsStreaming("batch_1")).thenReturn(streamOf(List.of(
+                MessageBatchIndividualResponse.builder().customId("f0").succeededResult(succeededMessage()).build())));
+        when(batchService.resultsStreaming("batch_2")).thenReturn(streamOf(List.of(
+                MessageBatchIndividualResponse.builder().customId("f0").succeededResult(succeededMessage()).build())));
+
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), Path.of("/repo"), Path.of("/out"), 4);
+
+        chunkedService.runBatch(job, List.of(fileA, fileB));
+
+        verify(batchService, times(2)).create(any(BatchCreateParams.class));
+        assertThat(job.succeededCount()).isEqualTo(2);
+        assertThat(writtenResults).extracting(ExtractionResult::relativePath)
+                .containsExactlyInAnyOrder("a.js", "b.js");
+    }
+
+    @Test
+    void failsFilesWhenBatchNeverReachesEndedBeforeTimeout() {
+        BatchExtractionProperties timeoutProperties = new BatchExtractionProperties(
+                "claude-sonnet-4-5-20250929", 4096, 0.0, Duration.ofMillis(5), Duration.ofMillis(20),
+                10_000, 200_000_000L);
+        BatchExtractionService timeoutService =
+                new BatchExtractionService(anthropicClient, timeoutProperties, promptTemplates, resultWriter);
+
+        when(anthropicClient.messages()).thenReturn(messageService);
+        when(messageService.batches()).thenReturn(batchService);
+
+        MessageBatch inProgressBatch = batch("batch_stuck", MessageBatch.ProcessingStatus.IN_PROGRESS);
+        when(batchService.create(any(BatchCreateParams.class))).thenReturn(inProgressBatch);
+        when(batchService.retrieve("batch_stuck")).thenReturn(inProgressBatch);
+
+        SourceFile stuckFile = file("a.js", "const a = 1;");
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), Path.of("/repo"), Path.of("/out"), 4);
+
+        timeoutService.runBatch(job, List.of(stuckFile));
+
+        assertThat(job.failedCount()).isEqualTo(1);
+        assertThat(job.succeededCount()).isZero();
+        assertThat(writtenResults).hasSize(1);
+        ExtractionResult failed = writtenResults.get(0);
+        assertThat(failed.success()).isFalse();
+        assertThat(failed.errorMessage()).contains("timed out");
+    }
+
+    private Message succeededMessage() {
+        return Message.builder()
+                .id("msg_1")
+                .container(Optional.empty())
+                .addContent(TextBlock.builder()
+                        .citations(Optional.empty())
+                        .text("{\"summary\":\"adds nothing interesting\"}")
+                        .build())
+                .model("claude-sonnet-4-5-20250929")
+                .stopDetails(Optional.empty())
+                .stopReason(Optional.empty())
+                .stopSequence(Optional.empty())
+                .usage(Usage.builder()
+                        .cacheCreation(Optional.empty())
+                        .cacheCreationInputTokens(0L)
+                        .cacheReadInputTokens(0L)
+                        .inferenceGeo(Optional.empty())
+                        .inputTokens(100L)
+                        .outputTokens(50L)
+                        .outputTokensDetails(Optional.empty())
+                        .serverToolUse(Optional.empty())
+                        .serviceTier(Optional.empty())
+                        .build())
+                .build();
     }
 
     private MessageBatch batch(String id, MessageBatch.ProcessingStatus status) {

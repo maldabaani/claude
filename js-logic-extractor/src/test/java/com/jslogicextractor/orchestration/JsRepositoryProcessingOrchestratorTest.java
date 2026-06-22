@@ -3,6 +3,7 @@ package com.jslogicextractor.orchestration;
 import com.jslogicextractor.agent.AgentSelector;
 import com.jslogicextractor.agent.ExtractionResult;
 import com.jslogicextractor.agent.LogicExtractionAgent;
+import com.jslogicextractor.batch.BatchExtractionService;
 import com.jslogicextractor.config.ExtractionProperties;
 import com.jslogicextractor.filter.NonSubstantiveFileFilter;
 import com.jslogicextractor.output.ExtractionResultWriter;
@@ -22,6 +23,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class JsRepositoryProcessingOrchestratorTest {
 
@@ -149,7 +155,97 @@ class JsRepositoryProcessingOrchestratorTest {
         assertThat(job.succeededCount()).isEqualTo(2);
     }
 
+    @Test
+    void delegatesToBatchExtractionServiceWhenExecutionModeIsBatch() throws IOException {
+        write(repoRoot.resolve("a.js"), "const a = 1;");
+        write(repoRoot.resolve("b.js"), "const b = 2;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        AgentSelector selector = new AgentSelector(List.of(unusedAgent()));
+        BatchExtractionService batchExtractionService = mock(BatchExtractionService.class);
+
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) {
+                return false;
+            }
+
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {
+            }
+
+            @Override
+            public void writeSummary(ExtractionJob job) {
+            }
+        };
+
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        batchExtractionService, properties);
+
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4,
+                ExecutionMode.BATCH);
+
+        orchestrator.run(job);
+
+        verify(batchExtractionService).runBatch(eq(job), any());
+        assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
+    }
+
+    @Test
+    void marksJobFailedWhenBatchExtractionServiceThrows() throws IOException {
+        write(repoRoot.resolve("a.js"), "const a = 1;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        AgentSelector selector = new AgentSelector(List.of(unusedAgent()));
+        BatchExtractionService batchExtractionService = mock(BatchExtractionService.class);
+        doThrow(new RuntimeException("boom")).when(batchExtractionService).runBatch(any(), any());
+
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) {
+                return false;
+            }
+
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {
+            }
+
+            @Override
+            public void writeSummary(ExtractionJob job) {
+            }
+        };
+
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        batchExtractionService, properties);
+
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4,
+                ExecutionMode.BATCH);
+
+        orchestrator.run(job);
+
+        assertThat(job.phase()).isEqualTo(JobPhase.FAILED);
+        assertThat(job.failureReason()).contains("boom");
+    }
+
     private void write(Path path, String content) throws IOException {
         Files.writeString(path, content);
+    }
+
+    private LogicExtractionAgent unusedAgent() {
+        return new LogicExtractionAgent() {
+            @Override
+            public String name() {
+                return "unused-agent";
+            }
+
+            @Override
+            public ExtractionResult extract(SourceFile file) {
+                throw new UnsupportedOperationException("BATCH mode must not invoke the SYNC agent path");
+            }
+        };
     }
 }

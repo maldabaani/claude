@@ -67,6 +67,15 @@ class ExtractionJobControllerTest {
     }
 
     @Test
+    void startJobRejectsInvalidExecutionMode() throws Exception {
+        mockMvc.perform(post("/api/v1/extraction-jobs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"repositoryPath\":" + quoted(repoRoot.toString())
+                                + ",\"executionMode\":\"BOGUS\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getJobReturnsNotFoundForUnknownId() throws Exception {
         given(jobRegistry.find(any())).willReturn(Optional.empty());
 
