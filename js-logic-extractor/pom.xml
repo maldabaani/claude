@@ -48,6 +48,12 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-anthropic</artifactId>
         </dependency>
+        <!-- Optional local-model agent (jsprocessor.ollama.enabled=true) for testing SYNC mode
+             against a local Ollama model without an Anthropic API key. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-template-st</artifactId>

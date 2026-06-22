@@ -51,10 +51,14 @@ GET /api/v1/extraction-jobs/{jobId}                 -- poll progress at any poin
   size is itself the concurrency throttle against the Anthropic API, no virtual threads required
   (JDK 17 target). Raising that one number is the scaling knob for a single run.
 - **Across agents**: `JsRepositoryProcessingOrchestrator` depends on `AgentSelector`, which
-  round-robins across every `LogicExtractionAgent` bean in the Spring context. Today there is one
-  (`ClaudeLogicExtractionAgent`). Registering a second bean — e.g. backed by a different API key,
-  account, or model — doubles aggregate throughput with no change to the orchestrator. This is the
-  seam for "multiple collaborating agents" without speculative complexity today.
+  round-robins across every `LogicExtractionAgent` bean in the Spring context. By default there is
+  one (`ClaudeLogicExtractionAgent`). Registering a second bean — e.g. backed by a different API
+  key, account, or model — doubles aggregate throughput with no change to the orchestrator. This is
+  the seam for "multiple collaborating agents" without speculative complexity today. An optional
+  `OllamaLogicExtractionAgent` (see [Testing against local Ollama](#testing-against-local-ollama-sync-mode-only))
+  plugs into this same seam; enabling it alongside the default Claude agent makes the two
+  round-robin roughly 50/50 over the file list — leave it disabled (the default) to send every file
+  to Claude.
 - **Resilience**: transient failures (HTTP 429/5xx) are retried with exponential backoff inside
   Spring AI itself (`spring.ai.retry.*`). A failure that survives retries is recorded against that
   one file only — the orchestrator isolates failures per file via `CompletableFuture` + try/catch,
@@ -84,6 +88,35 @@ Both modes apply the same unconditional pre-filter (`NonSubstantiveFileFilter`):
 test/spec files, and barrel files (re-exports only) are skipped before any Claude call, recorded in
 the output as `ExtractionResult.skipped(...)` with a reason, and counted separately from
 succeeded/failed in `_summary.json`.
+
+## Testing against local Ollama (SYNC mode only)
+
+For local testing without an Anthropic API key, an optional `OllamaLogicExtractionAgent` can run
+SYNC-mode extraction against a model served by a local [Ollama](https://ollama.com) instance (e.g.
+a quantized Qwen coder model). It is off by default and gated entirely behind
+`jsprocessor.ollama.enabled` — leaving it disabled means the app behaves exactly as before, with no
+extra beans or dependencies activated.
+
+```bash
+ollama pull qwen2.5-coder   # or any model you have pulled locally
+ollama serve                # default: http://localhost:11434
+
+export JSPROCESSOR_OLLAMA_ENABLED=true
+export OLLAMA_MODEL=qwen2.5-coder
+./mvnw spring-boot:run
+```
+
+Notes:
+
+- BATCH mode is unaffected and unavailable here — it talks to the Anthropic Batches API directly
+  and has no Ollama equivalent.
+- If `ANTHROPIC_API_KEY` is unset while `jsprocessor.ollama.enabled=true`, the Claude agent bean
+  still starts (Spring AI doesn't validate the key at startup) but every Claude-routed file will
+  fail at call time. To send every file to Ollama instead, set `jsprocessor.max-concurrent-requests`
+  as usual and expect ~50% of files to land on the Claude agent unless you also unset/invalidate it
+  — there's currently no config to disable the Claude agent itself.
+- `jsprocessor.ollama.base-url`, `-model`, `-max-tokens`, and `-temperature` mirror the Anthropic
+  equivalents; see the configuration table below.
 
 ## Plugging in the real prompt
 
@@ -129,6 +162,7 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 
 | Property | Default | Purpose |
 |---|---|---|
+| `spring.ai.model.chat` | `anthropic` | Pins the active Spring AI `ChatModel`; required once the Ollama starter is on the classpath, otherwise both autoconfigurations activate and the context fails to start |
 | `spring.ai.anthropic.api-key` | `${ANTHROPIC_API_KEY}` | Claude API key |
 | `spring.ai.anthropic.chat.options.model` | `${ANTHROPIC_MODEL}` | Claude model id |
 | `spring.ai.retry.max-attempts` | `5` | Retries for 429/5xx before a file is marked failed |
@@ -144,6 +178,11 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 | `jsprocessor.batch.poll-timeout` | `26h` | Time to wait for a batch to reach `ENDED` before marking its files failed |
 | `jsprocessor.batch.max-requests-per-batch` | `10000` | Requests per batch chunk (Anthropic hard cap: 100,000) |
 | `jsprocessor.batch.max-batch-bytes` | `200000000` | Bytes per batch chunk (Anthropic hard cap: 256MB) |
+| `jsprocessor.ollama.enabled` | `false` | Registers `OllamaLogicExtractionAgent` (SYNC mode only) — see [Testing against local Ollama](#testing-against-local-ollama-sync-mode-only) |
+| `jsprocessor.ollama.base-url` | `http://localhost:11434` | Ollama server URL |
+| `jsprocessor.ollama.model` | `qwen2.5-coder` | Ollama model name (must already be pulled) |
+| `jsprocessor.ollama.max-tokens` | `4096` | Maps to Ollama's `num_predict` |
+| `jsprocessor.ollama.temperature` | `0.0` | Sampling temperature |
 
 ## Tests
 
@@ -155,6 +194,7 @@ Covers repository scanning rules, the non-substantive pre-filter (type-declarati
 detection), prompt-template rendering (including the `<`/`>` delimiter choice against JS content
 containing literal `<`/`>`/`{`/`}`), round-robin agent dispatch, the orchestrator's concurrency
 bound and per-file fault isolation (SYNC mode), `BatchExtractionService`'s result mapping and
-chunk-level fault isolation (BATCH mode, against a mocked `AnthropicClient`), and the job-control
-REST endpoints. No network calls are made in tests — `ChatClient`/`LogicExtractionAgent` and the
-raw Anthropic SDK client are stubbed or mocked in every test.
+chunk-level fault isolation (BATCH mode, against a mocked `AnthropicClient`), `OllamaLogicExtractionAgent`'s
+extraction/usage parsing and failure handling, and the job-control REST endpoints. No network calls
+are made in tests — `ChatClient`/`LogicExtractionAgent` and the raw Anthropic SDK client are stubbed
+or mocked in every test.

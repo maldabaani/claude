@@ -2,6 +2,10 @@ spring:
   application:
     name: js-logic-extractor
   ai:
+    # Both the Anthropic and Ollama starters auto-activate their ChatModel by default; pin to
+    # anthropic so adding the optional Ollama starter never creates a duplicate-bean ambiguity.
+    model:
+      chat: anthropic
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
       chat:
@@ -38,6 +42,15 @@ jsprocessor:
     poll-timeout: 26h
     max-requests-per-batch: 10000
     max-batch-bytes: 200000000
+  # Optional second agent for SYNC mode, backed by a local Ollama model instead of Anthropic.
+  # Disabled by default; when enabled it registers alongside the Claude agent and AgentSelector
+  # round-robins file extraction across both.
+  ollama:
+    enabled: ${JSPROCESSOR_OLLAMA_ENABLED:false}
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL:qwen2.5-coder}
+    max-tokens: ${OLLAMA_MAX_TOKENS:4096}
+    temperature: ${OLLAMA_TEMPERATURE:0.0}
 
 logging:
   level:
