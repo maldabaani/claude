@@ -1,5 +1,6 @@
 package com.jslogicextractor.web;
 
+import com.jslogicextractor.orchestration.ExecutionMode;
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.orchestration.JobRegistry;
 import com.jslogicextractor.orchestration.JsRepositoryProcessingOrchestrator;
@@ -11,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -40,8 +42,10 @@ public class ExtractionJobController {
         Path outputDirectory = request.outputDirectory() != null
                 ? Path.of(request.outputDirectory()).toAbsolutePath().normalize()
                 : null;
+        ExecutionMode executionMode = parseExecutionMode(request.executionMode());
 
-        ExtractionJob job = jobRegistry.register(repositoryRoot, outputDirectory, request.maxConcurrency());
+        ExtractionJob job = jobRegistry.register(repositoryRoot, outputDirectory, request.maxConcurrency(),
+                executionMode);
         extractionExecutor.execute(() -> orchestrator.run(job));
 
         return ResponseEntity.accepted().body(JobResponse.from(job));
@@ -52,5 +56,17 @@ public class ExtractionJobController {
         return jobRegistry.find(jobId)
                 .map(job -> ResponseEntity.ok(JobResponse.from(job)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private ExecutionMode parseExecutionMode(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+        try {
+            return ExecutionMode.valueOf(rawValue.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "executionMode must be one of " + Arrays.toString(ExecutionMode.values()));
+        }
     }
 }

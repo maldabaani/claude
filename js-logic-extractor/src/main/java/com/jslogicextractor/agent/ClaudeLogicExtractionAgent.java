@@ -38,7 +38,10 @@ public class ClaudeLogicExtractionAgent implements LogicExtractionAgent {
             ChatResponse response = chatClient.prompt(prompt).call().chatResponse();
             String text = response.getResult().getOutput().getText();
             Usage usage = response.getMetadata().getUsage();
-            return ExtractionResult.success(file, NAME, text, System.currentTimeMillis() - start, usage);
+            Integer promptTokens = usage != null ? usage.getPromptTokens() : null;
+            Integer completionTokens = usage != null ? usage.getCompletionTokens() : null;
+            return ExtractionResult.success(file, NAME, text, System.currentTimeMillis() - start,
+                    promptTokens, completionTokens);
         } catch (Exception ex) {
             log.warn("Extraction failed for {}: {}", file.relativePath(), ex.getMessage());
             return ExtractionResult.failure(file, NAME, ex.getMessage(), System.currentTimeMillis() - start);

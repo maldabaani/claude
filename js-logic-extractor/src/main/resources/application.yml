@@ -27,6 +27,17 @@ jsprocessor:
   max-file-size-bytes: 300000
   max-concurrent-requests: 8
   skip-existing-results: true
+  # SYNC: per-file Spring AI calls via the bounded thread pool above. BATCH: Anthropic Message
+  # Batches API with prompt caching — flat 50% token discount, built for large (1k-100k file) runs.
+  execution-mode: ${JSPROCESSOR_EXECUTION_MODE:SYNC}
+  batch:
+    model: ${ANTHROPIC_MODEL:claude-sonnet-4-5-20250929}
+    max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}
+    temperature: ${ANTHROPIC_TEMPERATURE:0.0}
+    poll-interval: 30s
+    poll-timeout: 26h
+    max-requests-per-batch: 10000
+    max-batch-bytes: 200000000
 
 logging:
   level:

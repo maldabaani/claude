@@ -11,6 +11,7 @@ public final class ExtractionJob {
     private final Path repositoryRoot;
     private final Path outputDirectory;
     private final int maxConcurrency;
+    private final ExecutionMode executionMode;
     private final Instant createdAt = Instant.now();
 
     private volatile JobPhase phase = JobPhase.PENDING;
@@ -21,12 +22,19 @@ public final class ExtractionJob {
     private final AtomicInteger processedFiles = new AtomicInteger();
     private final AtomicInteger succeededFiles = new AtomicInteger();
     private final AtomicInteger failedFiles = new AtomicInteger();
+    private final AtomicInteger skippedFiles = new AtomicInteger();
 
     public ExtractionJob(UUID id, Path repositoryRoot, Path outputDirectory, int maxConcurrency) {
+        this(id, repositoryRoot, outputDirectory, maxConcurrency, ExecutionMode.SYNC);
+    }
+
+    public ExtractionJob(UUID id, Path repositoryRoot, Path outputDirectory, int maxConcurrency,
+                          ExecutionMode executionMode) {
         this.id = id;
         this.repositoryRoot = repositoryRoot;
         this.outputDirectory = outputDirectory;
         this.maxConcurrency = maxConcurrency;
+        this.executionMode = executionMode != null ? executionMode : ExecutionMode.SYNC;
     }
 
     public void markScanning() {
@@ -45,6 +53,11 @@ public final class ExtractionJob {
         } else {
             failedFiles.incrementAndGet();
         }
+    }
+
+    public void recordSkipped() {
+        processedFiles.incrementAndGet();
+        skippedFiles.incrementAndGet();
     }
 
     public void markCompleted() {
@@ -72,6 +85,10 @@ public final class ExtractionJob {
 
     public int maxConcurrency() {
         return maxConcurrency;
+    }
+
+    public ExecutionMode executionMode() {
+        return executionMode;
     }
 
     public JobPhase phase() {
@@ -104,5 +121,9 @@ public final class ExtractionJob {
 
     public int failedCount() {
         return failedFiles.get();
+    }
+
+    public int skippedCount() {
+        return skippedFiles.get();
     }
 }

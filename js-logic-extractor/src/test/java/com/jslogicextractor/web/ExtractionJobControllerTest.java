@@ -45,7 +45,7 @@ class ExtractionJobControllerTest {
     @Test
     void startJobReturnsAcceptedWithJobId() throws Exception {
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
-        given(jobRegistry.register(any(), any(), any())).willReturn(job);
+        given(jobRegistry.register(any(), any(), any(), any())).willReturn(job);
 
         mockMvc.perform(post("/api/v1/extraction-jobs")
                         .contentType(MediaType.APPLICATION_JSON)

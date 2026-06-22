@@ -13,7 +13,7 @@ different deploy lifecycle.
 POST /api/v1/extraction-jobs  --(202, jobId)-->  caller
         |
         v
-JobRegistry.register()  -- resolves output dir + concurrency, returns ExtractionJob
+JobRegistry.register()  -- resolves output dir + concurrency + execution mode, returns ExtractionJob
         |
         v
 JsRepositoryProcessingOrchestrator.run(job)        <- dispatched off the HTTP thread
@@ -21,13 +21,22 @@ JsRepositoryProcessingOrchestrator.run(job)        <- dispatched off the HTTP th
         +-- RepositoryScannerService.scan(root)    -- walks the tree once, filters by extension/
         |                                              excluded dirs/max size, reads file content
         |
-        +-- fixed thread pool sized to job.maxConcurrency() -- the pool size IS the throttle
-        |       for each SourceFile (one CompletableFuture per file):
-        |           AgentSelector.next()           -- round-robins across LogicExtractionAgent beans
-        |           agent.extract(file)               -- builds the prompt, calls Claude, parses usage
-        |           ExtractionResultWriter.write(...)  -- one JSON file per source file
+        +-- NonSubstantiveFileFilter.skipReason(file) -- unconditional cheap pre-pass (both modes):
+        |       .d.ts / test-spec / barrel files are recorded as skipped, never sent to Claude
         |
-        +-- CompletableFuture.allOf(...).join()
+        +-- job.executionMode() branches here:
+        |
+        |   SYNC (default) -- fixed thread pool sized to job.maxConcurrency(), pool size IS the
+        |   |   throttle, for each remaining SourceFile (one CompletableFuture per file):
+        |   |       AgentSelector.next()             -- round-robins across LogicExtractionAgent beans
+        |   |       agent.extract(file)               -- builds the prompt, calls Claude, parses usage
+        |   |       ExtractionResultWriter.write(...)  -- one JSON file per source file
+        |   |   CompletableFuture.allOf(...).join()
+        |   |
+        |   BATCH -- BatchExtractionService.runBatch(job, files): chunks files to respect the
+        |       Anthropic Batches API's 100k-request/256MB-per-batch caps, submits each chunk with
+        |       the shared extraction instructions cached via cache_control (flat 50% discount on
+        |       all token usage vs. SYNC), polls until ENDED, streams results back per custom_id
         |
         v
 ExtractionResultWriter.writeSummary(job)            -- _summary.json: counts, timings, failure reason
@@ -54,6 +63,28 @@ GET /api/v1/extraction-jobs/{jobId}                 -- poll progress at any poin
   output JSON already exists is skipped without calling Claude again — safe to re-run a job against
   the same output directory after a partial failure or restart.
 
+## Execution modes: SYNC vs BATCH
+
+Set `jsprocessor.execution-mode` (or `executionMode` on the start-job request) to `SYNC` or `BATCH`.
+
+- **SYNC** (default) — per-file Spring AI `ChatClient` calls through the bounded thread pool
+  described above. Lower latency per file, normal token pricing. Best for small/interactive runs.
+- **BATCH** — every eligible file is submitted as one request inside an Anthropic Message Batch
+  (`BatchExtractionService`), with the shared extraction instructions cached via a single
+  `cache_control` breakpoint on the system block. This gets a flat 50% discount on all token usage
+  versus SYNC, at the cost of asynchronous turnaround (Anthropic's batches typically complete
+  within minutes to hours, polled via `jsprocessor.batch.poll-interval` up to
+  `jsprocessor.batch.poll-timeout`). Built for large runs — up to ~100,000 files in a single job.
+  Spring AI 1.1.7 has no Batches API support, so this mode bypasses Spring AI / `ChatClient`
+  entirely and talks to Anthropic via the raw `anthropic-java-client-okhttp` SDK. Chunks (each
+  capped at `jsprocessor.batch.max-requests-per-batch` requests or
+  `jsprocessor.batch.max-batch-bytes` bytes) run sequentially, one batch at a time.
+
+Both modes apply the same unconditional pre-filter (`NonSubstantiveFileFilter`): `.d.ts` files,
+test/spec files, and barrel files (re-exports only) are skipped before any Claude call, recorded in
+the output as `ExtractionResult.skipped(...)` with a reason, and counted separately from
+succeeded/failed in `_summary.json`.
+
 ## Plugging in the real prompt
 
 `src/main/resources/prompts/logic-extraction-prompt.st` currently holds a placeholder extraction
@@ -77,6 +108,14 @@ curl -X POST localhost:8085/api/v1/extraction-jobs \
   -d '{"repositoryPath": "/path/to/js-repo", "maxConcurrency": 10}'
 ```
 
+Or, for a large repository, run it through the Batches API instead:
+
+```bash
+curl -X POST localhost:8085/api/v1/extraction-jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"repositoryPath": "/path/to/js-repo", "executionMode": "BATCH"}'
+```
+
 Poll it:
 
 ```bash
@@ -96,8 +135,15 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 | `jsprocessor.included-extensions` | `.js,.jsx,.mjs,.cjs,.ts,.tsx` | Files eligible for extraction |
 | `jsprocessor.excluded-directory-names` | `node_modules,.git,dist,build,...` | Directories never walked into |
 | `jsprocessor.max-file-size-bytes` | `300000` | Files above this size are skipped (e.g. bundles) |
-| `jsprocessor.max-concurrent-requests` | `8` | Default Claude concurrency cap per job |
+| `jsprocessor.max-concurrent-requests` | `8` | Default Claude concurrency cap per job (SYNC mode) |
 | `jsprocessor.skip-existing-results` | `true` | Skip files that already have an output JSON |
+| `jsprocessor.execution-mode` | `SYNC` | `SYNC` or `BATCH` — see [Execution modes](#execution-modes-sync-vs-batch) |
+| `jsprocessor.batch.model` | `${ANTHROPIC_MODEL}` | Claude model id for BATCH mode |
+| `jsprocessor.batch.max-tokens` | `4096` | Max output tokens per request in BATCH mode |
+| `jsprocessor.batch.poll-interval` | `30s` | How often to poll batch status |
+| `jsprocessor.batch.poll-timeout` | `26h` | Time to wait for a batch to reach `ENDED` before marking its files failed |
+| `jsprocessor.batch.max-requests-per-batch` | `10000` | Requests per batch chunk (Anthropic hard cap: 100,000) |
+| `jsprocessor.batch.max-batch-bytes` | `200000000` | Bytes per batch chunk (Anthropic hard cap: 256MB) |
 
 ## Tests
 
@@ -105,7 +151,10 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 ./mvnw test
 ```
 
-Covers repository scanning rules, prompt-template rendering (including the `<`/`>` delimiter
-choice against JS content containing literal `<`/`>`/`{`/`}`), round-robin agent dispatch, the
-orchestrator's concurrency bound and per-file fault isolation, and the job-control REST endpoints.
-No network calls are made in tests — `ChatClient`/`LogicExtractionAgent` are stubbed.
+Covers repository scanning rules, the non-substantive pre-filter (type-declaration/test/barrel
+detection), prompt-template rendering (including the `<`/`>` delimiter choice against JS content
+containing literal `<`/`>`/`{`/`}`), round-robin agent dispatch, the orchestrator's concurrency
+bound and per-file fault isolation (SYNC mode), `BatchExtractionService`'s result mapping and
+chunk-level fault isolation (BATCH mode, against a mocked `AnthropicClient`), and the job-control
+REST endpoints. No network calls are made in tests — `ChatClient`/`LogicExtractionAgent` and the
+raw Anthropic SDK client are stubbed or mocked in every test.

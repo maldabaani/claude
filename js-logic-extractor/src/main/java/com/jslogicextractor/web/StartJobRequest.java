@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 public record StartJobRequest(
         @NotBlank String repositoryPath,
         String outputDirectory,
-        @Positive Integer maxConcurrency
+        @Positive Integer maxConcurrency,
+        String executionMode
 ) {
 }

@@ -4,6 +4,7 @@ import com.jslogicextractor.agent.AgentSelector;
 import com.jslogicextractor.agent.ExtractionResult;
 import com.jslogicextractor.agent.LogicExtractionAgent;
 import com.jslogicextractor.config.ExtractionProperties;
+import com.jslogicextractor.filter.NonSubstantiveFileFilter;
 import com.jslogicextractor.output.ExtractionResultWriter;
 import com.jslogicextractor.scanner.RepositoryScannerService;
 import com.jslogicextractor.scanner.SourceFile;
@@ -33,7 +34,7 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("b.js"), "const b = 2;");
         write(repoRoot.resolve("c.js"), "const c = 3;");
 
-        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false);
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
         RepositoryScannerService scanner = new RepositoryScannerService(properties);
 
         AtomicInteger activeCalls = new AtomicInteger();
@@ -55,7 +56,7 @@ class JsRepositoryProcessingOrchestratorTest {
                     if (file.relativePath().equals("b.js")) {
                         throw new RuntimeException("boom");
                     }
-                    return ExtractionResult.success(file, name(), "{}", 1, null);
+                    return ExtractionResult.success(file, name(), "{}", 1, null, null);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 } finally {
@@ -84,7 +85,8 @@ class JsRepositoryProcessingOrchestratorTest {
         };
 
         JsRepositoryProcessingOrchestrator orchestrator =
-                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, properties);
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        null, properties);
 
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), concurrencyLimit);
 
@@ -103,7 +105,7 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("a.js"), "const a = 1;");
         write(repoRoot.resolve("b.js"), "const b = 2;");
 
-        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true);
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true, null);
         RepositoryScannerService scanner = new RepositoryScannerService(properties);
 
         AtomicInteger callCount = new AtomicInteger();
@@ -116,7 +118,7 @@ class JsRepositoryProcessingOrchestratorTest {
             @Override
             public ExtractionResult extract(SourceFile file) {
                 callCount.incrementAndGet();
-                return ExtractionResult.success(file, name(), "{}", 1, null);
+                return ExtractionResult.success(file, name(), "{}", 1, null, null);
             }
         };
 
@@ -137,7 +139,8 @@ class JsRepositoryProcessingOrchestratorTest {
         };
 
         JsRepositoryProcessingOrchestrator orchestrator =
-                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, properties);
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        null, properties);
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
 
         orchestrator.run(job);

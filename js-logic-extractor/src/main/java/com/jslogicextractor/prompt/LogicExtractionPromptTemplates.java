@@ -36,6 +36,26 @@ public class LogicExtractionPromptTemplates {
         ));
     }
 
+    /**
+     * Renders the template with blank per-file fields. Identical, byte-for-byte, on every call for
+     * the lifetime of the resource — required so it can serve as a cache_control breakpoint shared
+     * across every request in a batch. The real per-file values are supplied via
+     * {@link #renderUserContent(SourceFile)} instead.
+     */
+    public String renderStaticSystemSkeleton() {
+        return extractionTemplate.render(Map.of(
+                "fileName", "",
+                "filePath", "",
+                "fileContent", ""
+        ));
+    }
+
+    public String renderUserContent(SourceFile file) {
+        return "File name: " + fileName(file) + "\n"
+                + "File path: " + file.relativePath() + "\n\n"
+                + "Source:\n```javascript\n" + file.content() + "\n```";
+    }
+
     private String fileName(SourceFile file) {
         int idx = file.relativePath().lastIndexOf('/');
         return idx >= 0 ? file.relativePath().substring(idx + 1) : file.relativePath();

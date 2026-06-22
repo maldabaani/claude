@@ -1,5 +1,6 @@
 package com.jslogicextractor.config;
 
+import com.jslogicextractor.orchestration.ExecutionMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.nio.file.Path;
@@ -12,7 +13,8 @@ public record ExtractionProperties(
         Set<String> excludedDirectoryNames,
         long maxFileSizeBytes,
         int maxConcurrentRequests,
-        boolean skipExistingResults
+        boolean skipExistingResults,
+        ExecutionMode executionMode
 ) {
 
     public ExtractionProperties {
@@ -30,6 +32,9 @@ public record ExtractionProperties(
         }
         if (maxConcurrentRequests <= 0) {
             maxConcurrentRequests = 8;
+        }
+        if (executionMode == null) {
+            executionMode = ExecutionMode.SYNC;
         }
     }
 }

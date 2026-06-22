@@ -22,7 +22,7 @@ class RepositoryScannerServiceTest {
 
     @BeforeEach
     void setUp() {
-        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true);
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true, null);
         scanner = new RepositoryScannerService(properties);
     }
 
@@ -42,7 +42,7 @@ class RepositoryScannerServiceTest {
 
     @Test
     void skipsFilesLargerThanMaxSize() throws IOException {
-        ExtractionProperties tightProperties = new ExtractionProperties(null, null, null, 10, 8, true);
+        ExtractionProperties tightProperties = new ExtractionProperties(null, null, null, 10, 8, true, null);
         scanner = new RepositoryScannerService(tightProperties);
         write(repoRoot.resolve("big.js"), "x".repeat(100));
 
