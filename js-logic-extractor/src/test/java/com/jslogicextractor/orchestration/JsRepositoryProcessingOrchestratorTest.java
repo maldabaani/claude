@@ -4,9 +4,11 @@ import com.jslogicextractor.agent.AgentSelector;
 import com.jslogicextractor.agent.ExtractionResult;
 import com.jslogicextractor.agent.LogicExtractionAgent;
 import com.jslogicextractor.batch.BatchExtractionService;
+import com.jslogicextractor.config.ChunkingProperties;
 import com.jslogicextractor.config.ExtractionProperties;
 import com.jslogicextractor.filter.NonSubstantiveFileFilter;
 import com.jslogicextractor.output.ExtractionResultWriter;
+import com.jslogicextractor.scanner.LargeFileChunker;
 import com.jslogicextractor.scanner.RepositoryScannerService;
 import com.jslogicextractor.scanner.SourceFile;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,8 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("c.js"), "const c = 3;");
 
         ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
-        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
 
         AtomicInteger activeCalls = new AtomicInteger();
         AtomicInteger maxObservedConcurrency = new AtomicInteger();
@@ -112,7 +115,8 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("b.js"), "const b = 2;");
 
         ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true, null);
-        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
 
         AtomicInteger callCount = new AtomicInteger();
         LogicExtractionAgent agent = new LogicExtractionAgent() {
@@ -161,7 +165,8 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("b.js"), "const b = 2;");
 
         ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
-        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
         AgentSelector selector = new AgentSelector(List.of(unusedAgent()));
         BatchExtractionService batchExtractionService = mock(BatchExtractionService.class);
 
@@ -198,7 +203,8 @@ class JsRepositoryProcessingOrchestratorTest {
         write(repoRoot.resolve("a.js"), "const a = 1;");
 
         ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
-        RepositoryScannerService scanner = new RepositoryScannerService(properties);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
         AgentSelector selector = new AgentSelector(List.of(unusedAgent()));
         BatchExtractionService batchExtractionService = mock(BatchExtractionService.class);
         doThrow(new RuntimeException("boom")).when(batchExtractionService).runBatch(any(), any());

@@ -1,5 +1,6 @@
 package com.jslogicextractor.scanner;
 
+import com.jslogicextractor.config.ChunkingProperties;
 import com.jslogicextractor.config.ExtractionProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,8 @@ class RepositoryScannerServiceTest {
     @BeforeEach
     void setUp() {
         ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, true, null);
-        scanner = new RepositoryScannerService(properties);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
     }
 
     @Test
@@ -41,14 +43,28 @@ class RepositoryScannerServiceTest {
     }
 
     @Test
-    void skipsFilesLargerThanMaxSize() throws IOException {
+    void skipsFilesLargerThanMaxSizeWhenChunkingDisabled() throws IOException {
         ExtractionProperties tightProperties = new ExtractionProperties(null, null, null, 10, 8, true, null);
-        scanner = new RepositoryScannerService(tightProperties);
+        ChunkingProperties chunkingDisabled = new ChunkingProperties(false, 0);
+        scanner = new RepositoryScannerService(tightProperties, chunkingDisabled, new LargeFileChunker(chunkingDisabled));
         write(repoRoot.resolve("big.js"), "x".repeat(100));
 
         List<SourceFile> files = scanner.scan(repoRoot);
 
         assertThat(files).isEmpty();
+    }
+
+    @Test
+    void splitsFilesLargerThanMaxSizeIntoChunksWhenChunkingEnabled() throws IOException {
+        ExtractionProperties tightProperties = new ExtractionProperties(null, null, null, 10, 8, true, null);
+        ChunkingProperties chunkingEnabled = new ChunkingProperties(true, 1);
+        scanner = new RepositoryScannerService(tightProperties, chunkingEnabled, new LargeFileChunker(chunkingEnabled));
+        write(repoRoot.resolve("big.js"), "const a = 1;\nconst b = 2;\nconst c = 3;");
+
+        List<SourceFile> files = scanner.scan(repoRoot);
+
+        assertThat(files).extracting(SourceFile::relativePath)
+                .containsExactly("big.js/part-0001.js", "big.js/part-0002.js", "big.js/part-0003.js");
     }
 
     @Test

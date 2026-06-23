@@ -31,6 +31,12 @@ jsprocessor:
   max-file-size-bytes: 300000
   max-concurrent-requests: 8
   skip-existing-results: true
+  # Files larger than max-file-size-bytes are split into part-NNNN chunks at safe line boundaries
+  # (instead of being skipped) so single oversized files - e.g. a 190K-line/8.5MB bundle - can still
+  # flow through the normal per-file extraction pipeline. Disable to restore the old skip behavior.
+  chunking:
+    enabled: ${JSPROCESSOR_CHUNKING_ENABLED:true}
+    max-lines-per-chunk: ${JSPROCESSOR_CHUNKING_MAX_LINES:1800}
   # SYNC: per-file Spring AI calls via the bounded thread pool above. BATCH: Anthropic Message
   # Batches API with prompt caching — flat 50% token discount, built for large (1k-100k file) runs.
   execution-mode: ${JSPROCESSOR_EXECUTION_MODE:SYNC}

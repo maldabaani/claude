@@ -19,7 +19,10 @@ JobRegistry.register()  -- resolves output dir + concurrency + execution mode, r
 JsRepositoryProcessingOrchestrator.run(job)        <- dispatched off the HTTP thread
         |
         +-- RepositoryScannerService.scan(root)    -- walks the tree once, filters by extension/
-        |                                              excluded dirs/max size, reads file content
+        |                                              excluded dirs/max size, reads file content.
+        |                                              A file over max-file-size-bytes is split by
+        |                                              LargeFileChunker into part-NNNN SourceFiles
+        |                                              instead of being skipped (jsprocessor.chunking)
         |
         +-- NonSubstantiveFileFilter.skipReason(file) -- unconditional cheap pre-pass (both modes):
         |       .d.ts / test-spec / barrel files are recorded as skipped, never sent to Claude
@@ -88,6 +91,31 @@ Both modes apply the same unconditional pre-filter (`NonSubstantiveFileFilter`):
 test/spec files, and barrel files (re-exports only) are skipped before any Claude call, recorded in
 the output as `ExtractionResult.skipped(...)` with a reason, and counted separately from
 succeeded/failed in `_summary.json`.
+
+## Splitting oversized files (e.g. one giant bundled/generated file)
+
+Some repositories ship logic as one huge generated or bundled file rather than many small source
+files (e.g. a single 190k-line / 8.5MB `bundle.js`). A whole file that size is far beyond any
+Claude model's context window, so rather than skip it, `RepositoryScannerService` hands any file
+over `jsprocessor.max-file-size-bytes` to `LargeFileChunker`, which splits it into multiple
+`SourceFile`s named `<originalRelativePath>/part-0001.<ext>`, `part-0002.<ext>`, etc. Each chunk
+then flows through the rest of the pipeline (SYNC or BATCH, agent round-robin, per-file fault
+isolation, `skip-existing-results`) exactly like any other file — its output lands at
+`output/<originalRelativePath>/part-0001.<ext>.json` and so on.
+
+Cuts are made at line boundaries, preferring "safe" boundaries where combined `{}/()/[]` bracket
+depth is back to zero and the line isn't inside a string or block comment, so a chunk rarely splits
+a function/class/block in half. If a block never returns to depth zero, an internal hard cap (2x
+`jsprocessor.chunking.max-lines-per-chunk`) forces a cut anyway and logs a warning. Known,
+deliberately accepted simplifications: template literals are treated as one opaque string region
+(their `${}` interpolation internals aren't tracked), and regex literals aren't specially detected,
+so bracket-like characters inside one are scanned at face value — both can only ever shift a cut to
+a less-ideal line, never corrupt chunk content, since every cut lands exactly on a line boundary. A
+file with no line breaks at all (e.g. a single minified line) can't be split this way; it's sent
+through as one oversized chunk with a warning logged.
+
+Set `jsprocessor.chunking.enabled=false` to restore the old behavior of skipping (with a warning)
+any file over `jsprocessor.max-file-size-bytes` instead of chunking it.
 
 ## Testing against local Ollama (SYNC mode only)
 
@@ -172,6 +200,8 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 | `jsprocessor.max-concurrent-requests` | `8` | Default Claude concurrency cap per job (SYNC mode) |
 | `jsprocessor.skip-existing-results` | `true` | Skip files that already have an output JSON |
 | `jsprocessor.execution-mode` | `SYNC` | `SYNC` or `BATCH` — see [Execution modes](#execution-modes-sync-vs-batch) |
+| `jsprocessor.chunking.enabled` | `true` | Split files over `max-file-size-bytes` into `part-NNNN` chunks instead of skipping them — see [Splitting oversized files](#splitting-oversized-files-eg-one-giant-bundledgenerated-file) |
+| `jsprocessor.chunking.max-lines-per-chunk` | `1800` | Target line count per chunk (actual cut may run longer to land on a safe boundary) |
 | `jsprocessor.batch.model` | `${ANTHROPIC_MODEL}` | Claude model id for BATCH mode |
 | `jsprocessor.batch.max-tokens` | `4096` | Max output tokens per request in BATCH mode |
 | `jsprocessor.batch.poll-interval` | `30s` | How often to poll batch status |
@@ -190,7 +220,9 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 ./mvnw test
 ```
 
-Covers repository scanning rules, the non-substantive pre-filter (type-declaration/test/barrel
+Covers repository scanning rules, `LargeFileChunker`'s safe-boundary splitting (target line count,
+waiting for a safe boundary past the target, the hard-cap forced cut, content round-trip fidelity,
+and the no-line-breaks edge case), the non-substantive pre-filter (type-declaration/test/barrel
 detection), prompt-template rendering (including the `<`/`>` delimiter choice against JS content
 containing literal `<`/`>`/`{`/`}`), round-robin agent dispatch, the orchestrator's concurrency
 bound and per-file fault isolation (SYNC mode), `BatchExtractionService`'s result mapping and

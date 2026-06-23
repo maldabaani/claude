@@ -1,5 +1,6 @@
 package com.jslogicextractor.scanner;
 
+import com.jslogicextractor.config.ChunkingProperties;
 import com.jslogicextractor.config.ExtractionProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 @Service
@@ -21,9 +21,14 @@ public class RepositoryScannerService {
     private static final Logger log = LoggerFactory.getLogger(RepositoryScannerService.class);
 
     private final ExtractionProperties properties;
+    private final ChunkingProperties chunkingProperties;
+    private final LargeFileChunker chunker;
 
-    public RepositoryScannerService(ExtractionProperties properties) {
+    public RepositoryScannerService(ExtractionProperties properties, ChunkingProperties chunkingProperties,
+                                     LargeFileChunker chunker) {
         this.properties = properties;
+        this.chunkingProperties = chunkingProperties;
+        this.chunker = chunker;
     }
 
     public List<SourceFile> scan(Path repositoryRoot) {
@@ -35,8 +40,8 @@ public class RepositoryScannerService {
                     .filter(Files::isRegularFile)
                     .filter(path -> !isExcluded(repositoryRoot, path))
                     .filter(this::hasIncludedExtension)
-                    .map(path -> readSourceFile(repositoryRoot, path))
-                    .flatMap(Optional::stream)
+                    .map(path -> readSourceFiles(repositoryRoot, path))
+                    .flatMap(List::stream)
                     .toList();
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to scan repository: " + repositoryRoot, e);
@@ -58,18 +63,25 @@ public class RepositoryScannerService {
         return properties.includedExtensions().stream().anyMatch(name::endsWith);
     }
 
-    private Optional<SourceFile> readSourceFile(Path root, Path file) {
+    private List<SourceFile> readSourceFiles(Path root, Path file) {
         try {
             long size = Files.size(file);
+            String relativePath = root.relativize(file).toString();
             if (size > properties.maxFileSizeBytes()) {
-                log.warn("Skipping {} ({} bytes exceeds max-file-size-bytes={})", file, size, properties.maxFileSizeBytes());
-                return Optional.empty();
+                if (!chunkingProperties.enabled()) {
+                    log.warn("Skipping {} ({} bytes exceeds max-file-size-bytes={})", file, size, properties.maxFileSizeBytes());
+                    return List.of();
+                }
+                String content = Files.readString(file, StandardCharsets.UTF_8);
+                List<SourceFile> chunks = chunker.chunk(file, relativePath, content);
+                log.info("Split {} ({} bytes) into {} chunk(s)", file, size, chunks.size());
+                return chunks;
             }
             String content = Files.readString(file, StandardCharsets.UTF_8);
-            return Optional.of(new SourceFile(file, root.relativize(file).toString(), content, size));
+            return List.of(new SourceFile(file, relativePath, content, size));
         } catch (IOException e) {
             log.warn("Skipping unreadable file {}: {}", file, e.getMessage());
-            return Optional.empty();
+            return List.of();
         }
     }
 }
