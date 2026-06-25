@@ -176,6 +176,25 @@ export JSPROCESSOR_EMBEDDING_ENABLED=true
 `jsprocessor.embedding.base-url` and `-model` mirror the Ollama chat-agent equivalents; see the
 configuration table below.
 
+## Auto-starting jobs from a watched folder
+
+Instead of calling the start-job API yourself, you can drop files into a folder and let the app
+start one extraction job per file automatically. Off by default; enabling it activates no other
+behavior:
+
+```bash
+export JSPROCESSOR_WATCH_ENABLED=true
+export JSPROCESSOR_WATCH_DIRECTORY=./watch-input
+./mvnw spring-boot:run
+```
+
+`InputDirectoryWatcher` watches that directory non-recursively (`java.nio.file.WatchService`) and,
+for each file dropped into it, waits for `jsprocessor.watch.quiet-period-millis` of inactivity on
+that path before starting a job — so a file that's still being copied or written isn't picked up
+mid-write, and rapid successive writes to the same path coalesce into a single job. A subfolder
+dropped into the watched directory is ignored, since the watch unit is an individual file, not a
+folder.
+
 ## Plugging in the real prompt
 
 `src/main/resources/prompts/logic-extraction-prompt.st` currently holds a placeholder extraction
@@ -246,6 +265,9 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 | `jsprocessor.embedding.enabled` | `false` | Enables real vector search for the QA endpoint — see [Asking questions about a job's extracted logic](#asking-questions-about-a-jobs-extracted-logic-rag) |
 | `jsprocessor.embedding.base-url` | `http://localhost:11434` | Ollama server URL for embeddings |
 | `jsprocessor.embedding.model` | `nomic-embed-text` | Ollama embedding model name (must already be pulled) |
+| `jsprocessor.watch.enabled` | `false` | Auto-starts a job per file dropped into `directory` — see [Auto-starting jobs from a watched folder](#auto-starting-jobs-from-a-watched-folder) |
+| `jsprocessor.watch.directory` | `./watch-input` | Directory watched non-recursively for dropped files |
+| `jsprocessor.watch.quiet-period-millis` | `500` | Inactivity window on a dropped file's path before a job is started |
 
 ## Tests
 

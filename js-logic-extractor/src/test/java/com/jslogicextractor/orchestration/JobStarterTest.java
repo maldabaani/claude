@@ -50,4 +50,24 @@ class JobStarterTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("executionMode");
     }
+
+    @Test
+    void startsJobForFileAndDispatchesOffThread() throws java.io.IOException {
+        Path file = repoRoot.resolve("dropped.js");
+        java.nio.file.Files.writeString(file, "const x = 1;");
+        ExtractionJob job = new ExtractionJob(java.util.UUID.randomUUID(), file, repoRoot.resolve("out"), 4);
+        when(jobRegistry.register(any(), any(), any(), any())).thenReturn(job);
+
+        ExtractionJob result = jobStarter.startForFile(file);
+
+        assertThat(result).isEqualTo(job);
+        verify(extractionExecutor).execute(any());
+    }
+
+    @Test
+    void rejectsNonFilePathForStartForFile() {
+        assertThatThrownBy(() -> jobStarter.startForFile(repoRoot))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Not a file");
+    }
 }

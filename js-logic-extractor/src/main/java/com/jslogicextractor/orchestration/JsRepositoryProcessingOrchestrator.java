@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +52,9 @@ public class JsRepositoryProcessingOrchestrator {
         job.markScanning();
         List<SourceFile> files;
         try {
-            files = scanner.scan(job.repositoryRoot());
+            files = Files.isRegularFile(job.repositoryRoot())
+                    ? scanner.scanFile(job.repositoryRoot())
+                    : scanner.scan(job.repositoryRoot());
         } catch (Exception e) {
             log.error("Repository scan failed for job {}: {}", job.id(), e.getMessage());
             job.markFailed("Repository scan failed: " + e.getMessage());

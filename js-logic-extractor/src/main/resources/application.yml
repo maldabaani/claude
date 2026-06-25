@@ -64,6 +64,14 @@ jsprocessor:
     enabled: ${JSPROCESSOR_EMBEDDING_ENABLED:false}
     base-url: ${OLLAMA_EMBEDDING_BASE_URL:http://localhost:11434}
     model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+  # Watches a directory (non-recursively) and auto-starts one extraction job per file that's
+  # dropped into it - a dropped subfolder is ignored, since the watch unit is an individual file.
+  # Off by default; enabling it activates no other behavior.
+  watch:
+    enabled: ${JSPROCESSOR_WATCH_ENABLED:false}
+    directory: ${JSPROCESSOR_WATCH_DIRECTORY:./watch-input}
+    quiet-period-millis: ${JSPROCESSOR_WATCH_QUIET_PERIOD_MILLIS:500}
+
 logging:
   level:
     com.jslogicextractor: INFO

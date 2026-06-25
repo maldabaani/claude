@@ -75,6 +75,34 @@ class RepositoryScannerServiceTest {
         assertThatThrownBy(() -> scanner.scan(file)).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void scanFileReturnsSingleSourceFileWithIncludedExtension() throws IOException {
+        Path file = repoRoot.resolve("dropped.js");
+        write(file, "const x = 1;");
+
+        List<SourceFile> files = scanner.scanFile(file);
+
+        assertThat(files).extracting(SourceFile::relativePath).containsExactly("dropped.js");
+    }
+
+    @Test
+    void scanFileSkipsFilesWithExcludedExtension() throws IOException {
+        Path file = repoRoot.resolve("notes.txt");
+        write(file, "not js");
+
+        List<SourceFile> files = scanner.scanFile(file);
+
+        assertThat(files).isEmpty();
+    }
+
+    @Test
+    void scanFileRejectsNonFilePath() throws IOException {
+        Path directory = repoRoot.resolve("a-directory");
+        Files.createDirectories(directory);
+
+        assertThatThrownBy(() -> scanner.scanFile(directory)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private void write(Path path, String content) throws IOException {
         Files.createDirectories(path.getParent());
         Files.writeString(path, content);

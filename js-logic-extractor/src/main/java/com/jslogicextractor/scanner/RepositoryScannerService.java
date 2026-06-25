@@ -48,6 +48,20 @@ public class RepositoryScannerService {
         }
     }
 
+    /**
+     * Single-file counterpart to {@link #scan(Path)}, used by the input-directory watcher: each
+     * dropped file becomes its own job scanning exactly that one file rather than a whole directory.
+     */
+    public List<SourceFile> scanFile(Path file) {
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("Not a file: " + file);
+        }
+        if (!hasIncludedExtension(file)) {
+            return List.of();
+        }
+        return readSourceFiles(file.getParent(), file);
+    }
+
     private boolean isExcluded(Path root, Path file) {
         Path relative = root.relativize(file);
         for (Path segment : relative) {

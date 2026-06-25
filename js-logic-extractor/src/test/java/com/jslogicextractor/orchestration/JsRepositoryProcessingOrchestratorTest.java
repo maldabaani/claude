@@ -237,6 +237,57 @@ class JsRepositoryProcessingOrchestratorTest {
         assertThat(job.failureReason()).contains("boom");
     }
 
+    @Test
+    void processesASingleDroppedFileWhenJobRootIsAFileNotADirectory() throws IOException {
+        Path file = repoRoot.resolve("dropped.js");
+        write(file, "const a = 1;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
+
+        List<ExtractionResult> writtenResults = new CopyOnWriteArrayList<>();
+        LogicExtractionAgent agent = new LogicExtractionAgent() {
+            @Override
+            public String name() {
+                return "test-agent";
+            }
+
+            @Override
+            public ExtractionResult extract(SourceFile sourceFile) {
+                return ExtractionResult.success(sourceFile, name(), "{}", 1, null, null);
+            }
+        };
+        AgentSelector selector = new AgentSelector(List.of(agent));
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) {
+                return false;
+            }
+
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {
+                writtenResults.add(result);
+            }
+
+            @Override
+            public void writeSummary(ExtractionJob job) {
+            }
+        };
+
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        null, properties);
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), file, repoRoot.resolve("out"), 4);
+
+        orchestrator.run(job);
+
+        assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
+        assertThat(job.totalCount()).isEqualTo(1);
+        assertThat(job.succeededCount()).isEqualTo(1);
+        assertThat(writtenResults).extracting(ExtractionResult::relativePath).containsExactly("dropped.js");
+    }
+
     private void write(Path path, String content) throws IOException {
         Files.writeString(path, content);
     }

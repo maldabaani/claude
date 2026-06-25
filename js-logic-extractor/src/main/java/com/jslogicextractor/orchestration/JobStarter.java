@@ -27,6 +27,20 @@ public class JobStarter {
         this.extractionExecutor = extractionExecutor;
     }
 
+    /**
+     * Starts a job scoped to exactly one file rather than a whole repository — used by the
+     * input-directory watcher, where each dropped file becomes its own job.
+     */
+    public ExtractionJob startForFile(Path file) {
+        Path resolved = file.toAbsolutePath().normalize();
+        if (!Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException("Not a file: " + resolved);
+        }
+        ExtractionJob job = jobRegistry.register(resolved, null, null, null);
+        extractionExecutor.execute(() -> orchestrator.run(job));
+        return job;
+    }
+
     public ExtractionJob start(String repositoryPath, String outputDirectory, Integer maxConcurrency,
                                 String executionModeRaw) {
         Path repositoryRoot = Path.of(repositoryPath).toAbsolutePath().normalize();
