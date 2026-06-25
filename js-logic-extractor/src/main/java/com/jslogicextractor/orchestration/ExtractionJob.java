@@ -41,8 +41,12 @@ public final class ExtractionJob {
         this.phase = JobPhase.SCANNING;
     }
 
-    public void markProcessing(int total) {
+    public void markFiltering(int total) {
         this.totalFiles.set(total);
+        this.phase = JobPhase.FILTERING;
+    }
+
+    public void markProcessing() {
         this.phase = JobPhase.PROCESSING;
     }
 

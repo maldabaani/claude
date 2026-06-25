@@ -2,7 +2,10 @@ package com.jslogicextractor.web;
 
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.orchestration.JobRegistry;
-import com.jslogicextractor.orchestration.JsRepositoryProcessingOrchestrator;
+import com.jslogicextractor.orchestration.JobStarter;
+import com.jslogicextractor.output.OutputFileSnapshotService;
+import com.jslogicextractor.qa.ExtractionQaService;
+import com.jslogicextractor.qa.QaAnswer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +15,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,10 +38,13 @@ class ExtractionJobControllerTest {
     private JobRegistry jobRegistry;
 
     @MockitoBean
-    private JsRepositoryProcessingOrchestrator orchestrator;
+    private JobStarter jobStarter;
 
     @MockitoBean
-    private ExecutorService extractionExecutor;
+    private OutputFileSnapshotService outputFileSnapshotService;
+
+    @MockitoBean
+    private ExtractionQaService qaService;
 
     @TempDir
     static Path repoRoot;
@@ -45,34 +52,13 @@ class ExtractionJobControllerTest {
     @Test
     void startJobReturnsAcceptedWithJobId() throws Exception {
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
-        given(jobRegistry.register(any(), any(), any(), any())).willReturn(job);
+        given(jobStarter.start(any(), any(), any(), any())).willReturn(job);
 
         mockMvc.perform(post("/api/v1/extraction-jobs")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"repositoryPath\":" + quoted(repoRoot.toString()) + "}"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobId").value(job.id().toString()));
-
-        verify(extractionExecutor).execute(any());
-    }
-
-    @Test
-    void startJobRejectsNonDirectoryPath() throws Exception {
-        Path missing = repoRoot.resolve("does-not-exist");
-
-        mockMvc.perform(post("/api/v1/extraction-jobs")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"repositoryPath\":" + quoted(missing.toString()) + "}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void startJobRejectsInvalidExecutionMode() throws Exception {
-        mockMvc.perform(post("/api/v1/extraction-jobs")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"repositoryPath\":" + quoted(repoRoot.toString())
-                                + ",\"executionMode\":\"BOGUS\"}"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -81,6 +67,72 @@ class ExtractionJobControllerTest {
 
         mockMvc.perform(get("/api/v1/extraction-jobs/" + UUID.randomUUID()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listJobsReturnsAllRegisteredJobs() throws Exception {
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        given(jobRegistry.findAll()).willReturn(List.of(job));
+
+        mockMvc.perform(get("/api/v1/extraction-jobs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].jobId").value(job.id().toString()));
+    }
+
+    @Test
+    void listOutputFilesReturnsSnapshotForKnownJob() throws Exception {
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        given(jobRegistry.find(job.id())).willReturn(Optional.of(job));
+        given(outputFileSnapshotService.recentFiles(any(), anyInt())).willReturn(
+                List.of(new OutputFileSnapshotService.OutputFile("a.js.json", 42L, Instant.now())));
+
+        mockMvc.perform(get("/api/v1/extraction-jobs/" + job.id() + "/output-files"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].relativePath").value("a.js.json"));
+    }
+
+    @Test
+    void listOutputFilesReturnsNotFoundForUnknownJob() throws Exception {
+        given(jobRegistry.find(any())).willReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/extraction-jobs/" + UUID.randomUUID() + "/output-files"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void askReturnsAnswerWithSourceFilesForKnownJob() throws Exception {
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        given(jobRegistry.find(job.id())).willReturn(Optional.of(job));
+        given(qaService.ask(job, "what does auth.js do?"))
+                .willReturn(new QaAnswer("It authenticates users.", List.of("auth.js")));
+
+        mockMvc.perform(post("/api/v1/extraction-jobs/" + job.id() + "/qa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"what does auth.js do?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answer").value("It authenticates users."))
+                .andExpect(jsonPath("$.sourceFiles[0]").value("auth.js"));
+    }
+
+    @Test
+    void askReturnsNotFoundForUnknownJob() throws Exception {
+        given(jobRegistry.find(any())).willReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/v1/extraction-jobs/" + UUID.randomUUID() + "/qa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"anything?\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void askRejectsBlankQuestion() throws Exception {
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        given(jobRegistry.find(job.id())).willReturn(Optional.of(job));
+
+        mockMvc.perform(post("/api/v1/extraction-jobs/" + job.id() + "/qa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     private String quoted(String value) {

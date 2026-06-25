@@ -1,53 +1,45 @@
 package com.jslogicextractor.web;
 
-import com.jslogicextractor.orchestration.ExecutionMode;
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.orchestration.JobRegistry;
-import com.jslogicextractor.orchestration.JsRepositoryProcessingOrchestrator;
+import com.jslogicextractor.orchestration.JobStarter;
+import com.jslogicextractor.output.OutputFileSnapshotService;
+import com.jslogicextractor.qa.ExtractionQaService;
+import com.jslogicextractor.qa.QaAnswer;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 
 @RestController
 @RequestMapping("/api/v1/extraction-jobs")
 public class ExtractionJobController {
 
+    private static final int OUTPUT_FILES_LIMIT = 50;
+
     private final JobRegistry jobRegistry;
-    private final JsRepositoryProcessingOrchestrator orchestrator;
-    private final ExecutorService extractionExecutor;
+    private final JobStarter jobStarter;
+    private final OutputFileSnapshotService outputFileSnapshotService;
+    private final ExtractionQaService qaService;
 
     public ExtractionJobController(JobRegistry jobRegistry,
-                                    JsRepositoryProcessingOrchestrator orchestrator,
-                                    ExecutorService extractionExecutor) {
+                                    JobStarter jobStarter,
+                                    OutputFileSnapshotService outputFileSnapshotService,
+                                    ExtractionQaService qaService) {
         this.jobRegistry = jobRegistry;
-        this.orchestrator = orchestrator;
-        this.extractionExecutor = extractionExecutor;
+        this.jobStarter = jobStarter;
+        this.outputFileSnapshotService = outputFileSnapshotService;
+        this.qaService = qaService;
     }
 
     @PostMapping
     public ResponseEntity<JobResponse> startJob(@Valid @RequestBody StartJobRequest request) {
-        Path repositoryRoot = Path.of(request.repositoryPath()).toAbsolutePath().normalize();
-        if (!Files.isDirectory(repositoryRoot)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "repositoryPath is not a directory: " + repositoryRoot);
-        }
-        Path outputDirectory = request.outputDirectory() != null
-                ? Path.of(request.outputDirectory()).toAbsolutePath().normalize()
-                : null;
-        ExecutionMode executionMode = parseExecutionMode(request.executionMode());
-
-        ExtractionJob job = jobRegistry.register(repositoryRoot, outputDirectory, request.maxConcurrency(),
-                executionMode);
-        extractionExecutor.execute(() -> orchestrator.run(job));
-
+        ExtractionJob job = jobStarter.start(request.repositoryPath(), request.outputDirectory(),
+                request.maxConcurrency(), request.executionMode());
         return ResponseEntity.accepted().body(JobResponse.from(job));
     }
 
@@ -58,15 +50,32 @@ public class ExtractionJobController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    private ExecutionMode parseExecutionMode(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return null;
-        }
-        try {
-            return ExecutionMode.valueOf(rawValue.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "executionMode must be one of " + Arrays.toString(ExecutionMode.values()));
-        }
+    @GetMapping
+    public ResponseEntity<List<JobResponse>> listJobs() {
+        List<JobResponse> jobs = jobRegistry.findAll().stream()
+                .map(JobResponse::from)
+                .toList();
+        return ResponseEntity.ok(jobs);
+    }
+
+    @GetMapping("/{jobId}/output-files")
+    public ResponseEntity<List<OutputFileResponse>> listOutputFiles(@PathVariable UUID jobId) {
+        ExtractionJob job = requireJob(jobId);
+        List<OutputFileResponse> files = outputFileSnapshotService.recentFiles(job, OUTPUT_FILES_LIMIT).stream()
+                .map(OutputFileResponse::from)
+                .toList();
+        return ResponseEntity.ok(files);
+    }
+
+    @PostMapping("/{jobId}/qa")
+    public ResponseEntity<QaResponse> ask(@PathVariable UUID jobId, @Valid @RequestBody QaRequest request) {
+        ExtractionJob job = requireJob(jobId);
+        QaAnswer answer = qaService.ask(job, request.question());
+        return ResponseEntity.ok(QaResponse.from(answer));
+    }
+
+    private ExtractionJob requireJob(UUID jobId) {
+        return jobRegistry.find(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such job: " + jobId));
     }
 }

@@ -59,7 +59,7 @@ public class JsRepositoryProcessingOrchestrator {
             return;
         }
 
-        job.markProcessing(files.size());
+        job.markFiltering(files.size());
         log.info("Job {}: scanned {} files from {}, mode={}, maxConcurrency={}, agents={}",
                 job.id(), files.size(), job.repositoryRoot(), job.executionMode(), job.maxConcurrency(),
                 agentSelector.agentCount());
@@ -67,6 +67,7 @@ public class JsRepositoryProcessingOrchestrator {
         List<SourceFile> eligibleFiles = partitionEligibleFiles(job, files);
 
         if (!eligibleFiles.isEmpty()) {
+            job.markProcessing();
             if (job.executionMode() == ExecutionMode.BATCH) {
                 runBatchMode(job, eligibleFiles);
             } else {

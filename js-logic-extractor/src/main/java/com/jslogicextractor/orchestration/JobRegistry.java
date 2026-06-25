@@ -4,6 +4,8 @@ import com.jslogicextractor.config.ExtractionProperties;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,5 +39,11 @@ public class JobRegistry {
 
     public Optional<ExtractionJob> find(UUID id) {
         return Optional.ofNullable(jobs.get(id));
+    }
+
+    public List<ExtractionJob> findAll() {
+        return jobs.values().stream()
+                .sorted(Comparator.comparing(ExtractionJob::createdAt).reversed())
+                .toList();
     }
 }

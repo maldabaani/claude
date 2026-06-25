@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>JS Logic Extractor</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="topbar">
+    <div class="brand">JS Logic <span>Extractor</span></div>
+</div>
+
+<div class="container">
+    <div class="grid">
+        <div class="panel">
+            <h2>Start New Job</h2>
+            <div class="error-banner" th:if="${error}" th:text="${error}"></div>
+            <form method="post" th:action="@{/ui/jobs}">
+                <label for="repositoryPath">Repository path</label>
+                <input id="repositoryPath" type="text" name="repositoryPath" placeholder="/path/to/js-repo" required/>
+
+                <label for="outputDirectory">Output directory (optional)</label>
+                <input id="outputDirectory" type="text" name="outputDirectory" placeholder="defaults to ./output/&lt;job-id&gt;"/>
+
+                <label for="maxConcurrency">Max concurrency (optional)</label>
+                <input id="maxConcurrency" type="number" min="1" name="maxConcurrency" placeholder="defaults to configured value"/>
+
+                <label for="executionMode">Execution mode (optional)</label>
+                <select id="executionMode" name="executionMode">
+                    <option value="">Default</option>
+                    <option value="SYNC">SYNC</option>
+                    <option value="BATCH">BATCH</option>
+                </select>
+
+                <button type="submit" class="btn-primary">Start Extraction</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Jobs</h2>
+            <p class="empty-state" th:if="${#lists.isEmpty(jobs)}">No jobs started yet — use the form to kick one off.</p>
+            <table th:unless="${#lists.isEmpty(jobs)}">
+                <thead>
+                <tr>
+                    <th>Job</th>
+                    <th>Phase</th>
+                    <th>Files</th>
+                    <th>Mode</th>
+                    <th>Started</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="job : ${jobs}">
+                    <td class="mono" th:text="${job.jobId.substring(0, 8)}"></td>
+                    <td><span class="badge" th:class="|badge badge-${job.phase}|" th:text="${job.phase}"></span></td>
+                    <td th:text="${job.processedFiles} + ' / ' + ${job.totalFiles}"></td>
+                    <td th:text="${job.executionMode}"></td>
+                    <td class="mono" th:text="${job.createdAt}"></td>
+                    <td>
+                        <a th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
+                        &nbsp;&middot;&nbsp;
+                        <a th:href="@{/ui/jobs/{id}/ask(id=${job.jobId})}">Ask</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

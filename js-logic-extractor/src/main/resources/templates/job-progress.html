@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Job Progress &middot; JS Logic Extractor</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body th:attr="data-job-id=${job.jobId}">
+<div class="topbar">
+    <div class="brand"><a th:href="@{/ui/jobs}">JS Logic <span>Extractor</span></a></div>
+    <div class="mono muted" th:text="${job.jobId}"></div>
+</div>
+
+<div class="container">
+    <div class="tabs">
+        <a class="active" th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
+        <a th:href="@{/ui/jobs/{id}/ask(id=${job.jobId})}">Ask</a>
+        <a th:href="@{/ui/jobs}">All Jobs</a>
+    </div>
+
+    <div id="failure-banner" class="failure-banner" style="display:none"></div>
+
+    <div class="stepper" id="stepper">
+        <div class="step" data-phase="PENDING"><div class="dot">1</div><div class="label">Pending</div></div>
+        <div class="step" data-phase="SCANNING"><div class="dot">2</div><div class="label">Scanning</div></div>
+        <div class="step" data-phase="FILTERING"><div class="dot">3</div><div class="label">Filtering</div></div>
+        <div class="step" data-phase="PROCESSING"><div class="dot">4</div><div class="label">Processing</div></div>
+        <div class="step" data-phase="COMPLETED"><div class="dot">5</div><div class="label">Completed</div></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><div class="value" id="stat-total" th:text="${job.totalFiles}">-</div><div class="label">Total</div></div>
+        <div class="stat-card"><div class="value" id="stat-processed" th:text="${job.processedFiles}">-</div><div class="label">Processed</div></div>
+        <div class="stat-card"><div class="value" id="stat-succeeded" th:text="${job.succeededFiles}">-</div><div class="label">Succeeded</div></div>
+        <div class="stat-card"><div class="value" id="stat-failed" th:text="${job.failedFiles}">-</div><div class="label">Failed</div></div>
+        <div class="stat-card"><div class="value" id="stat-skipped" th:text="${job.skippedFiles}">-</div><div class="label">Skipped</div></div>
+    </div>
+
+    <div class="panel">
+        <h2>Repository</h2>
+        <p class="mono" th:text="${job.repositoryRoot}"></p>
+        <p class="muted">Output: <span class="mono" th:text="${job.outputDirectory}"></span> &middot; Mode: <span th:text="${job.executionMode}"></span></p>
+    </div>
+
+    <div class="panel" style="margin-top:20px">
+        <h2>Recently Extracted Files</h2>
+        <div class="files-feed" id="files-feed">
+            <p class="empty-state">Waiting for output files&hellip;</p>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/job-progress.js}"></script>
+</body>
+</html>

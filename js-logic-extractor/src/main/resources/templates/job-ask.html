@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Ask &middot; JS Logic Extractor</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body th:attr="data-job-id=${job.jobId}">
+<div class="topbar">
+    <div class="brand"><a th:href="@{/ui/jobs}">JS Logic <span>Extractor</span></a></div>
+    <div class="mono muted" th:text="${job.jobId}"></div>
+</div>
+
+<div class="container">
+    <div class="tabs">
+        <a th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
+        <a class="active" th:href="@{/ui/jobs/{id}/ask(id=${job.jobId})}">Ask</a>
+        <a th:href="@{/ui/jobs}">All Jobs</a>
+    </div>
+
+    <div class="panel">
+        <h2>Ask About This Repository's Logic</h2>
+        <p class="muted" style="margin-top:0">
+            Questions are answered by retrieving the extracted-logic summaries that best match your
+            question (keyword overlap, no vector DB) and asking Claude to answer using only that context.
+        </p>
+
+        <div class="chat-log" id="chat-log"></div>
+
+        <form id="ask-form" class="ask-form">
+            <input id="question-input" type="text" placeholder="e.g. how does the checkout flow validate payment?" autocomplete="off" required/>
+            <button type="submit">Ask</button>
+        </form>
+    </div>
+</div>
+
+<script th:src="@{/js/job-ask.js}"></script>
+</body>
+</html>
