@@ -7,7 +7,7 @@
 </head>
 <body th:attr="data-job-id=${job.jobId}">
 <div class="topbar">
-    <div class="brand"><a th:href="@{/ui/jobs}">JS Logic <span>Extractor</span></a></div>
+    <div class="brand"><a th:href="@{/ui/jobs}"><span class="brand-mark" aria-hidden="true">JS</span>JS Logic <span>Extractor</span></a></div>
     <div class="mono muted" th:text="${job.jobId}"></div>
 </div>
 
@@ -49,6 +49,10 @@
         </div>
     </div>
 </div>
+
+<footer class="app-footer">
+    <span>JS Logic Extractor</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
+</footer>
 
 <script th:src="@{/js/job-progress.js}"></script>
 </body>

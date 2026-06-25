@@ -7,7 +7,7 @@
 </head>
 <body>
 <div class="topbar">
-    <div class="brand">JS Logic <span>Extractor</span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">JS</span>JS Logic <span>Extractor</span></div>
 </div>
 
 <div class="container">
@@ -56,7 +56,7 @@
                     <td><span class="badge" th:class="|badge badge-${job.phase}|" th:text="${job.phase}"></span></td>
                     <td th:text="${job.processedFiles} + ' / ' + ${job.totalFiles}"></td>
                     <td th:text="${job.executionMode}"></td>
-                    <td class="mono" th:text="${job.createdAt}"></td>
+                    <td class="mono" th:text="${#temporals.format(job.createdAt, 'MMM d, HH:mm:ss')}"></td>
                     <td>
                         <a th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
                         &nbsp;&middot;&nbsp;
@@ -68,5 +68,9 @@
         </div>
     </div>
 </div>
+
+<footer class="app-footer">
+    <span>JS Logic Extractor</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
+</footer>
 </body>
 </html>
