@@ -22,7 +22,8 @@
         <h2>Ask About This Repository's Logic</h2>
         <p class="muted" style="margin-top:0">
             Questions are answered by retrieving the extracted-logic summaries that best match your
-            question (keyword overlap, no vector DB) and asking Claude to answer using only that context.
+            question (vector search when available, falling back to keyword overlap) and asking Claude
+            to answer using only that context.
         </p>
 
         <div class="chat-log" id="chat-log"></div>

@@ -146,6 +146,36 @@ Notes:
 - `jsprocessor.ollama.base-url`, `-model`, `-max-tokens`, and `-temperature` mirror the Anthropic
   equivalents; see the configuration table below.
 
+## Asking questions about a job's extracted logic (RAG)
+
+Once a job has written at least one result, `GET /ui/jobs/{jobId}/ask` (or `POST
+/api/v1/extraction-jobs/{jobId}/ask`) lets you ask natural-language questions about the
+repository's logic. `ExtractionQaService` retrieves the extracted-logic summaries most relevant
+to the question and feeds them to Claude as grounded context, returning the answer plus the
+source file(s) it drew from.
+
+Retrieval has two tiers:
+
+- **Vector search** (real embeddings + cosine similarity, via an ephemeral Spring AI
+  `SimpleVectorStore`) when `jsprocessor.embedding.enabled=true` and an `EmbeddingModel` bean is
+  available.
+- **Keyword overlap** (path/content term matching, zero extra infrastructure) otherwise, or as an
+  automatic fallback if any embedding call fails (e.g. the local Ollama daemon is unreachable) —
+  the QA endpoint never hard-fails due to embedding infrastructure being unavailable.
+
+Vector search is backed by a local [Ollama](https://ollama.com) embedding model, off by default:
+
+```bash
+ollama pull nomic-embed-text   # or any embedding model you have pulled locally
+ollama serve                    # default: http://localhost:11434
+
+export JSPROCESSOR_EMBEDDING_ENABLED=true
+./mvnw spring-boot:run
+```
+
+`jsprocessor.embedding.base-url` and `-model` mirror the Ollama chat-agent equivalents; see the
+configuration table below.
+
 ## Plugging in the real prompt
 
 `src/main/resources/prompts/logic-extraction-prompt.st` currently holds a placeholder extraction
@@ -213,6 +243,9 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 | `jsprocessor.ollama.model` | `qwen2.5-coder` | Ollama model name (must already be pulled) |
 | `jsprocessor.ollama.max-tokens` | `4096` | Maps to Ollama's `num_predict` |
 | `jsprocessor.ollama.temperature` | `0.0` | Sampling temperature |
+| `jsprocessor.embedding.enabled` | `false` | Enables real vector search for the QA endpoint — see [Asking questions about a job's extracted logic](#asking-questions-about-a-jobs-extracted-logic-rag) |
+| `jsprocessor.embedding.base-url` | `http://localhost:11434` | Ollama server URL for embeddings |
+| `jsprocessor.embedding.model` | `nomic-embed-text` | Ollama embedding model name (must already be pulled) |
 
 ## Tests
 

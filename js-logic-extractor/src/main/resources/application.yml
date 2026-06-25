@@ -57,7 +57,13 @@ jsprocessor:
     model: ${OLLAMA_MODEL:qwen2.5-coder}
     max-tokens: ${OLLAMA_MAX_TOKENS:4096}
     temperature: ${OLLAMA_TEMPERATURE:0.0}
-
+  # Real vector search for the QA ("Ask") endpoint, backed by a local Ollama embedding model.
+  # Disabled by default: ExtractionQaService falls back to keyword-overlap retrieval whenever no
+  # EmbeddingModel bean exists (this flag off) or an embedding call fails (e.g. Ollama unreachable).
+  embedding:
+    enabled: ${JSPROCESSOR_EMBEDDING_ENABLED:false}
+    base-url: ${OLLAMA_EMBEDDING_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
 logging:
   level:
     com.jslogicextractor: INFO

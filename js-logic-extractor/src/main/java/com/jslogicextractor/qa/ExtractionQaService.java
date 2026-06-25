@@ -6,6 +6,11 @@ import com.jslogicextractor.orchestration.ExtractionJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -14,24 +19,30 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Naive RAG over a job's already-written extraction results: scores each per-file result by
- * keyword overlap with the question, feeds the top matches to Claude as grounded context, and
- * returns the answer plus the source files it drew from. Deliberately simple (no embeddings, no
- * vector store) per the brief — a demo of retrieval-grounded QA, not a production retrieval stack.
+ * RAG over a job's already-written extraction results: retrieves the files most relevant to the
+ * question, feeds them to Claude as grounded context, and returns the answer plus the source files
+ * it drew from. Retrieval is real vector search (embeddings + cosine similarity via an ephemeral
+ * SimpleVectorStore) whenever an EmbeddingModel bean exists (jsprocessor.embedding.enabled=true);
+ * otherwise — or if an embedding call fails, e.g. the local Ollama daemon is unreachable — it falls
+ * back to keyword-overlap scoring so the endpoint keeps working with zero extra infrastructure.
  */
 @Service
 public class ExtractionQaService {
 
     private static final Logger log = LoggerFactory.getLogger(ExtractionQaService.class);
     private static final String SUMMARY_FILE_NAME = "_summary.json";
+    private static final String RELATIVE_PATH_METADATA_KEY = "relativePath";
     private static final Pattern WORD_PATTERN = Pattern.compile("[A-Za-z0-9_]+");
     private static final Set<String> STOPWORDS = Set.of(
             "the", "is", "are", "what", "how", "does", "this", "that", "with", "for", "and", "where",
@@ -52,10 +63,13 @@ public class ExtractionQaService {
 
     private final ObjectMapper objectMapper;
     private final ChatClient chatClient;
+    private final Optional<EmbeddingModel> embeddingModel;
 
-    public ExtractionQaService(ObjectMapper objectMapper, ChatClient.Builder chatClientBuilder) {
+    public ExtractionQaService(ObjectMapper objectMapper, ChatClient.Builder chatClientBuilder,
+                                Optional<EmbeddingModel> embeddingModel) {
         this.objectMapper = objectMapper;
         this.chatClient = chatClientBuilder.build();
+        this.embeddingModel = embeddingModel;
     }
 
     public QaAnswer ask(ExtractionJob job, String question) {
@@ -67,24 +81,66 @@ public class ExtractionQaService {
                     List.of());
         }
 
-        Set<String> queryTerms = tokenize(question);
-        List<ScoredResult> ranked = results.stream()
-                .map(result -> new ScoredResult(result, score(queryTerms, result)))
-                .filter(scored -> scored.score() > 0)
-                .sorted(Comparator.comparingInt(ScoredResult::score).reversed())
-                .limit(TOP_K)
-                .toList();
-
+        List<ScoredResult> ranked = retrieve(question, results);
         if (ranked.isEmpty()) {
             return new QaAnswer(
                     "None of the " + results.size()
-                            + " extracted files matched that question well enough to answer confidently.",
+                            + " extracted files were relevant enough to answer that question confidently.",
                     List.of());
         }
 
         String answer = callClaude(question, buildContext(ranked));
         List<String> sourceFiles = ranked.stream().map(scored -> scored.result().relativePath()).toList();
         return new QaAnswer(answer, sourceFiles);
+    }
+
+    private List<ScoredResult> retrieve(String question, List<ExtractionResult> results) {
+        if (embeddingModel.isPresent()) {
+            try {
+                return rankByVectorSearch(question, results, embeddingModel.get());
+            } catch (Exception e) {
+                log.warn("Vector search failed ({}); falling back to keyword search", e.getMessage());
+            }
+        }
+        return rankByKeywordOverlap(question, results);
+    }
+
+    private List<ScoredResult> rankByVectorSearch(String question, List<ExtractionResult> results,
+                                                   EmbeddingModel model) {
+        Map<String, ExtractionResult> byPath = results.stream()
+                .collect(Collectors.toMap(ExtractionResult::relativePath, Function.identity(), (a, b) -> a));
+        List<Document> documents = results.stream()
+                .map(result -> new Document(truncate(result.content()),
+                        Map.of(RELATIVE_PATH_METADATA_KEY, result.relativePath())))
+                .toList();
+
+        VectorStore vectorStore = SimpleVectorStore.builder(model).build();
+        vectorStore.add(documents);
+        List<Document> matches = vectorStore.similaritySearch(
+                SearchRequest.builder().query(question).topK(TOP_K).build());
+
+        return matches.stream()
+                .map(doc -> byPath.get((String) doc.getMetadata().get(RELATIVE_PATH_METADATA_KEY)))
+                .filter(Objects::nonNull)
+                .map(result -> new ScoredResult(result, 1))
+                .toList();
+    }
+
+    private List<ScoredResult> rankByKeywordOverlap(String question, List<ExtractionResult> results) {
+        Set<String> queryTerms = tokenize(question);
+        return results.stream()
+                .map(result -> new ScoredResult(result, score(queryTerms, result)))
+                .filter(scored -> scored.score() > 0)
+                .sorted(Comparator.comparingInt(ScoredResult::score).reversed())
+                .limit(TOP_K)
+                .toList();
+    }
+
+    private String truncate(String content) {
+        if (content.length() <= MAX_CONTENT_CHARS_PER_FILE) {
+            return content;
+        }
+        return content.substring(0, MAX_CONTENT_CHARS_PER_FILE);
     }
 
     private List<ExtractionResult> loadResults(Path outputDirectory) {

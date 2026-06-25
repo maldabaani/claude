@@ -62,6 +62,12 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-template-st</artifactId>
         </dependency>
+        <!-- VectorStore/SimpleVectorStore for the QA endpoint's real vector search (jsprocessor.embedding.enabled=true).
+             EmbeddingModel itself comes from spring-ai-ollama, already pulled in by the starter above. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vector-store</artifactId>
+        </dependency>
 
         <!-- Batch mode talks to the Anthropic Batches API directly: spring-ai-anthropic 1.1.7 has
              no Batches API support, so this is the raw Java SDK rather than Spring AI. -->
