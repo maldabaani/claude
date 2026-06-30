@@ -28,6 +28,7 @@ public class OllamaChatClientConfig {
                 .model(properties.model())
                 .temperature(properties.temperature())
                 .numPredict(properties.maxTokens())
+                .numCtx(properties.numCtx())
                 .build();
         OllamaChatModel chatModel = OllamaChatModel.builder()
                 .ollamaApi(ollamaApi)

@@ -8,7 +8,8 @@ public record OllamaProperties(
         String baseUrl,
         String model,
         int maxTokens,
-        double temperature
+        double temperature,
+        int numCtx
 ) {
 
     public OllamaProperties {
@@ -16,10 +17,13 @@ public record OllamaProperties(
             baseUrl = "http://localhost:11434";
         }
         if (model == null || model.isBlank()) {
-            model = "qwen2.5-coder";
+            model = "qwen2.5:14b";
         }
         if (maxTokens <= 0) {
-            maxTokens = 4096;
+            maxTokens = 1500;
+        }
+        if (numCtx <= 0) {
+            numCtx = 8192;
         }
     }
 }
