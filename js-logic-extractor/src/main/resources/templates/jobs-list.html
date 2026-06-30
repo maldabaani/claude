@@ -55,7 +55,10 @@
                     <td class="mono" th:text="${job.jobId.substring(0, 8)}"></td>
                     <td><span class="badge" th:class="|badge badge-${job.phase}|" th:text="${job.phase}"></span></td>
                     <td th:text="${job.processedFiles} + ' / ' + ${job.totalFiles}"></td>
-                    <td th:text="${job.executionMode}"></td>
+                    <td>
+                        <span th:text="${job.executionMode}"></span>
+                        <span th:if="${job.incremental}" class="badge badge-INCREMENTAL">Incremental</span>
+                    </td>
                     <td class="mono" th:text="${#temporals.format(job.createdAt, 'MMM d, HH:mm:ss')}"></td>
                     <td>
                         <a th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>

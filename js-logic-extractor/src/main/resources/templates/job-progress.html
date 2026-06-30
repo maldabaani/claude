@@ -39,7 +39,7 @@
     <div class="panel">
         <h2>Repository</h2>
         <p class="mono" th:text="${job.repositoryRoot}"></p>
-        <p class="muted">Output: <span class="mono" th:text="${job.outputDirectory}"></span> &middot; Mode: <span th:text="${job.executionMode}"></span></p>
+        <p class="muted">Output: <span class="mono" th:text="${job.outputDirectory}"></span> &middot; Mode: <span th:text="${job.executionMode}"></span> <span th:if="${job.incremental}" class="badge badge-INCREMENTAL">Incremental</span></p>
     </div>
 
     <div class="panel" style="margin-top:20px">

@@ -284,6 +284,7 @@ tr:last-child td {
 .badge-PROCESSING { background: rgba(108, 140, 255, 0.18); color: var(--accent); }
 .badge-COMPLETED { background: rgba(61, 220, 151, 0.15); color: var(--green); }
 .badge-FAILED { background: rgba(255, 107, 107, 0.15); color: var(--red); }
+.badge-INCREMENTAL { background: rgba(155, 123, 255, 0.15); color: var(--accent-2); }
 
 .mono {
   font-family: "SF Mono", Menlo, Consolas, monospace;

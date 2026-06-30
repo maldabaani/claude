@@ -12,6 +12,7 @@ public final class ExtractionJob {
     private final Path outputDirectory;
     private final int maxConcurrency;
     private final ExecutionMode executionMode;
+    private final boolean incremental;
     private final Instant createdAt = Instant.now();
 
     private volatile JobPhase phase = JobPhase.PENDING;
@@ -25,16 +26,22 @@ public final class ExtractionJob {
     private final AtomicInteger skippedFiles = new AtomicInteger();
 
     public ExtractionJob(UUID id, Path repositoryRoot, Path outputDirectory, int maxConcurrency) {
-        this(id, repositoryRoot, outputDirectory, maxConcurrency, ExecutionMode.SYNC);
+        this(id, repositoryRoot, outputDirectory, maxConcurrency, null, false);
     }
 
     public ExtractionJob(UUID id, Path repositoryRoot, Path outputDirectory, int maxConcurrency,
                           ExecutionMode executionMode) {
+        this(id, repositoryRoot, outputDirectory, maxConcurrency, executionMode, false);
+    }
+
+    public ExtractionJob(UUID id, Path repositoryRoot, Path outputDirectory, int maxConcurrency,
+                          ExecutionMode executionMode, boolean incremental) {
         this.id = id;
         this.repositoryRoot = repositoryRoot;
         this.outputDirectory = outputDirectory;
         this.maxConcurrency = maxConcurrency;
         this.executionMode = executionMode != null ? executionMode : ExecutionMode.SYNC;
+        this.incremental = incremental;
     }
 
     public void markScanning() {
@@ -93,6 +100,10 @@ public final class ExtractionJob {
 
     public ExecutionMode executionMode() {
         return executionMode;
+    }
+
+    public boolean incremental() {
+        return incremental;
     }
 
     public JobPhase phase() {

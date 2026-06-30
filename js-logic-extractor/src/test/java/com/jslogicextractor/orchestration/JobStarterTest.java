@@ -1,10 +1,12 @@
 package com.jslogicextractor.orchestration;
 
+import com.jslogicextractor.incremental.ManifestService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,12 +24,14 @@ class JobStarterTest {
     private final JobRegistry jobRegistry = mock(JobRegistry.class);
     private final JsRepositoryProcessingOrchestrator orchestrator = mock(JsRepositoryProcessingOrchestrator.class);
     private final ExecutorService extractionExecutor = mock(ExecutorService.class);
-    private final JobStarter jobStarter = new JobStarter(jobRegistry, orchestrator, extractionExecutor);
+    private final ManifestService manifestService = mock(ManifestService.class);
+    private final JobStarter jobStarter = new JobStarter(jobRegistry, orchestrator, extractionExecutor, manifestService);
 
     @Test
     void startsJobAndDispatchesOffThread() {
         ExtractionJob job = new ExtractionJob(java.util.UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
-        when(jobRegistry.register(any(), any(), any(), any())).thenReturn(job);
+        when(manifestService.load(any())).thenReturn(Optional.empty());
+        when(jobRegistry.register(any(), any(), any(), any(), any(Boolean.class))).thenReturn(job);
 
         ExtractionJob result = jobStarter.start(repoRoot.toString(), null, null, null);
 

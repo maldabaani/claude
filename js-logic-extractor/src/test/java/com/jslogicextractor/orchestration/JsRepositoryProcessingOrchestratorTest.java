@@ -7,6 +7,7 @@ import com.jslogicextractor.batch.BatchExtractionService;
 import com.jslogicextractor.config.ChunkingProperties;
 import com.jslogicextractor.config.ExtractionProperties;
 import com.jslogicextractor.filter.NonSubstantiveFileFilter;
+import com.jslogicextractor.incremental.ManifestService;
 import com.jslogicextractor.output.ExtractionResultWriter;
 import com.jslogicextractor.scanner.LargeFileChunker;
 import com.jslogicextractor.scanner.RepositoryScannerService;
@@ -19,6 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -30,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class JsRepositoryProcessingOrchestratorTest {
 
@@ -93,9 +97,11 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
+        ManifestService manifestService = mock(ManifestService.class);
+        when(manifestService.computeHashes(any(), any())).thenReturn(Map.of());
         JsRepositoryProcessingOrchestrator orchestrator =
                 new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
-                        null, properties);
+                        null, properties, manifestService);
 
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), concurrencyLimit);
 
@@ -148,9 +154,11 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
+        ManifestService manifestService = mock(ManifestService.class);
+        when(manifestService.computeHashes(any(), any())).thenReturn(Map.of());
         JsRepositoryProcessingOrchestrator orchestrator =
                 new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
-                        null, properties);
+                        null, properties, manifestService);
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
 
         orchestrator.run(job);
@@ -185,9 +193,11 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
+        ManifestService manifestService = mock(ManifestService.class);
+        when(manifestService.computeHashes(any(), any())).thenReturn(Map.of());
         JsRepositoryProcessingOrchestrator orchestrator =
                 new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
-                        batchExtractionService, properties);
+                        batchExtractionService, properties, manifestService);
 
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4,
                 ExecutionMode.BATCH);
@@ -224,9 +234,11 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
+        ManifestService manifestService = mock(ManifestService.class);
+        when(manifestService.computeHashes(any(), any())).thenReturn(Map.of());
         JsRepositoryProcessingOrchestrator orchestrator =
                 new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
-                        batchExtractionService, properties);
+                        batchExtractionService, properties, manifestService);
 
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4,
                 ExecutionMode.BATCH);
@@ -275,9 +287,10 @@ class JsRepositoryProcessingOrchestratorTest {
             }
         };
 
+        ManifestService manifestService = mock(ManifestService.class);
         JsRepositoryProcessingOrchestrator orchestrator =
                 new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
-                        null, properties);
+                        null, properties, manifestService);
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), file, repoRoot.resolve("out"), 4);
 
         orchestrator.run(job);
@@ -286,6 +299,67 @@ class JsRepositoryProcessingOrchestratorTest {
         assertThat(job.totalCount()).isEqualTo(1);
         assertThat(job.succeededCount()).isEqualTo(1);
         assertThat(writtenResults).extracting(ExtractionResult::relativePath).containsExactly("dropped.js");
+    }
+
+    @Test
+    void incrementalJobOnlyProcessesChangedFiles() throws IOException {
+        write(repoRoot.resolve("unchanged.js"), "const x = 1;");
+        write(repoRoot.resolve("changed.js"), "const y = 2;");
+
+        ExtractionProperties properties = new ExtractionProperties(null, null, null, 300_000, 8, false, null);
+        ChunkingProperties chunkingProperties = new ChunkingProperties(false, 0);
+        RepositoryScannerService scanner = new RepositoryScannerService(properties, chunkingProperties, new LargeFileChunker(chunkingProperties));
+
+        List<String> extractedPaths = new CopyOnWriteArrayList<>();
+        LogicExtractionAgent agent = new LogicExtractionAgent() {
+            @Override
+            public String name() { return "test-agent"; }
+
+            @Override
+            public ExtractionResult extract(SourceFile file) {
+                extractedPaths.add(file.relativePath());
+                return ExtractionResult.success(file, name(), "logic", 1, null, null);
+            }
+        };
+        AgentSelector selector = new AgentSelector(List.of(agent));
+        ExtractionResultWriter writer = new ExtractionResultWriter() {
+            @Override
+            public boolean exists(ExtractionJob job, String relativePath) { return false; }
+            @Override
+            public void write(ExtractionJob job, ExtractionResult result) {}
+            @Override
+            public void writeSummary(ExtractionJob job) {}
+        };
+
+        // Manifest says unchanged.js has its current hash, changed.js has a stale hash
+        Map<String, String> previousHashes = Map.of(
+                "unchanged.js", "correct-hash-matches-real-file",
+                "changed.js", "stale-hash-does-not-match");
+
+        ManifestService manifestService = mock(ManifestService.class);
+        // Return current hashes that match unchanged.js but differ for changed.js
+        when(manifestService.computeHashes(any(), any())).thenAnswer(inv -> {
+            // Real hash for unchanged, different hash for changed → triggers diff
+            return Map.of("unchanged.js", "correct-hash-matches-real-file",
+                          "changed.js", "new-hash-after-edit");
+        });
+        when(manifestService.load(any())).thenReturn(
+                Optional.of(new ManifestService.Manifest(repoRoot.resolve("out"), previousHashes)));
+        when(manifestService.diff(any(), any())).thenReturn(
+                new ManifestService.FileChanges(List.of(), List.of("changed.js"), List.of()));
+
+        JsRepositoryProcessingOrchestrator orchestrator =
+                new JsRepositoryProcessingOrchestrator(scanner, selector, writer, new NonSubstantiveFileFilter(),
+                        null, properties, manifestService);
+
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4,
+                ExecutionMode.SYNC, true);
+
+        orchestrator.run(job);
+
+        assertThat(job.phase()).isEqualTo(JobPhase.COMPLETED);
+        assertThat(job.totalCount()).isEqualTo(1); // only changed file counted
+        assertThat(extractedPaths).containsExactly("changed.js");
     }
 
     private void write(Path path, String content) throws IOException {

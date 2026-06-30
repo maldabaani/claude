@@ -23,6 +23,11 @@ public class JobRegistry {
 
     public ExtractionJob register(Path repositoryRoot, Path outputDirectoryOverride, Integer maxConcurrencyOverride,
                                    ExecutionMode executionModeOverride) {
+        return register(repositoryRoot, outputDirectoryOverride, maxConcurrencyOverride, executionModeOverride, false);
+    }
+
+    public ExtractionJob register(Path repositoryRoot, Path outputDirectoryOverride, Integer maxConcurrencyOverride,
+                                   ExecutionMode executionModeOverride, boolean incremental) {
         UUID id = UUID.randomUUID();
         // Default output dir is namespaced per job id so concurrent jobs never clobber each other's files;
         // callers that want resumable re-runs can pass the same outputDirectory explicitly.
@@ -32,7 +37,7 @@ public class JobRegistry {
         int maxConcurrency = maxConcurrencyOverride != null ? maxConcurrencyOverride : defaults.maxConcurrentRequests();
         ExecutionMode executionMode = executionModeOverride != null ? executionModeOverride : defaults.executionMode();
 
-        ExtractionJob job = new ExtractionJob(id, repositoryRoot, outputDirectory, maxConcurrency, executionMode);
+        ExtractionJob job = new ExtractionJob(id, repositoryRoot, outputDirectory, maxConcurrency, executionMode, incremental);
         jobs.put(id, job);
         return job;
     }
