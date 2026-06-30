@@ -39,9 +39,8 @@ class ExtractionQaServiceTest {
         writeResult("payments.js.json", "payments.js", "Charges a credit card via the Stripe API.");
         writeResult("_summary.json", null, null);
 
-        ChatClient.Builder builder = chatClientBuilderReturning("It checks the password and creates a session.");
-
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                chatClientReturning("It checks the password and creates a session."), Optional.empty());
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
 
         QaAnswer answer = service.ask(job, "how does login check the password and session work?");
@@ -55,7 +54,6 @@ class ExtractionQaServiceTest {
         writeResult("auth.js.json", "auth.js", "Checks password and creates session for login users.");
         writeResult("payments.js.json", "payments.js", "Charges a credit card via the Stripe API.");
 
-        ChatClient.Builder builder = chatClientBuilderReturning("Vector-grounded answer.");
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         when(embeddingModel.embed(ArgumentMatchers.<Document>argThat(
                 doc -> doc != null && "auth.js".equals(doc.getMetadata().get("relativePath")))))
@@ -65,7 +63,8 @@ class ExtractionQaServiceTest {
                 .thenReturn(new float[]{0f, 1f});
         when(embeddingModel.embed(any(String.class))).thenReturn(new float[]{1f, 0f});
 
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.of(embeddingModel));
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                chatClientReturning("Vector-grounded answer."), Optional.of(embeddingModel));
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
 
         QaAnswer answer = service.ask(job, "how does login work?");
@@ -81,11 +80,11 @@ class ExtractionQaServiceTest {
         writeResult("auth.js.json", "auth.js", "Checks password and creates session for login users.");
         writeResult("payments.js.json", "payments.js", "Charges a credit card via the Stripe API.");
 
-        ChatClient.Builder builder = chatClientBuilderReturning("It checks the password and creates a session.");
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         when(embeddingModel.embed(any(Document.class))).thenThrow(new RuntimeException("ollama unreachable"));
 
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.of(embeddingModel));
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                chatClientReturning("It checks the password and creates a session."), Optional.of(embeddingModel));
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
 
         QaAnswer answer = service.ask(job, "how does login check the password and session work?");
@@ -96,10 +95,8 @@ class ExtractionQaServiceTest {
 
     @Test
     void returnsPlaceholderWhenNoResultsExistYet() {
-        ChatClient.Builder builder = mock(ChatClient.Builder.class);
-        when(builder.build()).thenReturn(mock(ChatClient.class));
-
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                mock(ChatClient.class), Optional.empty());
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory.resolve("missing"), 4);
 
         QaAnswer answer = service.ask(job, "anything?");
@@ -112,10 +109,8 @@ class ExtractionQaServiceTest {
     void returnsPlaceholderWhenNothingMatchesTheQuestion() throws IOException {
         writeResult("payments.js.json", "payments.js", "Charges a credit card via the Stripe API.");
 
-        ChatClient.Builder builder = mock(ChatClient.Builder.class);
-        when(builder.build()).thenReturn(mock(ChatClient.class));
-
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                mock(ChatClient.class), Optional.empty());
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
 
         QaAnswer answer = service.ask(job, "xyzxyz nonsense qqq");
@@ -129,9 +124,8 @@ class ExtractionQaServiceTest {
         writeResult("auth.js.json", "auth.js", "Checks password and creates session for login users.");
 
         Flux<String> stream = Flux.just("It ", "checks ", "the ", "password.");
-        ChatClient.Builder builder = chatClientBuilderReturningStream(stream);
-
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                chatClientReturningStream(stream), Optional.empty());
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
 
         ExtractionQaService.QaStreamResult result = service.askForStream(job, "how does login work?");
@@ -142,10 +136,8 @@ class ExtractionQaServiceTest {
 
     @Test
     void askForStreamReturnsFallbackFluxWhenNoResultsExist() {
-        ChatClient.Builder builder = mock(ChatClient.Builder.class);
-        when(builder.build()).thenReturn(mock(ChatClient.class));
-
-        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionQaService service = new ExtractionQaService(objectMapper,
+                mock(ChatClient.class), Optional.empty());
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory.resolve("missing"), 4);
 
         ExtractionQaService.QaStreamResult result = service.askForStream(job, "anything?");
@@ -155,32 +147,28 @@ class ExtractionQaServiceTest {
         assertThat(text).contains("No extraction results");
     }
 
-    private ChatClient.Builder chatClientBuilderReturning(String content) {
-        ChatClient.Builder builder = mock(ChatClient.Builder.class);
+    private ChatClient chatClientReturning(String content) {
         ChatClient chatClient = mock(ChatClient.class);
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
-        when(builder.build()).thenReturn(chatClient);
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn(content);
-        return builder;
+        return chatClient;
     }
 
-    private ChatClient.Builder chatClientBuilderReturningStream(Flux<String> stream) {
-        ChatClient.Builder builder = mock(ChatClient.Builder.class);
+    private ChatClient chatClientReturningStream(Flux<String> stream) {
         ChatClient chatClient = mock(ChatClient.class);
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamResponseSpec = mock(ChatClient.StreamResponseSpec.class);
-        when(builder.build()).thenReturn(chatClient);
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.stream()).thenReturn(streamResponseSpec);
         when(streamResponseSpec.content()).thenReturn(stream);
-        return builder;
+        return chatClient;
     }
 
     private void writeResult(String fileName, String relativePath, String content) throws IOException {

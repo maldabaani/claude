@@ -6,6 +6,7 @@ import com.jslogicextractor.orchestration.ExtractionJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -66,10 +67,11 @@ public class ExtractionQaService {
     private final ChatClient chatClient;
     private final Optional<EmbeddingModel> embeddingModel;
 
-    public ExtractionQaService(ObjectMapper objectMapper, ChatClient.Builder chatClientBuilder,
+    public ExtractionQaService(ObjectMapper objectMapper,
+                                @Qualifier("qaChatClient") ChatClient chatClient,
                                 Optional<EmbeddingModel> embeddingModel) {
         this.objectMapper = objectMapper;
-        this.chatClient = chatClientBuilder.build();
+        this.chatClient = chatClient;
         this.embeddingModel = embeddingModel;
     }
 

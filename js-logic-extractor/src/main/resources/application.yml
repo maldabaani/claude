@@ -57,6 +57,13 @@ jsprocessor:
     model: ${OLLAMA_MODEL:qwen2.5-coder}
     max-tokens: ${OLLAMA_MAX_TOKENS:4096}
     temperature: ${OLLAMA_TEMPERATURE:0.0}
+  # Ask Agent answer generation. 'claude' (default) calls the Anthropic API; 'ollama' uses a local
+  # Ollama model — combine with embedding.enabled=true for a fully local, zero-cost RAG pipeline.
+  qa:
+    model: ${JSPROCESSOR_QA_MODEL:claude}
+    ollama-base-url: ${JSPROCESSOR_QA_OLLAMA_BASE_URL:http://localhost:11434}
+    ollama-model: ${JSPROCESSOR_QA_OLLAMA_MODEL:qwen2.5:14b}
+    ollama-max-tokens: ${JSPROCESSOR_QA_OLLAMA_MAX_TOKENS:4096}
   # Real vector search for the QA ("Ask") endpoint, backed by a local Ollama embedding model.
   # Disabled by default: ExtractionQaService falls back to keyword-overlap retrieval whenever no
   # EmbeddingModel bean exists (this flag off) or an embedding call fails (e.g. Ollama unreachable).
