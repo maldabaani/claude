@@ -22,10 +22,19 @@ public record ExtractionProperties(
             defaultOutputDirectory = Path.of("./output");
         }
         if (includedExtensions == null || includedExtensions.isEmpty()) {
-            includedExtensions = Set.of(".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx");
+            includedExtensions = Set.of(
+                    ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
+                    ".py", ".pyw", ".java", ".kt", ".kts",
+                    ".go", ".cs", ".rb", ".rs", ".php"
+            );
         }
         if (excludedDirectoryNames == null || excludedDirectoryNames.isEmpty()) {
-            excludedDirectoryNames = Set.of("node_modules", ".git", "dist", "build", "coverage");
+            excludedDirectoryNames = Set.of(
+                    "node_modules", ".git", "dist", "build", "coverage",
+                    "out", ".next", ".turbo", "vendor",
+                    "__pycache__", "target", ".venv", "venv",
+                    "bin", "obj", ".gradle", ".mypy_cache", ".pytest_cache"
+            );
         }
         if (maxFileSizeBytes <= 0) {
             maxFileSizeBytes = 300_000;

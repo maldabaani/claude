@@ -1,6 +1,6 @@
 spring:
   application:
-    name: js-logic-extractor
+    name: codemind
   ai:
     # Both the Anthropic and Ollama starters auto-activate their ChatModel by default; pin to
     # anthropic so adding the optional Ollama starter never creates a duplicate-bean ambiguity.
@@ -26,8 +26,8 @@ server:
 
 jsprocessor:
   default-output-directory: ./output
-  included-extensions: .js,.jsx,.mjs,.cjs,.ts,.tsx
-  excluded-directory-names: node_modules,.git,dist,build,coverage,out,.next,.turbo,vendor
+  included-extensions: .js,.jsx,.mjs,.cjs,.ts,.tsx,.py,.pyw,.java,.kt,.kts,.go,.cs,.rb,.rs,.php
+  excluded-directory-names: node_modules,.git,dist,build,coverage,out,.next,.turbo,vendor,__pycache__,target,.venv,venv,bin,obj,.gradle,.mypy_cache,.pytest_cache
   max-file-size-bytes: 300000
   max-concurrent-requests: 8
   skip-existing-results: true

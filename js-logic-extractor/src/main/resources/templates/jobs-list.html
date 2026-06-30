@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
-    <title>JS Logic Extractor</title>
+    <title>CodeMind</title>
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body>
@@ -15,7 +15,7 @@
             <div class="error-banner" th:if="${error}" th:text="${error}"></div>
             <form method="post" th:action="@{/ui/jobs}">
                 <label for="repositoryPath">Repository path</label>
-                <input id="repositoryPath" type="text" name="repositoryPath" placeholder="/path/to/js-repo" required/>
+                <input id="repositoryPath" type="text" name="repositoryPath" placeholder="/path/to/repo" required/>
 
                 <label for="outputDirectory">Output directory (optional)</label>
                 <input id="outputDirectory" type="text" name="outputDirectory" placeholder="defaults to ./output/&lt;job-id&gt;"/>
@@ -71,7 +71,7 @@
 </div>
 
 <footer class="app-footer">
-    <span>JS Logic Extractor</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
+    <span>CodeMind</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
 </footer>
 </body>
 </html>

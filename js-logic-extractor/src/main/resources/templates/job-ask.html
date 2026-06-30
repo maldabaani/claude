@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
-    <title>Ask &middot; JS Logic Extractor</title>
+    <title>Ask &middot; CodeMind</title>
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body th:attr="data-job-id=${job.jobId}">
@@ -15,7 +15,7 @@
     </div>
 
     <div class="panel">
-        <h2>Ask About This Repository's Logic</h2>
+        <h2>Ask About This Codebase's Logic</h2>
         <p class="muted" style="margin-top:0">
             Questions are answered by retrieving the extracted-logic summaries that best match your
             question (vector search when available, falling back to keyword overlap) and asking an LLM
@@ -32,7 +32,7 @@
 </div>
 
 <footer class="app-footer">
-    <span>JS Logic Extractor</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
+    <span>CodeMind</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

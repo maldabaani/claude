@@ -19,7 +19,6 @@ import com.jslogicextractor.output.ExtractionResultWriter;
 import com.jslogicextractor.prompt.LogicExtractionPromptTemplates;
 import com.jslogicextractor.scanner.SourceFile;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -48,8 +47,7 @@ class BatchExtractionServiceTest {
             "claude-sonnet-4-5-20250929", 4096, 0.0, Duration.ofMillis(10), Duration.ofMinutes(1),
             10_000, 200_000_000L);
 
-    private final LogicExtractionPromptTemplates promptTemplates =
-            new LogicExtractionPromptTemplates(new ClassPathResource("prompts/logic-extraction-prompt.st"));
+    private final LogicExtractionPromptTemplates promptTemplates = new LogicExtractionPromptTemplates();
 
     private final ExtractionResultWriter resultWriter = new ExtractionResultWriter() {
         @Override

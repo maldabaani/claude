@@ -16,6 +16,7 @@ import com.jslogicextractor.config.BatchExtractionProperties;
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.output.ExtractionResultWriter;
 import com.jslogicextractor.prompt.LogicExtractionPromptTemplates;
+import com.jslogicextractor.scanner.Language;
 import com.jslogicextractor.scanner.SourceFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Bulk execution path for large repositories: submits every eligible file as one Claude request
@@ -68,20 +70,29 @@ public class BatchExtractionService {
             return;
         }
 
-        // Rendered once and reused byte-for-byte across every chunk in this run: the cache_control
-        // breakpoint only pays off if the system block is identical on every request that uses it.
-        String systemSkeleton = promptTemplates.renderStaticSystemSkeleton();
-        List<TextBlockParam> systemBlocks = List.of(TextBlockParam.builder()
-                .text(systemSkeleton)
-                .cacheControl(CacheControlEphemeral.builder().ttl(CacheControlEphemeral.Ttl.TTL_1H).build())
-                .build());
+        // Group by language so each group gets its own cached system prompt. Files within a group
+        // share a byte-for-byte identical system block, maximising the prompt-cache hit rate.
+        Map<Language, List<SourceFile>> byLanguage = files.stream()
+                .collect(Collectors.groupingBy(f -> Language.fromPath(f.relativePath())));
 
-        List<List<SourceFile>> chunks = chunkFiles(files, systemSkeleton);
-        log.info("Job {}: submitting {} files to Anthropic Batches API across {} batch(es)",
-                job.id(), files.size(), chunks.size());
+        int totalChunks = byLanguage.values().stream()
+                .mapToInt(langFiles -> chunkFiles(langFiles, promptTemplates.renderStaticSystemSkeleton(
+                        Language.fromPath(langFiles.get(0).relativePath()))).size())
+                .sum();
+        log.info("Job {}: submitting {} files to Anthropic Batches API across {} batch(es) ({} language group(s))",
+                job.id(), files.size(), totalChunks, byLanguage.size());
 
-        for (List<SourceFile> chunk : chunks) {
-            runChunk(job, chunk, systemBlocks);
+        for (Map.Entry<Language, List<SourceFile>> entry : byLanguage.entrySet()) {
+            Language lang = entry.getKey();
+            List<SourceFile> langFiles = entry.getValue();
+            String systemSkeleton = promptTemplates.renderStaticSystemSkeleton(lang);
+            List<TextBlockParam> systemBlocks = List.of(TextBlockParam.builder()
+                    .text(systemSkeleton)
+                    .cacheControl(CacheControlEphemeral.builder().ttl(CacheControlEphemeral.Ttl.TTL_1H).build())
+                    .build());
+            for (List<SourceFile> chunk : chunkFiles(langFiles, systemSkeleton)) {
+                runChunk(job, chunk, systemBlocks);
+            }
         }
     }
 
