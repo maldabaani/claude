@@ -332,6 +332,7 @@ tr:last-child td {
 .badge-PROCESSING { background: rgba(22, 163, 74, 0.12); color: var(--accent); }
 .badge-COMPLETED { background: rgba(22, 163, 74, 0.12); color: var(--green); }
 .badge-FAILED { background: rgba(220, 38, 38, 0.1); color: var(--red); }
+.badge-CANCELLED { background: rgba(217, 119, 6, 0.1); color: var(--amber); }
 .badge-INCREMENTAL { background: rgba(21, 128, 61, 0.14); color: var(--accent-2); }
 
 .mono {
@@ -925,6 +926,73 @@ tr:last-child td {
   border: 1px solid rgba(22, 163, 74, 0.2);
   padding: 3px 9px;
   border-radius: 6px;
+}
+
+/* Job action buttons (cancel, export) */
+.job-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: flex-end;
+}
+
+.btn-cancel-job {
+  background: transparent;
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-cancel-job:hover {
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.btn-cancel-job:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-export-job {
+  display: inline-block;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-export-job:hover {
+  background: rgba(22, 163, 74, 0.08);
+  text-decoration: none;
+}
+
+/* Cancelled state banner (amber, not red) */
+.cancelled-banner {
+  background: rgba(217, 119, 6, 0.07);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* Danger link (delete per-job) */
+.link-danger {
+  color: var(--red);
+}
+
+.link-danger:hover {
+  color: #b91c1c;
+}
+
+/* Global ask page job context strip */
+.global-ask-jobs {
+  margin-bottom: 16px;
 }
 
 /* Viewer meta footer */

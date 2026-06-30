@@ -65,6 +65,8 @@
                         <a th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
                         &nbsp;&middot;&nbsp;
                         <a th:href="@{/ui/jobs/{id}/ask(id=${job.jobId})}">Ask</a>
+                        &nbsp;&middot;&nbsp;
+                        <a href="#" th:attr="data-job-id=${job.jobId}" onclick="deleteJob(this.dataset.jobId)" class="link-danger">Delete</a>
                     </td>
                 </tr>
                 </tbody>
@@ -83,6 +85,12 @@ function clearAllData() {
     fetch('/api/v1/extraction-jobs', { method: 'DELETE' })
         .then(() => location.reload())
         .catch(err => alert('Clear failed: ' + err));
+}
+function deleteJob(jobId) {
+    if (!confirm('Delete this job and all its output files?')) return;
+    fetch('/api/v1/extraction-jobs/' + jobId, { method: 'DELETE' })
+        .then(() => location.reload())
+        .catch(err => alert('Delete failed: ' + err));
 }
 </script>
 </body>

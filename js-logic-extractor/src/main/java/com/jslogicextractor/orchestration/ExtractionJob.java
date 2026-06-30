@@ -18,6 +18,7 @@ public final class ExtractionJob {
     private volatile JobPhase phase;
     private volatile Instant finishedAt;
     private volatile String failureReason;
+    private volatile boolean cancelRequested;
 
     private final AtomicInteger totalFiles;
     private final AtomicInteger processedFiles;
@@ -73,35 +74,22 @@ public final class ExtractionJob {
         this.skippedFiles = new AtomicInteger(skippedFiles);
     }
 
-    public void markScanning() {
-        this.phase = JobPhase.SCANNING;
-    }
+    public void markScanning() { this.phase = JobPhase.SCANNING; }
 
     public void markFiltering(int total) {
         this.totalFiles.set(total);
         this.phase = JobPhase.FILTERING;
     }
 
-    public void markProcessing() {
-        this.phase = JobPhase.PROCESSING;
-    }
-
-    public void recordResult(boolean success) {
-        processedFiles.incrementAndGet();
-        if (success) {
-            succeededFiles.incrementAndGet();
-        } else {
-            failedFiles.incrementAndGet();
-        }
-    }
-
-    public void recordSkipped() {
-        processedFiles.incrementAndGet();
-        skippedFiles.incrementAndGet();
-    }
+    public void markProcessing() { this.phase = JobPhase.PROCESSING; }
 
     public void markCompleted() {
         this.phase = JobPhase.COMPLETED;
+        this.finishedAt = Instant.now();
+    }
+
+    public void markCancelled() {
+        this.phase = JobPhase.CANCELLED;
         this.finishedAt = Instant.now();
     }
 
@@ -109,6 +97,21 @@ public final class ExtractionJob {
         this.phase = JobPhase.FAILED;
         this.failureReason = reason;
         this.finishedAt = Instant.now();
+    }
+
+    public void requestCancel() { this.cancelRequested = true; }
+
+    public boolean isCancelRequested() { return cancelRequested; }
+
+    public void recordResult(boolean success) {
+        processedFiles.incrementAndGet();
+        if (success) succeededFiles.incrementAndGet();
+        else failedFiles.incrementAndGet();
+    }
+
+    public void recordSkipped() {
+        processedFiles.incrementAndGet();
+        skippedFiles.incrementAndGet();
     }
 
     public JobSnapshot snapshot() {
@@ -131,63 +134,19 @@ public final class ExtractionJob {
         );
     }
 
-    public UUID id() {
-        return id;
-    }
-
-    public Path repositoryRoot() {
-        return repositoryRoot;
-    }
-
-    public Path outputDirectory() {
-        return outputDirectory;
-    }
-
-    public int maxConcurrency() {
-        return maxConcurrency;
-    }
-
-    public ExecutionMode executionMode() {
-        return executionMode;
-    }
-
-    public boolean incremental() {
-        return incremental;
-    }
-
-    public JobPhase phase() {
-        return phase;
-    }
-
-    public Instant createdAt() {
-        return createdAt;
-    }
-
-    public Instant finishedAt() {
-        return finishedAt;
-    }
-
-    public String failureReason() {
-        return failureReason;
-    }
-
-    public int totalCount() {
-        return totalFiles.get();
-    }
-
-    public int processedCount() {
-        return processedFiles.get();
-    }
-
-    public int succeededCount() {
-        return succeededFiles.get();
-    }
-
-    public int failedCount() {
-        return failedFiles.get();
-    }
-
-    public int skippedCount() {
-        return skippedFiles.get();
-    }
+    public UUID id() { return id; }
+    public Path repositoryRoot() { return repositoryRoot; }
+    public Path outputDirectory() { return outputDirectory; }
+    public int maxConcurrency() { return maxConcurrency; }
+    public ExecutionMode executionMode() { return executionMode; }
+    public boolean incremental() { return incremental; }
+    public JobPhase phase() { return phase; }
+    public Instant createdAt() { return createdAt; }
+    public Instant finishedAt() { return finishedAt; }
+    public String failureReason() { return failureReason; }
+    public int totalCount() { return totalFiles.get(); }
+    public int processedCount() { return processedFiles.get(); }
+    public int succeededCount() { return succeededFiles.get(); }
+    public int failedCount() { return failedFiles.get(); }
+    public int skippedCount() { return skippedFiles.get(); }
 }

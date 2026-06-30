@@ -98,11 +98,15 @@ public class JsRepositoryProcessingOrchestrator {
         // Batch mode may have already moved the job to FAILED on a non-recoverable error (e.g. the
         // shared prompt skeleton failed to render before any file was submitted) — don't clobber that.
         if (job.phase() != JobPhase.FAILED) {
-            job.markCompleted();
+            if (job.isCancelRequested()) {
+                job.markCancelled();
+            } else {
+                job.markCompleted();
+            }
         }
 
-        // Persist manifest after every successful directory job so future jobs can run incrementally.
-        if (job.phase() != JobPhase.FAILED && !Files.isRegularFile(job.repositoryRoot())) {
+        // Persist manifest only after a clean completion so future jobs can run incrementally.
+        if (job.phase() == JobPhase.COMPLETED && !Files.isRegularFile(job.repositoryRoot())) {
             Map<String, String> hashes = manifestService.computeHashes(job.repositoryRoot(), files);
             manifestService.save(job.repositoryRoot(),
                     new ManifestService.Manifest(job.outputDirectory(), hashes));
@@ -199,6 +203,7 @@ public class JsRepositoryProcessingOrchestrator {
     }
 
     private void processFile(ExtractionJob job, SourceFile file) {
+        if (job.isCancelRequested()) return;
         try {
             LogicExtractionAgent agent = agentSelector.next();
             ExtractionResult result = agent.extract(file);

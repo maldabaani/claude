@@ -6,5 +6,6 @@ public enum JobPhase {
     FILTERING,
     PROCESSING,
     COMPLETED,
+    CANCELLED,
     FAILED
 }

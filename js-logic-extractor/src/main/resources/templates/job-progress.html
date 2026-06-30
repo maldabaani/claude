@@ -32,6 +32,11 @@
         <div class="stat-card"><div class="value" id="stat-skipped" th:text="${job.skippedFiles}">-</div><div class="label">Skipped</div></div>
     </div>
 
+    <div class="job-actions" id="job-actions">
+        <button id="btn-cancel" class="btn-cancel-job" style="display:none">Stop Job</button>
+        <a id="btn-export" class="btn-export-job" style="display:none">&#8595; Export JSON</a>
+    </div>
+
     <div class="panel">
         <h2>Repository</h2>
         <p class="mono" th:text="${job.repositoryRoot}"></p>

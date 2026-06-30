@@ -53,11 +53,11 @@ public class ExtractionQaService {
     private static final int TOP_K = 6;
     private static final int MAX_CONTENT_CHARS_PER_FILE = 3000;
     private static final String SYSTEM_PROMPT_TEMPLATE = """
-            You are answering questions about a JavaScript/TypeScript codebase using only the extracted
-            logic summaries provided below as context. Each summary is labeled with its source file
-            path. Ground your answer strictly in this context; if the context doesn't contain the
-            answer, say so explicitly rather than guessing. Cite the relevant file path(s) inline when
-            you reference specific logic.
+            You are answering questions about a codebase using only the extracted logic summaries
+            provided below as context. Each summary is labeled with its source file path. Ground your
+            answer strictly in this context; if the context doesn't contain the answer, say so
+            explicitly rather than guessing. Cite the relevant file path(s) inline when you reference
+            specific logic.
 
             Context:
             %s
@@ -78,11 +78,17 @@ public class ExtractionQaService {
     public record QaStreamResult(List<String> sourceFiles, Flux<String> textFlux) {}
 
     public QaStreamResult askForStream(ExtractionJob job, String question) {
-        List<ExtractionResult> results = loadResults(job.outputDirectory());
+        return askForStream(List.of(job), question);
+    }
+
+    public QaStreamResult askForStream(List<ExtractionJob> jobs, String question) {
+        List<ExtractionResult> results = jobs.stream()
+                .flatMap(job -> loadResults(job.outputDirectory()).stream())
+                .toList();
         if (results.isEmpty()) {
             return new QaStreamResult(List.of(),
-                    Flux.just("No extraction results are available yet for this job. "
-                            + "Wait for files to finish processing, then ask again."));
+                    Flux.just("No extraction results are available yet. "
+                            + "Wait for jobs to finish processing, then ask again."));
         }
 
         List<ScoredResult> ranked = retrieve(question, results);

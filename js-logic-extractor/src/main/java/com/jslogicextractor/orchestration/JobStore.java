@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Component
@@ -53,6 +54,15 @@ class JobStore {
         } catch (IOException e) {
             log.warn("Failed to list job store directory {}: {}", storeDirectory, e.getMessage());
             return List.of();
+        }
+    }
+
+    void delete(UUID id) {
+        Path file = storeDirectory.resolve(id + ".json");
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            log.warn("Failed to delete job file {}: {}", file.getFileName(), e.getMessage());
         }
     }
 

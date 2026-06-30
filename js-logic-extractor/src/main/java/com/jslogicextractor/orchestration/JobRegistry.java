@@ -37,7 +37,7 @@ public class JobRegistry {
         List<JobSnapshot> snapshots = jobStore.loadAll();
         log.info("Loaded {} persisted job(s) from store", snapshots.size());
         for (JobSnapshot s : snapshots) {
-            boolean terminal = s.phase().equals("COMPLETED") || s.phase().equals("FAILED");
+            boolean terminal = s.phase().equals("COMPLETED") || s.phase().equals("FAILED") || s.phase().equals("CANCELLED");
             JobPhase restoredPhase = terminal ? JobPhase.valueOf(s.phase()) : JobPhase.FAILED;
             String restoredReason = (!terminal) ? "Interrupted at server restart" : s.failureReason();
             Instant restoredFinishedAt = (!terminal && s.finishedAt() == null) ? Instant.now() : s.finishedAt();
@@ -95,6 +95,15 @@ public class JobRegistry {
         return jobs.values().stream()
                 .sorted(Comparator.comparing(ExtractionJob::createdAt).reversed())
                 .toList();
+    }
+
+    public void delete(UUID id) {
+        ExtractionJob job = jobs.remove(id);
+        if (job != null) {
+            deleteDirectory(job.outputDirectory());
+        }
+        jobStore.delete(id);
+        log.info("Deleted job {}", id);
     }
 
     public void clearAll() {

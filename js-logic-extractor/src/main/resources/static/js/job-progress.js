@@ -9,17 +9,20 @@
   const viewerOverlay = document.getElementById('viewer-overlay');
   const viewerPathLabel = document.getElementById('viewer-path');
   const viewerBody = document.getElementById('viewer-body');
+  const btnCancel = document.getElementById('btn-cancel');
+  const btnExport = document.getElementById('btn-export');
   let polling = true;
   let failedLoaded = false;
 
   // ── Stepper ────────────────────────────────────────────────────────────────
 
   function applyPhase(phase) {
-    stepper.classList.toggle('failed', phase === 'FAILED');
+    const isTerminalError = phase === 'FAILED' || phase === 'CANCELLED';
+    stepper.classList.toggle('failed', isTerminalError);
     const currentIndex = STEP_ORDER.indexOf(phase);
     stepper.querySelectorAll('.step').forEach((el) => {
       el.classList.remove('done', 'active');
-      if (phase === 'FAILED') return;
+      if (isTerminalError) return;
       const idx = STEP_ORDER.indexOf(el.dataset.phase);
       if (idx < currentIndex) el.classList.add('done');
       else if (idx === currentIndex) el.classList.add('active');
@@ -41,11 +44,18 @@
     if (job.phase === 'FAILED') {
       failureBanner.style.display = 'block';
       failureBanner.textContent = 'Job failed: ' + (job.failureReason || 'unknown error');
+    } else if (job.phase === 'CANCELLED') {
+      failureBanner.style.display = 'block';
+      failureBanner.className = 'failure-banner cancelled-banner';
+      failureBanner.textContent = 'Job was cancelled.';
     } else {
       failureBanner.style.display = 'none';
+      failureBanner.className = 'failure-banner';
     }
 
-    if (job.phase === 'COMPLETED' || job.phase === 'FAILED') {
+    updateActions(job);
+
+    if (job.phase === 'COMPLETED' || job.phase === 'FAILED' || job.phase === 'CANCELLED') {
       polling = false;
       if (job.failedFiles > 0 && !failedLoaded) {
         failedLoaded = true;
@@ -53,6 +63,32 @@
       }
     }
   }
+
+  function updateActions(job) {
+    const active = job.phase === 'SCANNING' || job.phase === 'FILTERING' || job.phase === 'PROCESSING';
+    btnCancel.style.display = active ? 'inline-block' : 'none';
+    if (job.phase === 'COMPLETED') {
+      btnExport.style.display = 'inline-block';
+      btnExport.href = '/api/v1/extraction-jobs/' + jobId + '/export';
+    } else {
+      btnExport.style.display = 'none';
+    }
+  }
+
+  async function cancelJob() {
+    btnCancel.disabled = true;
+    btnCancel.textContent = 'Stopping…';
+    try {
+      await fetch('/api/v1/extraction-jobs/' + jobId + '/cancel', { method: 'POST' });
+    } catch (e) {
+      console.error('Cancel request failed', e);
+    } finally {
+      btnCancel.disabled = false;
+      btnCancel.textContent = 'Stop Job';
+    }
+  }
+
+  btnCancel.addEventListener('click', cancelJob);
 
   // ── Utilities ──────────────────────────────────────────────────────────────
 

@@ -20,11 +20,11 @@
         </a>
         <a th:href="${askJobId != null} ? @{/ui/jobs/{id}/ask(id=${askJobId})} : @{/ui/jobs}"
            th:class="${activePage == 'ask'} ? 'topnav-link active' : 'topnav-link'">
-            Ask Agent
+            Ask
         </a>
-        <a th:href="@{/ui/jobs}"
-           th:class="${activePage == 'jobs'} ? 'topnav-link active' : 'topnav-link'">
-            All Jobs
+        <a th:href="@{/ui/ask}"
+           th:class="${activePage == 'ask-global'} ? 'topnav-link active' : 'topnav-link'">
+            Ask All
         </a>
     </nav>
 </div>

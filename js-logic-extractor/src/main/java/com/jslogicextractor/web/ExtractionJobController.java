@@ -2,6 +2,7 @@ package com.jslogicextractor.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jslogicextractor.agent.ExtractionResult;
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.orchestration.JobRegistry;
 import com.jslogicextractor.orchestration.JobStarter;
@@ -17,7 +18,12 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -58,10 +64,58 @@ public class ExtractionJobController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/{jobId}/cancel")
+    public ResponseEntity<Void> cancelJob(@PathVariable UUID jobId) {
+        requireJob(jobId).requestCancel();
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+        requireJob(jobId);
+        jobRegistry.delete(jobId);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping
     public ResponseEntity<Void> clearAll() {
         jobRegistry.clearAll();
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{jobId}/export", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<byte[]> exportJob(@PathVariable UUID jobId) {
+        ExtractionJob job = requireJob(jobId);
+        try {
+            byte[] json = buildExportJson(job);
+            String filename = "codemind-" + jobId.toString().replace("-", "").substring(0, 8) + ".json";
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(json);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage());
+        }
+    }
+
+    private byte[] buildExportJson(ExtractionJob job) throws IOException {
+        List<Object> files = new ArrayList<>();
+        for (OutputFileSnapshotService.OutputFile of : outputFileSnapshotService.recentFiles(job, Integer.MAX_VALUE)) {
+            Optional<String> raw = outputFileSnapshotService.readOutputFile(job, of.relativePath());
+            if (raw.isEmpty()) continue;
+            ExtractionResult result = objectMapper.readValue(raw.get(), ExtractionResult.class);
+            if (!result.success() || result.skipped() || result.content() == null) continue;
+            try {
+                files.add(objectMapper.readValue(result.content(), Object.class));
+            } catch (Exception ignored) {}
+        }
+        Map<String, Object> export = new LinkedHashMap<>();
+        export.put("jobId", job.id().toString());
+        export.put("repositoryRoot", job.repositoryRoot().toString());
+        export.put("exportedAt", Instant.now().toString());
+        export.put("totalExtracted", files.size());
+        export.put("files", files);
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(export);
     }
 
     @GetMapping

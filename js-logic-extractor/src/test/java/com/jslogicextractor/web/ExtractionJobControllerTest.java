@@ -145,7 +145,7 @@ class ExtractionJobControllerTest {
     void askStreamReturnsServerSentEventsForKnownJob() throws Exception {
         ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
         given(jobRegistry.find(job.id())).willReturn(Optional.of(job));
-        given(qaService.askForStream(any(), any())).willReturn(
+        given(qaService.askForStream(any(ExtractionJob.class), any(String.class))).willReturn(
                 new ExtractionQaService.QaStreamResult(
                         List.of("auth.js"), Flux.just("It ", "authenticates ", "users.")));
 
