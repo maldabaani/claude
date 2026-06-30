@@ -10,6 +10,7 @@ import org.mockito.ArgumentMatchers;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -123,6 +124,37 @@ class ExtractionQaServiceTest {
         assertThat(answer.answer()).contains("None of the");
     }
 
+    @Test
+    void askForStreamReturnsSourceFilesAndTextFluxViaKeywordFallback() throws IOException {
+        writeResult("auth.js.json", "auth.js", "Checks password and creates session for login users.");
+
+        Flux<String> stream = Flux.just("It ", "checks ", "the ", "password.");
+        ChatClient.Builder builder = chatClientBuilderReturningStream(stream);
+
+        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory, 4);
+
+        ExtractionQaService.QaStreamResult result = service.askForStream(job, "how does login work?");
+
+        assertThat(result.sourceFiles()).containsExactly("auth.js");
+        assertThat(result.textFlux()).isSameAs(stream);
+    }
+
+    @Test
+    void askForStreamReturnsFallbackFluxWhenNoResultsExist() {
+        ChatClient.Builder builder = mock(ChatClient.Builder.class);
+        when(builder.build()).thenReturn(mock(ChatClient.class));
+
+        ExtractionQaService service = new ExtractionQaService(objectMapper, builder, Optional.empty());
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), outputDirectory, outputDirectory.resolve("missing"), 4);
+
+        ExtractionQaService.QaStreamResult result = service.askForStream(job, "anything?");
+
+        assertThat(result.sourceFiles()).isEmpty();
+        String text = result.textFlux().reduce("", String::concat).block();
+        assertThat(text).contains("No extraction results");
+    }
+
     private ChatClient.Builder chatClientBuilderReturning(String content) {
         ChatClient.Builder builder = mock(ChatClient.Builder.class);
         ChatClient chatClient = mock(ChatClient.class);
@@ -134,6 +166,20 @@ class ExtractionQaServiceTest {
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn(content);
+        return builder;
+    }
+
+    private ChatClient.Builder chatClientBuilderReturningStream(Flux<String> stream) {
+        ChatClient.Builder builder = mock(ChatClient.Builder.class);
+        ChatClient chatClient = mock(ChatClient.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamResponseSpec = mock(ChatClient.StreamResponseSpec.class);
+        when(builder.build()).thenReturn(chatClient);
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.stream()).thenReturn(streamResponseSpec);
+        when(streamResponseSpec.content()).thenReturn(stream);
         return builder;
     }
 

@@ -13,6 +13,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import reactor.core.publisher.Flux;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -20,12 +22,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ExtractionJobController.class)
@@ -133,6 +139,39 @@ class ExtractionJobControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"question\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void askStreamReturnsServerSentEventsForKnownJob() throws Exception {
+        ExtractionJob job = new ExtractionJob(UUID.randomUUID(), repoRoot, repoRoot.resolve("out"), 4);
+        given(jobRegistry.find(job.id())).willReturn(Optional.of(job));
+        given(qaService.askForStream(any(), any())).willReturn(
+                new ExtractionQaService.QaStreamResult(
+                        List.of("auth.js"), Flux.just("It ", "authenticates ", "users.")));
+
+        MvcResult mvcResult = mockMvc.perform(post("/api/v1/extraction-jobs/" + job.id() + "/qa/stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"what does auth.js do?\"}"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mvcResult.getAsyncResult(5000L);
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(content().string(containsString("auth.js")))
+                .andExpect(content().string(containsString("authenticates")));
+    }
+
+    @Test
+    void askStreamReturnsNotFoundForUnknownJob() throws Exception {
+        given(jobRegistry.find(any())).willReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/v1/extraction-jobs/" + UUID.randomUUID() + "/qa/stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"anything?\"}"))
+                .andExpect(status().isNotFound());
     }
 
     private String quoted(String value) {
