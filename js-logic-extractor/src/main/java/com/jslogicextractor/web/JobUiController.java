@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,7 +36,9 @@ class JobUiController {
 
     @GetMapping
     public String jobsPage(Model model) {
-        model.addAttribute("jobs", jobRegistry.findAll().stream().map(JobResponse::from).toList());
+        List<JobResponse> jobs = jobRegistry.findAll().stream().map(JobResponse::from).toList();
+        model.addAttribute("jobs", jobs);
+        model.addAttribute("recentJobId", recentJobId(jobs));
         return "jobs-list";
     }
 
@@ -74,8 +78,17 @@ class JobUiController {
 
     private String showJobsPageWithError(Model model, String error) {
         model.addAttribute("error", error);
-        model.addAttribute("jobs", jobRegistry.findAll().stream().map(JobResponse::from).toList());
+        List<JobResponse> jobs = jobRegistry.findAll().stream().map(JobResponse::from).toList();
+        model.addAttribute("jobs", jobs);
+        model.addAttribute("recentJobId", recentJobId(jobs));
         return "jobs-list";
+    }
+
+    private static String recentJobId(List<JobResponse> jobs) {
+        return jobs.stream()
+                .max(Comparator.comparing(JobResponse::createdAt))
+                .map(JobResponse::jobId)
+                .orElse(null);
     }
 
     private ExtractionJob requireJob(UUID jobId) {

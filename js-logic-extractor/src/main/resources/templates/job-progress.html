@@ -6,16 +6,12 @@
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body th:attr="data-job-id=${job.jobId}">
-<div class="topbar">
-    <div class="brand"><a th:href="@{/ui/jobs}"><span class="brand-mark" aria-hidden="true">JS</span>JS Logic <span>Extractor</span></a></div>
-    <div class="mono muted" th:text="${job.jobId}"></div>
-</div>
+<div th:replace="~{fragments :: topnav('execution', ${job.jobId})}"></div>
 
 <div class="container">
     <div class="tabs">
         <a class="active" th:href="@{/ui/jobs/{id}(id=${job.jobId})}">Progress</a>
         <a th:href="@{/ui/jobs/{id}/ask(id=${job.jobId})}">Ask</a>
-        <a th:href="@{/ui/jobs}">All Jobs</a>
     </div>
 
     <div id="failure-banner" class="failure-banner" style="display:none"></div>

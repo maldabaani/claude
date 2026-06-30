@@ -106,6 +106,41 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: 0 4px 14px -4px rgba(108, 140, 255, 0.6);
 }
 
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topnav-link {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.15s var(--ease);
+}
+
+.topnav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  text-decoration: none;
+}
+
+.topnav-link.active {
+  color: var(--text);
+  background: rgba(108, 140, 255, 0.12);
+  border-color: rgba(108, 140, 255, 0.3);
+}
+
+.topnav-link.disabled {
+  color: var(--text-faint);
+  cursor: default;
+  pointer-events: none;
+}
+
 .container {
   flex: 1;
   max-width: 1120px;
