@@ -44,6 +44,22 @@
             <p class="empty-state">Waiting for output files&hellip;</p>
         </div>
     </div>
+
+    <div id="failed-panel" class="panel" style="display:none;margin-top:20px">
+        <h2 style="color:var(--red)">Failed Files</h2>
+        <div id="failed-feed"></div>
+    </div>
+</div>
+
+<!-- File content viewer modal -->
+<div id="viewer-overlay" class="viewer-overlay" style="display:none" role="dialog" aria-modal="true">
+    <div class="viewer">
+        <div class="viewer-header">
+            <span id="viewer-path" class="mono viewer-path-label"></span>
+            <button class="viewer-close" id="viewer-close" aria-label="Close">&#x2715;</button>
+        </div>
+        <div class="viewer-body" id="viewer-body"></div>
+    </div>
 </div>
 
 <footer class="app-footer">

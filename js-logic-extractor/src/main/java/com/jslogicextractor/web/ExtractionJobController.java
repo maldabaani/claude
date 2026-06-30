@@ -10,6 +10,7 @@ import com.jslogicextractor.qa.ExtractionQaService;
 import com.jslogicextractor.qa.QaAnswer;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -78,6 +79,24 @@ public class ExtractionJobController {
                 .map(OutputFileResponse::from)
                 .toList();
         return ResponseEntity.ok(files);
+    }
+
+    @GetMapping(value = "/{jobId}/output-file", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> readOutputFile(@PathVariable UUID jobId,
+                                                 @RequestParam String relativePath) {
+        ExtractionJob job = requireJob(jobId);
+        return outputFileSnapshotService.readOutputFile(job, relativePath)
+                .map(content -> ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(content))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{jobId}/failed-files")
+    public ResponseEntity<List<FailedFileResponse>> listFailedFiles(@PathVariable UUID jobId) {
+        ExtractionJob job = requireJob(jobId);
+        List<FailedFileResponse> failed = outputFileSnapshotService.listFailedFiles(job).stream()
+                .map(FailedFileResponse::from)
+                .toList();
+        return ResponseEntity.ok(failed);
     }
 
     @PostMapping("/{jobId}/qa")
