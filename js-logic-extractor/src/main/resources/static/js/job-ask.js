@@ -4,55 +4,109 @@
   const form = document.getElementById('ask-form');
   const input = document.getElementById('question-input');
 
-  function appendBubble(role, text, sources) {
+  function createBubble(role) {
     const bubble = document.createElement('div');
     bubble.className = 'bubble bubble-' + role;
-    bubble.textContent = text;
-    if (sources && sources.length) {
-      const sourcesEl = document.createElement('div');
-      sourcesEl.className = 'sources';
-      sources.forEach((source) => {
-        const chip = document.createElement('span');
-        chip.className = 'source-chip';
-        chip.textContent = source;
-        sourcesEl.appendChild(chip);
-      });
-      bubble.appendChild(sourcesEl);
-    }
     log.appendChild(bubble);
     log.scrollTop = log.scrollHeight;
     return bubble;
   }
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  function addSources(bubble, sources) {
+    if (!sources || !sources.length) return;
+    const el = document.createElement('div');
+    el.className = 'sources';
+    sources.forEach((src) => {
+      const chip = document.createElement('span');
+      chip.className = 'source-chip';
+      chip.textContent = src;
+      el.appendChild(chip);
+    });
+    bubble.appendChild(el);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const question = input.value.trim();
-    if (!question) {
-      return;
-    }
-    appendBubble('user', question);
+    if (!question) return;
+
+    const userBubble = createBubble('user');
+    userBubble.textContent = question;
     input.value = '';
     input.disabled = true;
 
-    const pending = appendBubble('assistant', 'Thinking…');
-    pending.classList.add('pending');
+    const assistantBubble = createBubble('assistant');
+    assistantBubble.classList.add('pending');
+    assistantBubble.textContent = 'Thinking…';
+
+    let fullText = '';
+    let sources = [];
 
     try {
-      const response = await fetch('/api/v1/extraction-jobs/' + jobId + '/qa', {
+      const response = await fetch('/api/v1/extraction-jobs/' + jobId + '/qa/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),
       });
-      const data = await response.json();
-      pending.remove();
-      if (response.ok) {
-        appendBubble('assistant', data.answer, data.sourceFiles);
-      } else {
-        appendBubble('assistant', 'Error: ' + (data.message || response.statusText));
+
+      if (!response.ok) {
+        assistantBubble.classList.remove('pending');
+        assistantBubble.textContent = 'Error: ' + response.statusText;
+        return;
       }
-    } catch (e) {
-      pending.remove();
-      appendBubble('assistant', 'Network error: ' + e.message);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundary;
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+
+          let eventName = 'message';
+          const dataLines = [];
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) {
+              eventName = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              // SSE spec: optional single space after colon is not part of the value
+              const rest = line.slice(5);
+              dataLines.push(rest.startsWith(' ') ? rest.slice(1) : rest);
+            }
+          }
+
+          const data = dataLines.join('\n');
+
+          if (eventName === 'sources') {
+            try { sources = JSON.parse(data); } catch (_) {}
+          } else if (eventName === 'chunk') {
+            if (assistantBubble.classList.contains('pending')) {
+              assistantBubble.classList.remove('pending');
+              assistantBubble.textContent = '';
+            }
+            fullText += data;
+            // Show raw text while streaming; markdown rendered at completion
+            assistantBubble.textContent = fullText;
+            log.scrollTop = log.scrollHeight;
+          }
+        }
+      }
+
+      // Render final markdown and attach source chips
+      assistantBubble.classList.remove('pending');
+      assistantBubble.innerHTML = marked.parse(fullText || '(No response)');
+      addSources(assistantBubble, sources);
+      log.scrollTop = log.scrollHeight;
+    } catch (err) {
+      assistantBubble.classList.remove('pending');
+      assistantBubble.textContent = 'Network error: ' + err.message;
     } finally {
       input.disabled = false;
       input.focus();

@@ -1,5 +1,7 @@
 package com.jslogicextractor.web;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jslogicextractor.orchestration.ExtractionJob;
 import com.jslogicextractor.orchestration.JobRegistry;
 import com.jslogicextractor.orchestration.JobStarter;
@@ -11,7 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,15 +29,18 @@ public class ExtractionJobController {
     private final JobStarter jobStarter;
     private final OutputFileSnapshotService outputFileSnapshotService;
     private final ExtractionQaService qaService;
+    private final ObjectMapper objectMapper;
 
     public ExtractionJobController(JobRegistry jobRegistry,
                                     JobStarter jobStarter,
                                     OutputFileSnapshotService outputFileSnapshotService,
-                                    ExtractionQaService qaService) {
+                                    ExtractionQaService qaService,
+                                    ObjectMapper objectMapper) {
         this.jobRegistry = jobRegistry;
         this.jobStarter = jobStarter;
         this.outputFileSnapshotService = outputFileSnapshotService;
         this.qaService = qaService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping
@@ -72,6 +79,33 @@ public class ExtractionJobController {
         ExtractionJob job = requireJob(jobId);
         QaAnswer answer = qaService.ask(job, request.question());
         return ResponseEntity.ok(QaResponse.from(answer));
+    }
+
+    @PostMapping("/{jobId}/qa/stream")
+    public SseEmitter askStream(@PathVariable UUID jobId, @Valid @RequestBody QaRequest request) {
+        ExtractionJob job = requireJob(jobId);
+        SseEmitter emitter = new SseEmitter(120_000L);
+        new Thread(() -> {
+            try {
+                ExtractionQaService.QaStreamResult stream = qaService.askForStream(job, request.question());
+                emitter.send(SseEmitter.event()
+                        .name("sources")
+                        .data(objectMapper.writeValueAsString(stream.sourceFiles())));
+                stream.textFlux()
+                        .doOnNext(chunk -> {
+                            try {
+                                emitter.send(SseEmitter.event().name("chunk").data(chunk));
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        })
+                        .blockLast();
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        }, "qa-sse-stream").start();
+        return emitter;
     }
 
     private ExtractionJob requireJob(UUID jobId) {

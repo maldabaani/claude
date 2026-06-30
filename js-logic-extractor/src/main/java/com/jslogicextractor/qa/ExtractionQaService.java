@@ -12,6 +12,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -70,6 +71,33 @@ public class ExtractionQaService {
         this.objectMapper = objectMapper;
         this.chatClient = chatClientBuilder.build();
         this.embeddingModel = embeddingModel;
+    }
+
+    public record QaStreamResult(List<String> sourceFiles, Flux<String> textFlux) {}
+
+    public QaStreamResult askForStream(ExtractionJob job, String question) {
+        List<ExtractionResult> results = loadResults(job.outputDirectory());
+        if (results.isEmpty()) {
+            return new QaStreamResult(List.of(),
+                    Flux.just("No extraction results are available yet for this job. "
+                            + "Wait for files to finish processing, then ask again."));
+        }
+
+        List<ScoredResult> ranked = retrieve(question, results);
+        if (ranked.isEmpty()) {
+            return new QaStreamResult(List.of(),
+                    Flux.just("None of the " + results.size()
+                            + " extracted files were relevant enough to answer that question confidently."));
+        }
+
+        List<String> sourceFiles = ranked.stream().map(s -> s.result().relativePath()).toList();
+        String systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(buildContext(ranked));
+        Flux<String> textFlux = chatClient.prompt()
+                .system(systemPrompt)
+                .user(question)
+                .stream()
+                .content();
+        return new QaStreamResult(sourceFiles, textFlux);
     }
 
     public QaAnswer ask(ExtractionJob job, String question) {
