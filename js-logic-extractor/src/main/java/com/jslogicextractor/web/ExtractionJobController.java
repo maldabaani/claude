@@ -94,7 +94,7 @@ public class ExtractionJobController {
                 stream.textFlux()
                         .doOnNext(chunk -> {
                             try {
-                                emitter.send(SseEmitter.event().name("chunk").data(chunk));
+                                emitter.send(SseEmitter.event().name("chunk").data(objectMapper.writeValueAsString(chunk)));
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }

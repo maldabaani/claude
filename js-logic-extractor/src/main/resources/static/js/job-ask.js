@@ -91,7 +91,7 @@
               assistantBubble.classList.remove('pending');
               assistantBubble.textContent = '';
             }
-            fullText += data;
+            try { fullText += JSON.parse(data); } catch (_) { fullText += data; }
             // Show raw text while streaming; markdown rendered at completion
             assistantBubble.textContent = fullText;
             log.scrollTop = log.scrollHeight;
