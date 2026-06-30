@@ -8,9 +8,11 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${spring.ai.anthropic.api-key:}')")
 public class ClaudeLogicExtractionAgent implements LogicExtractionAgent {
 
     private static final Logger log = LoggerFactory.getLogger(ClaudeLogicExtractionAgent.class);
