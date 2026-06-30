@@ -1,9 +1,13 @@
 package com.jslogicextractor.orchestration;
 
 import com.jslogicextractor.config.ExtractionProperties;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +18,46 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class JobRegistry {
 
+    private static final Logger log = LoggerFactory.getLogger(JobRegistry.class);
+
     private final Map<UUID, ExtractionJob> jobs = new ConcurrentHashMap<>();
     private final ExtractionProperties defaults;
+    private final JobStore jobStore;
 
-    public JobRegistry(ExtractionProperties defaults) {
+    public JobRegistry(ExtractionProperties defaults, JobStore jobStore) {
         this.defaults = defaults;
+        this.jobStore = jobStore;
+    }
+
+    @PostConstruct
+    void loadPersistedJobs() {
+        List<JobSnapshot> snapshots = jobStore.loadAll();
+        log.info("Loaded {} persisted job(s) from store", snapshots.size());
+        for (JobSnapshot s : snapshots) {
+            boolean terminal = s.phase().equals("COMPLETED") || s.phase().equals("FAILED");
+            JobPhase restoredPhase = terminal ? JobPhase.valueOf(s.phase()) : JobPhase.FAILED;
+            String restoredReason = (!terminal) ? "Interrupted at server restart" : s.failureReason();
+            Instant restoredFinishedAt = (!terminal && s.finishedAt() == null) ? Instant.now() : s.finishedAt();
+
+            ExtractionJob job = new ExtractionJob(
+                    s.id(),
+                    Path.of(s.repositoryRoot()),
+                    Path.of(s.outputDirectory()),
+                    s.maxConcurrency(),
+                    ExecutionMode.valueOf(s.executionMode()),
+                    s.incremental(),
+                    s.createdAt(),
+                    restoredPhase,
+                    restoredFinishedAt,
+                    restoredReason,
+                    s.totalFiles(),
+                    s.processedFiles(),
+                    s.succeededFiles(),
+                    s.failedFiles(),
+                    s.skippedFiles()
+            );
+            jobs.put(job.id(), job);
+        }
     }
 
     public ExtractionJob register(Path repositoryRoot, Path outputDirectoryOverride, Integer maxConcurrencyOverride,
@@ -29,8 +68,6 @@ public class JobRegistry {
     public ExtractionJob register(Path repositoryRoot, Path outputDirectoryOverride, Integer maxConcurrencyOverride,
                                    ExecutionMode executionModeOverride, boolean incremental) {
         UUID id = UUID.randomUUID();
-        // Default output dir is namespaced per job id so concurrent jobs never clobber each other's files;
-        // callers that want resumable re-runs can pass the same outputDirectory explicitly.
         Path outputDirectory = outputDirectoryOverride != null
                 ? outputDirectoryOverride
                 : defaults.defaultOutputDirectory().resolve(id.toString());
@@ -39,7 +76,12 @@ public class JobRegistry {
 
         ExtractionJob job = new ExtractionJob(id, repositoryRoot, outputDirectory, maxConcurrency, executionMode, incremental);
         jobs.put(id, job);
+        jobStore.save(job.snapshot());
         return job;
+    }
+
+    public void persist(ExtractionJob job) {
+        jobStore.save(job.snapshot());
     }
 
     public Optional<ExtractionJob> find(UUID id) {

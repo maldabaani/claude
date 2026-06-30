@@ -1,18 +1,18 @@
 :root {
-  --bg: #0a0d16;
-  --panel: #171c2e;
-  --panel-alt: #1d2338;
-  --border: #262c47;
-  --border-soft: rgba(255, 255, 255, 0.06);
-  --text: #eef0f9;
-  --text-dim: #98a1c0;
-  --text-faint: #5c6488;
-  --accent: #6c8cff;
-  --accent-2: #9b7bff;
-  --accent-dim: #3d4d8a;
-  --green: #3ddc97;
-  --red: #ff6b6b;
-  --amber: #ffc857;
+  --bg: #f4faf5;
+  --panel: #ffffff;
+  --panel-alt: #eef7f0;
+  --border: #c2e0c8;
+  --border-soft: rgba(22, 163, 74, 0.12);
+  --text: #14231a;
+  --text-dim: #3a5c43;
+  --text-faint: #85a88c;
+  --accent: #16a34a;
+  --accent-2: #15803d;
+  --accent-dim: #bbf7d0;
+  --green: #16a34a;
+  --red: #dc2626;
+  --amber: #d97706;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
@@ -24,7 +24,7 @@
 }
 
 ::selection {
-  background: rgba(108, 140, 255, 0.35);
+  background: rgba(22, 163, 74, 0.22);
 }
 
 body {
@@ -37,10 +37,8 @@ body {
   color: var(--text);
   background-color: var(--bg);
   background-image:
-    radial-gradient(circle at 14% -8%, rgba(108, 140, 255, 0.16), transparent 45%),
-    radial-gradient(circle at 92% 8%, rgba(155, 123, 255, 0.12), transparent 40%),
-    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: auto, auto, 22px 22px;
+    radial-gradient(circle at 14% -8%, rgba(22, 163, 74, 0.07), transparent 45%),
+    radial-gradient(circle at 92% 8%, rgba(21, 128, 61, 0.05), transparent 40%);
   background-attachment: fixed;
 }
 
@@ -67,11 +65,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: rgba(10, 13, 22, 0.72);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-soft);
-  box-shadow: 0 1px 0 0 rgba(108, 140, 255, 0.12);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 0 rgba(22, 163, 74, 0.1);
 }
 
 .topbar .brand,
@@ -98,12 +96,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0b0e18;
+  color: #ffffff;
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0;
-  box-shadow: 0 4px 14px -4px rgba(108, 140, 255, 0.6);
+  box-shadow: 0 4px 14px -4px rgba(22, 163, 74, 0.55);
 }
 
 .topnav {
@@ -125,14 +123,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .topnav-link:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(22, 163, 74, 0.07);
   text-decoration: none;
 }
 
 .topnav-link.active {
-  color: var(--text);
-  background: rgba(108, 140, 255, 0.12);
-  border-color: rgba(108, 140, 255, 0.3);
+  color: var(--accent);
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.32);
 }
 
 .topnav-link.disabled {
@@ -154,7 +152,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   text-align: center;
   color: var(--text-faint);
   font-size: 0.78rem;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border);
 }
 
 .app-footer .dot-sep {
@@ -174,13 +172,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 40%),
-    var(--panel);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 20px;
-  box-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.08);
 }
 
 .panel h2 {
@@ -216,7 +212,7 @@ input, select {
 input:focus, select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
 }
 
 button {
@@ -231,15 +227,15 @@ button {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0c0f1a;
+  color: #ffffff;
   width: 100%;
   margin-top: 18px;
-  box-shadow: 0 10px 24px -10px rgba(108, 140, 255, 0.6);
+  box-shadow: 0 10px 24px -10px rgba(22, 163, 74, 0.5);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px -10px rgba(108, 140, 255, 0.7);
+  box-shadow: 0 14px 28px -10px rgba(22, 163, 74, 0.6);
 }
 
 .btn-primary:active {
@@ -247,7 +243,7 @@ button {
 }
 
 .error-banner {
-  background: rgba(255, 107, 107, 0.12);
+  background: rgba(220, 38, 38, 0.07);
   border: 1px solid var(--red);
   color: var(--red);
   padding: 10px 14px;
@@ -281,7 +277,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(22, 163, 74, 0.04);
 }
 
 tr:last-child td {
@@ -314,12 +310,12 @@ tr:last-child td {
   flex: 0 0 auto;
 }
 
-.badge-PENDING { background: rgba(152, 161, 192, 0.18); color: var(--text-dim); }
-.badge-SCANNING, .badge-FILTERING { background: rgba(255, 200, 87, 0.15); color: var(--amber); }
-.badge-PROCESSING { background: rgba(108, 140, 255, 0.18); color: var(--accent); }
-.badge-COMPLETED { background: rgba(61, 220, 151, 0.15); color: var(--green); }
-.badge-FAILED { background: rgba(255, 107, 107, 0.15); color: var(--red); }
-.badge-INCREMENTAL { background: rgba(155, 123, 255, 0.15); color: var(--accent-2); }
+.badge-PENDING { background: rgba(100, 140, 110, 0.12); color: var(--text-dim); }
+.badge-SCANNING, .badge-FILTERING { background: rgba(217, 119, 6, 0.12); color: var(--amber); }
+.badge-PROCESSING { background: rgba(22, 163, 74, 0.12); color: var(--accent); }
+.badge-COMPLETED { background: rgba(22, 163, 74, 0.12); color: var(--green); }
+.badge-FAILED { background: rgba(220, 38, 38, 0.1); color: var(--red); }
+.badge-INCREMENTAL { background: rgba(21, 128, 61, 0.14); color: var(--accent-2); }
 
 .mono {
   font-family: "SF Mono", Menlo, Consolas, monospace;
@@ -391,13 +387,13 @@ tr:last-child td {
 .step.active .dot {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0c0f1a;
+  color: #ffffff;
   animation: stepPulse 1.8s ease-in-out infinite;
 }
 
 @keyframes stepPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(108, 140, 255, 0.2); }
-  50% { box-shadow: 0 0 0 9px rgba(108, 140, 255, 0.1); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2); }
+  50% { box-shadow: 0 0 0 9px rgba(22, 163, 74, 0.08); }
 }
 
 .step.active .label {
@@ -405,7 +401,7 @@ tr:last-child td {
 }
 
 .stepper.failed .step .dot {
-  background: rgba(255, 107, 107, 0.15);
+  background: rgba(220, 38, 38, 0.08);
   border-color: var(--red);
   color: var(--red);
   animation: none;
@@ -431,7 +427,7 @@ tr:last-child td {
 .stat-card {
   position: relative;
   overflow: hidden;
-  background: var(--panel-alt);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 14px;
@@ -467,7 +463,7 @@ tr:last-child td {
 }
 
 .failure-banner {
-  background: rgba(255, 107, 107, 0.1);
+  background: rgba(220, 38, 38, 0.07);
   border: 1px solid var(--red);
   color: var(--red);
   padding: 12px 14px;
@@ -493,15 +489,15 @@ tr:last-child td {
 
 .tabs a:hover {
   color: var(--text);
-  border-color: var(--accent-dim);
+  border-color: var(--accent);
   text-decoration: none;
 }
 
 .tabs a.active {
-  background: var(--panel-alt);
-  color: var(--text);
+  background: var(--accent-dim);
+  color: var(--accent-2);
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.12);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
 /* Chat (Ask page) */
@@ -574,8 +570,8 @@ tr:last-child td {
 .source-chip {
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.72rem;
-  background: rgba(108, 140, 255, 0.12);
-  color: var(--accent);
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--accent-2);
   padding: 3px 8px;
   border-radius: 6px;
 }
@@ -592,7 +588,7 @@ tr:last-child td {
 
 .ask-form button {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0c0f1a;
+  color: #ffffff;
   white-space: nowrap;
 }
 
@@ -623,7 +619,7 @@ tr:last-child td {
 .bubble-assistant code {
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.82em;
-  background: rgba(108, 140, 255, 0.1);
+  background: rgba(22, 163, 74, 0.09);
   padding: 1px 5px;
   border-radius: 4px;
 }

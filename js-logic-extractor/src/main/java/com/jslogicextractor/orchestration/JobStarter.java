@@ -45,7 +45,13 @@ public class JobStarter {
             throw new IllegalArgumentException("Not a file: " + resolved);
         }
         ExtractionJob job = jobRegistry.register(resolved, null, null, null);
-        extractionExecutor.execute(() -> orchestrator.run(job));
+        extractionExecutor.execute(() -> {
+            try {
+                orchestrator.run(job);
+            } finally {
+                jobRegistry.persist(job);
+            }
+        });
         return job;
     }
 
@@ -77,7 +83,13 @@ public class JobStarter {
 
         ExtractionJob job = jobRegistry.register(repositoryRoot, resolvedOutputDirectory, maxConcurrency,
                 executionMode, incremental);
-        extractionExecutor.execute(() -> orchestrator.run(job));
+        extractionExecutor.execute(() -> {
+            try {
+                orchestrator.run(job);
+            } finally {
+                jobRegistry.persist(job);
+            }
+        });
         return job;
     }
 
