@@ -18,12 +18,10 @@
            th:class="${activePage == 'execution'} ? 'topnav-link active' : 'topnav-link'">
             Job Execution
         </a>
-        <a th:if="${askJobId != null}"
-           th:href="@{/ui/jobs/{id}/ask(id=${askJobId})}"
+        <a th:href="${askJobId != null} ? @{/ui/jobs/{id}/ask(id=${askJobId})} : @{/ui/jobs}"
            th:class="${activePage == 'ask'} ? 'topnav-link active' : 'topnav-link'">
             Ask Agent
         </a>
-        <span th:unless="${askJobId != null}" class="topnav-link disabled">Ask Agent</span>
         <a th:href="@{/ui/jobs}"
            th:class="${activePage == 'jobs'} ? 'topnav-link active' : 'topnav-link'">
             All Jobs
