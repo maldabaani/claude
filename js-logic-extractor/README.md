@@ -1,11 +1,43 @@
-# js-logic-extractor
+# CodeMind
 
-A standalone Spring Boot service that traverses a JavaScript/TypeScript repository and runs each
-source file through a Claude-backed "logic extraction" agent, asynchronously and at scale
-(thousands of files per run).
+Async Spring AI agent that extracts and documents business logic from multi-language codebases at scale.
 
-It is intentionally decoupled from `clinic-saas`: a different repo, a different concern, a
-different deploy lifecycle.
+CodeMind scans a repository, sends each source file to Claude (or a local Ollama model) with a structured prompt, and stores the extracted rules, summaries, and dependencies as JSON. A built-in web UI lets you watch jobs run in real time, browse extracted results, and ask natural-language questions about the code once extraction is complete.
+
+## Features
+
+- **Multi-language extraction** — JavaScript, TypeScript, Python, Java, Kotlin, Go, C#, Ruby, Rust, PHP
+- **Two execution modes** — SYNC (parallel Spring AI calls) or BATCH (Anthropic Message Batches API, flat 50% token discount)
+- **Hybrid agent setup** — Claude as the primary agent; optionally add a local Ollama model as a second agent with automatic round-robin load balancing
+- **Large-file chunking** — files exceeding 300 KB are split at line boundaries into numbered part chunks instead of being skipped
+- **Incremental re-runs** — a manifest file tracks already-processed files; re-running only processes new or changed files
+- **Cancel & delete** — stop an in-flight job gracefully or delete a completed job along with all its output files
+- **Export** — download all successful extractions for a job as a single merged JSON file
+- **Ask Agent (per-job)** — natural-language Q&A over a single job's extracted results, streamed via SSE
+- **Ask All (cross-job)** — query across all completed jobs simultaneously from one chat interface
+- **Vector search** — real semantic retrieval via an Ollama embedding model (optional); falls back to keyword-overlap if unavailable
+- **Directory watcher** — drop a path into a watched folder and a job starts automatically
+- **Live progress UI** — stepper, stats cards, real-time file feed, clickable viewer modal, failed-file panel, cancel/export buttons
+- **Persistent job store** — jobs survive restarts; terminal states are reloaded as read-only snapshots
+
+## Requirements
+
+- Java 17+
+- Maven wrapper included (`./mvnw`)
+- `ANTHROPIC_API_KEY` environment variable
+- (Optional) [Ollama](https://ollama.com) for the local agent, local Q&A, or vector embeddings
+
+## Quick start
+
+```bash
+git clone <repo-url>
+cd js-logic-extractor
+
+export ANTHROPIC_API_KEY=sk-ant-...
+./mvnw spring-boot:run
+```
+
+Open `http://localhost:8085/ui/jobs`, enter a repository path, and click **Start Extraction**.
 
 ## How it works
 
@@ -13,261 +45,296 @@ different deploy lifecycle.
 POST /api/v1/extraction-jobs  --(202, jobId)-->  caller
         |
         v
-JobRegistry.register()  -- resolves output dir + concurrency + execution mode, returns ExtractionJob
+JobRegistry.register()   -- resolves output dir, concurrency, execution mode
         |
         v
-JsRepositoryProcessingOrchestrator.run(job)        <- dispatched off the HTTP thread
+JsRepositoryProcessingOrchestrator.run(job)        ← dispatched off the HTTP thread
         |
-        +-- RepositoryScannerService.scan(root)    -- walks the tree once, filters by extension/
-        |                                              excluded dirs/max size, reads file content.
-        |                                              A file over max-file-size-bytes is split by
+        +-- RepositoryScannerService.scan(root)    -- walks the tree, filters by extension /
+        |                                              excluded dirs / max size. Files over
+        |                                              max-file-size-bytes are split by
         |                                              LargeFileChunker into part-NNNN SourceFiles
-        |                                              instead of being skipped (jsprocessor.chunking)
         |
-        +-- NonSubstantiveFileFilter.skipReason(file) -- unconditional cheap pre-pass (both modes):
-        |       .d.ts / test-spec / barrel files are recorded as skipped, never sent to Claude
+        +-- NonSubstantiveFileFilter               -- skips .d.ts, test/spec, barrel files
+        |                                              before any model call; recorded as skipped
         |
-        +-- job.executionMode() branches here:
+        +-- job.executionMode() branches:
         |
-        |   SYNC (default) -- fixed thread pool sized to job.maxConcurrency(), pool size IS the
-        |   |   throttle, for each remaining SourceFile (one CompletableFuture per file):
-        |   |       AgentSelector.next()             -- round-robins across LogicExtractionAgent beans
-        |   |       agent.extract(file)               -- builds the prompt, calls Claude, parses usage
-        |   |       ExtractionResultWriter.write(...)  -- one JSON file per source file
-        |   |   CompletableFuture.allOf(...).join()
+        |   SYNC (default) -- bounded thread pool (maxConcurrency), one CompletableFuture per file
+        |   |   AgentSelector.next()              -- round-robins across LogicExtractionAgent beans
+        |   |   agent.extract(file)               -- prompt → model → parse usage
+        |   |   ExtractionResultWriter.write()    -- one JSON file per source file
+        |   |   CompletableFuture.allOf().join()
         |   |
-        |   BATCH -- BatchExtractionService.runBatch(job, files): chunks files to respect the
-        |       Anthropic Batches API's 100k-request/256MB-per-batch caps, submits each chunk with
-        |       the shared extraction instructions cached via cache_control (flat 50% discount on
-        |       all token usage vs. SYNC), polls until ENDED, streams results back per custom_id
+        |   BATCH -- BatchExtractionService.runBatch(job, files)
+        |       Groups files by language (prompt-cache efficiency), submits chunks of up to
+        |       10 000 requests / 200 MB, polls every 30 s, writes results same as SYNC
         |
         v
-ExtractionResultWriter.writeSummary(job)            -- _summary.json: counts, timings, failure reason
-
-GET /api/v1/extraction-jobs/{jobId}                 -- poll progress at any point
+phase → COMPLETED | CANCELLED | FAILED
 ```
 
-### Scaling: single agent today, multiple collaborating agents tomorrow
+## Execution modes
 
-- **Within a run**: each job gets its own fixed-size thread pool, sized to
-  `jsprocessor.max-concurrent-requests` (or the per-request `maxConcurrency` override) — the pool
-  size is itself the concurrency throttle against the Anthropic API, no virtual threads required
-  (JDK 17 target). Raising that one number is the scaling knob for a single run.
-- **Across agents**: `JsRepositoryProcessingOrchestrator` depends on `AgentSelector`, which
-  round-robins across every `LogicExtractionAgent` bean in the Spring context. By default there is
-  one (`ClaudeLogicExtractionAgent`). Registering a second bean — e.g. backed by a different API
-  key, account, or model — doubles aggregate throughput with no change to the orchestrator. This is
-  the seam for "multiple collaborating agents" without speculative complexity today. An optional
-  `OllamaLogicExtractionAgent` (see [Testing against local Ollama](#testing-against-local-ollama-sync-mode-only))
-  plugs into this same seam; enabling it alongside the default Claude agent makes the two
-  round-robin roughly 50/50 over the file list — leave it disabled (the default) to send every file
-  to Claude.
-- **Resilience**: transient failures (HTTP 429/5xx) are retried with exponential backoff inside
-  Spring AI itself (`spring.ai.retry.*`). A failure that survives retries is recorded against that
-  one file only — the orchestrator isolates failures per file via `CompletableFuture` + try/catch,
-  so one bad file never aborts the batch.
-- **Idempotent re-runs**: if `jsprocessor.skip-existing-results=true` (default), a file whose
-  output JSON already exists is skipped without calling Claude again — safe to re-run a job against
-  the same output directory after a partial failure or restart.
+### SYNC (default)
 
-## Execution modes: SYNC vs BATCH
-
-Set `jsprocessor.execution-mode` (or `executionMode` on the start-job request) to `SYNC` or `BATCH`.
-
-- **SYNC** (default) — per-file Spring AI `ChatClient` calls through the bounded thread pool
-  described above. Lower latency per file, normal token pricing. Best for small/interactive runs.
-- **BATCH** — every eligible file is submitted as one request inside an Anthropic Message Batch
-  (`BatchExtractionService`), with the shared extraction instructions cached via a single
-  `cache_control` breakpoint on the system block. This gets a flat 50% discount on all token usage
-  versus SYNC, at the cost of asynchronous turnaround (Anthropic's batches typically complete
-  within minutes to hours, polled via `jsprocessor.batch.poll-interval` up to
-  `jsprocessor.batch.poll-timeout`). Built for large runs — up to ~100,000 files in a single job.
-  Spring AI 1.1.7 has no Batches API support, so this mode bypasses Spring AI / `ChatClient`
-  entirely and talks to Anthropic via the raw `anthropic-java-client-okhttp` SDK. Chunks (each
-  capped at `jsprocessor.batch.max-requests-per-batch` requests or
-  `jsprocessor.batch.max-batch-bytes` bytes) run sequentially, one batch at a time.
-
-Both modes apply the same unconditional pre-filter (`NonSubstantiveFileFilter`): `.d.ts` files,
-test/spec files, and barrel files (re-exports only) are skipped before any Claude call, recorded in
-the output as `ExtractionResult.skipped(...)` with a reason, and counted separately from
-succeeded/failed in `_summary.json`.
-
-## Splitting oversized files (e.g. one giant bundled/generated file)
-
-Some repositories ship logic as one huge generated or bundled file rather than many small source
-files (e.g. a single 190k-line / 8.5MB `bundle.js`). A whole file that size is far beyond any
-Claude model's context window, so rather than skip it, `RepositoryScannerService` hands any file
-over `jsprocessor.max-file-size-bytes` to `LargeFileChunker`, which splits it into multiple
-`SourceFile`s named `<originalRelativePath>/part-0001.<ext>`, `part-0002.<ext>`, etc. Each chunk
-then flows through the rest of the pipeline (SYNC or BATCH, agent round-robin, per-file fault
-isolation, `skip-existing-results`) exactly like any other file — its output lands at
-`output/<originalRelativePath>/part-0001.<ext>.json` and so on.
-
-Cuts are made at line boundaries, preferring "safe" boundaries where combined `{}/()/[]` bracket
-depth is back to zero and the line isn't inside a string or block comment, so a chunk rarely splits
-a function/class/block in half. If a block never returns to depth zero, an internal hard cap (2x
-`jsprocessor.chunking.max-lines-per-chunk`) forces a cut anyway and logs a warning. Known,
-deliberately accepted simplifications: template literals are treated as one opaque string region
-(their `${}` interpolation internals aren't tracked), and regex literals aren't specially detected,
-so bracket-like characters inside one are scanned at face value — both can only ever shift a cut to
-a less-ideal line, never corrupt chunk content, since every cut lands exactly on a line boundary. A
-file with no line breaks at all (e.g. a single minified line) can't be split this way; it's sent
-through as one oversized chunk with a warning logged.
-
-Set `jsprocessor.chunking.enabled=false` to restore the old behavior of skipping (with a warning)
-any file over `jsprocessor.max-file-size-bytes` instead of chunking it.
-
-## Testing against local Ollama (SYNC mode only)
-
-For local testing without an Anthropic API key, an optional `OllamaLogicExtractionAgent` can run
-SYNC-mode extraction against a model served by a local [Ollama](https://ollama.com) instance (e.g.
-a quantized Qwen coder model). It is off by default and gated entirely behind
-`jsprocessor.ollama.enabled` — leaving it disabled means the app behaves exactly as before, with no
-extra beans or dependencies activated.
+Per-file Spring AI `ChatClient` calls through a bounded thread pool. Lower latency per
+file, normal token pricing. Best for small/interactive runs and incremental re-runs.
 
 ```bash
-ollama pull qwen2.5-coder   # or any model you have pulled locally
-ollama serve                # default: http://localhost:11434
+JSPROCESSOR_EXECUTION_MODE=SYNC ./mvnw spring-boot:run
+```
 
-export JSPROCESSOR_OLLAMA_ENABLED=true
-export OLLAMA_MODEL=qwen2.5-coder
+### BATCH
+
+Uses the [Anthropic Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches).
+Files are grouped by language for prompt-cache efficiency, submitted in chunks (≤10 000 requests /
+≤200 MB per chunk), and polled every 30 s up to a 26 h timeout. The flat 50% token discount makes
+BATCH the right choice for large repositories (1 000–100 000+ files).
+
+```bash
+JSPROCESSOR_EXECUTION_MODE=BATCH ./mvnw spring-boot:run
+```
+
+BATCH mode bypasses Spring AI entirely and talks directly to Anthropic via the
+`anthropic-java-client-okhttp` SDK (Spring AI 1.1.7 has no Batches API support).
+
+## Splitting oversized files
+
+Files over `jsprocessor.max-file-size-bytes` (300 KB default) are split at line
+boundaries into `<originalPath>/part-0001.<ext>`, `part-0002.<ext>`, … by `LargeFileChunker`.
+Each chunk flows through the pipeline normally and lands at `output/<originalPath>/part-0001.<ext>.json`.
+
+Cuts prefer boundaries where bracket depth (`{}/()/ []`) returns to zero and the line
+isn't inside a string or block comment. A hard cap (2× `max-lines-per-chunk`) forces a
+cut if no safe boundary appears. A single minified line can't be split and is sent as-is
+with a warning logged.
+
+Set `jsprocessor.chunking.enabled=false` to revert to skipping oversized files.
+
+## Optional Ollama agent
+
+Enable a local Ollama model alongside Claude for SYNC-mode extraction. Both agents share
+files equally via round-robin scheduling.
+
+```bash
+ollama pull qwen2.5:14b
+
+JSPROCESSOR_OLLAMA_ENABLED=true \
+OLLAMA_MODEL=qwen2.5:14b \
 ./mvnw spring-boot:run
 ```
 
-Notes:
+The Ollama agent uses an 8 192-token context window (`OLLAMA_NUM_CTX`) and a 1 500-token
+output limit (`OLLAMA_MAX_TOKENS`). Raise `OLLAMA_NUM_CTX` for large files.
 
-- BATCH mode is unaffected and unavailable here — it talks to the Anthropic Batches API directly
-  and has no Ollama equivalent.
-- If `ANTHROPIC_API_KEY` is unset while `jsprocessor.ollama.enabled=true`, the Claude agent bean
-  still starts (Spring AI doesn't validate the key at startup) but every Claude-routed file will
-  fail at call time. To send every file to Ollama instead, set `jsprocessor.max-concurrent-requests`
-  as usual and expect ~50% of files to land on the Claude agent unless you also unset/invalidate it
-  — there's currently no config to disable the Claude agent itself.
-- `jsprocessor.ollama.base-url`, `-model`, `-max-tokens`, and `-temperature` mirror the Anthropic
-  equivalents; see the configuration table below.
+> BATCH mode has no Ollama equivalent — it always uses the Anthropic Batches API.
 
-## Asking questions about a job's extracted logic (RAG)
+## Ask Agent (Q&A over extracted results)
 
-Once a job has written at least one result, `GET /ui/jobs/{jobId}/ask` (or `POST
-/api/v1/extraction-jobs/{jobId}/ask`) lets you ask natural-language questions about the
-repository's logic. `ExtractionQaService` retrieves the extracted-logic summaries most relevant
-to the question and feeds them to Claude as grounded context, returning the answer plus the
-source file(s) it drew from.
+Once a job has completed, open `/ui/jobs/{id}/ask` or stream via
+`POST /api/v1/extraction-jobs/{id}/qa/stream` to ask natural-language questions.
+`ExtractionQaService` retrieves relevant extracted-logic documents and feeds them to the
+answer model as grounded context, returning the answer plus the source files it drew from.
 
-Retrieval has two tiers:
+**Ask All** at `/ui/ask` (or `POST /api/v1/ask/stream`) searches across all completed
+jobs simultaneously.
 
-- **Vector search** (real embeddings + cosine similarity, via an ephemeral Spring AI
-  `SimpleVectorStore`) when `jsprocessor.embedding.enabled=true` and an `EmbeddingModel` bean is
-  available.
-- **Keyword overlap** (path/content term matching, zero extra infrastructure) otherwise, or as an
-  automatic fallback if any embedding call fails (e.g. the local Ollama daemon is unreachable) —
-  the QA endpoint never hard-fails due to embedding infrastructure being unavailable.
+### Retrieval tiers
 
-Vector search is backed by a local [Ollama](https://ollama.com) embedding model, off by default:
+1. **Vector search** — cosine similarity via an ephemeral `SimpleVectorStore` when
+   `jsprocessor.embedding.enabled=true` and a running Ollama embedding model is reachable.
+
+2. **Keyword overlap** — zero-infrastructure fallback; scores files by how many question
+   tokens appear in their raw JSON. Used when embeddings are disabled or any embedding
+   call fails — the endpoint never hard-fails due to embedding infrastructure being down.
+
+Enable vector search:
 
 ```bash
-ollama pull nomic-embed-text   # or any embedding model you have pulled locally
-ollama serve                    # default: http://localhost:11434
+ollama pull nomic-embed-text
 
-export JSPROCESSOR_EMBEDDING_ENABLED=true
+JSPROCESSOR_EMBEDDING_ENABLED=true \
 ./mvnw spring-boot:run
 ```
 
-`jsprocessor.embedding.base-url` and `-model` mirror the Ollama chat-agent equivalents; see the
-configuration table below.
-
-## Auto-starting jobs from a watched folder
-
-Instead of calling the start-job API yourself, you can drop files into a folder and let the app
-start one extraction job per file automatically. Off by default; enabling it activates no other
-behavior:
+Fully local pipeline (embedding + answers via Ollama, no Anthropic calls for Q&A):
 
 ```bash
-export JSPROCESSOR_WATCH_ENABLED=true
-export JSPROCESSOR_WATCH_DIRECTORY=./watch-input
+JSPROCESSOR_EMBEDDING_ENABLED=true \
+JSPROCESSOR_QA_MODEL=ollama \
+JSPROCESSOR_QA_OLLAMA_MODEL=qwen2.5:14b \
 ./mvnw spring-boot:run
 ```
 
-`InputDirectoryWatcher` watches that directory non-recursively (`java.nio.file.WatchService`) and,
-for each file dropped into it, waits for `jsprocessor.watch.quiet-period-millis` of inactivity on
-that path before starting a job — so a file that's still being copied or written isn't picked up
-mid-write, and rapid successive writes to the same path coalesce into a single job. A subfolder
-dropped into the watched directory is ignored, since the watch unit is an individual file, not a
-folder.
+## Directory watcher
 
-## Plugging in the real prompt
-
-`src/main/resources/prompts/logic-extraction-prompt.st` currently holds a placeholder extraction
-prompt. Replace its contents with the team's existing, validated prompt — see
-`src/main/resources/prompts/README.md` for the placeholder syntax (`<fileName>`, `<filePath>`,
-`<fileContent>`) and why this template uses `<`/`>` instead of `{`/`}` as delimiters (so a JSON
-response schema in the prompt doesn't need escaping). No Java changes are required for that swap.
-
-## Running it
+Drop any path into a watched directory and CodeMind starts a job automatically:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+JSPROCESSOR_WATCH_ENABLED=true \
+JSPROCESSOR_WATCH_DIRECTORY=/tmp/watch-input \
 ./mvnw spring-boot:run
+
+echo "/path/to/my/repo" > /tmp/watch-input/trigger.txt
 ```
 
-Start a job:
+`InputDirectoryWatcher` monitors the directory non-recursively via `WatchService`. A
+configurable quiet period (500 ms default) debounces rapid multi-event drops. Subdirectory
+events are ignored — only individual files trigger jobs.
 
-```bash
-curl -X POST localhost:8085/api/v1/extraction-jobs \
-  -H 'Content-Type: application/json' \
-  -d '{"repositoryPath": "/path/to/js-repo", "maxConcurrency": 10}'
+## Output format
+
+Each source file produces a JSON file at `{outputDirectory}/{sourceRelativePath}.json`:
+
+```json
+{
+  "relativePath": "src/auth/login.ts",
+  "agentName": "claude-sonnet-4-5-20250929",
+  "success": true,
+  "skipped": false,
+  "content": "{\"file\":\"src/auth/login.ts\",\"summary\":\"Handles JWT-based login...\",\"rules\":[{\"name\":\"Rate limit\",\"description\":\"...\",\"conditions\":[\"...\"],\"actions\":[\"...\"]}],\"dependencies\":[\"bcrypt\",\"jsonwebtoken\"]}",
+  "errorMessage": null,
+  "durationMillis": 1240,
+  "promptTokens": 820,
+  "completionTokens": 412
+}
 ```
 
-Or, for a large repository, run it through the Batches API instead:
+`content` is the raw model output — a JSON string with `file`, `summary`, `rules`, and `dependencies`.
 
-```bash
-curl -X POST localhost:8085/api/v1/extraction-jobs \
-  -H 'Content-Type: application/json' \
-  -d '{"repositoryPath": "/path/to/js-repo", "executionMode": "BATCH"}'
+The **Export** button on the progress page (or `GET /api/v1/extraction-jobs/{id}/export`)
+downloads a merged JSON of all successful extractions:
+
+```json
+{
+  "jobId": "...",
+  "repositoryRoot": "/path/to/repo",
+  "exportedAt": "2025-10-01T12:00:00Z",
+  "totalExtracted": 312,
+  "files": [
+    { "file": "src/auth/login.ts", "summary": "...", "rules": [...], "dependencies": [...] }
+  ]
+}
 ```
 
-Poll it:
+## REST API
 
-```bash
-curl localhost:8085/api/v1/extraction-jobs/<jobId>
-```
-
-Results land under `jsprocessor.default-output-directory` (default `./output`), one
-`<relative-path>.json` per source file plus a `_summary.json` for the run.
-
-## Configuration (`application.yml` / env vars)
-
-| Property | Default | Purpose |
+| Method | Path | Description |
 |---|---|---|
-| `spring.ai.model.chat` | `anthropic` | Pins the active Spring AI `ChatModel`; required once the Ollama starter is on the classpath, otherwise both autoconfigurations activate and the context fails to start |
-| `spring.ai.anthropic.api-key` | `${ANTHROPIC_API_KEY}` | Claude API key |
-| `spring.ai.anthropic.chat.options.model` | `${ANTHROPIC_MODEL}` | Claude model id |
-| `spring.ai.retry.max-attempts` | `5` | Retries for 429/5xx before a file is marked failed |
-| `jsprocessor.included-extensions` | `.js,.jsx,.mjs,.cjs,.ts,.tsx` | Files eligible for extraction |
-| `jsprocessor.excluded-directory-names` | `node_modules,.git,dist,build,...` | Directories never walked into |
-| `jsprocessor.max-file-size-bytes` | `300000` | Files above this size are skipped (e.g. bundles) |
-| `jsprocessor.max-concurrent-requests` | `8` | Default Claude concurrency cap per job (SYNC mode) |
-| `jsprocessor.skip-existing-results` | `true` | Skip files that already have an output JSON |
-| `jsprocessor.execution-mode` | `SYNC` | `SYNC` or `BATCH` — see [Execution modes](#execution-modes-sync-vs-batch) |
-| `jsprocessor.chunking.enabled` | `true` | Split files over `max-file-size-bytes` into `part-NNNN` chunks instead of skipping them — see [Splitting oversized files](#splitting-oversized-files-eg-one-giant-bundledgenerated-file) |
-| `jsprocessor.chunking.max-lines-per-chunk` | `1800` | Target line count per chunk (actual cut may run longer to land on a safe boundary) |
-| `jsprocessor.batch.model` | `${ANTHROPIC_MODEL}` | Claude model id for BATCH mode |
-| `jsprocessor.batch.max-tokens` | `4096` | Max output tokens per request in BATCH mode |
-| `jsprocessor.batch.poll-interval` | `30s` | How often to poll batch status |
-| `jsprocessor.batch.poll-timeout` | `26h` | Time to wait for a batch to reach `ENDED` before marking its files failed |
-| `jsprocessor.batch.max-requests-per-batch` | `10000` | Requests per batch chunk (Anthropic hard cap: 100,000) |
-| `jsprocessor.batch.max-batch-bytes` | `200000000` | Bytes per batch chunk (Anthropic hard cap: 256MB) |
-| `jsprocessor.ollama.enabled` | `false` | Registers `OllamaLogicExtractionAgent` (SYNC mode only) — see [Testing against local Ollama](#testing-against-local-ollama-sync-mode-only) |
-| `jsprocessor.ollama.base-url` | `http://localhost:11434` | Ollama server URL |
-| `jsprocessor.ollama.model` | `qwen2.5-coder` | Ollama model name (must already be pulled) |
-| `jsprocessor.ollama.max-tokens` | `4096` | Maps to Ollama's `num_predict` |
-| `jsprocessor.ollama.temperature` | `0.0` | Sampling temperature |
-| `jsprocessor.embedding.enabled` | `false` | Enables real vector search for the QA endpoint — see [Asking questions about a job's extracted logic](#asking-questions-about-a-jobs-extracted-logic-rag) |
-| `jsprocessor.embedding.base-url` | `http://localhost:11434` | Ollama server URL for embeddings |
-| `jsprocessor.embedding.model` | `nomic-embed-text` | Ollama embedding model name (must already be pulled) |
-| `jsprocessor.watch.enabled` | `false` | Auto-starts a job per file dropped into `directory` — see [Auto-starting jobs from a watched folder](#auto-starting-jobs-from-a-watched-folder) |
-| `jsprocessor.watch.directory` | `./watch-input` | Directory watched non-recursively for dropped files |
-| `jsprocessor.watch.quiet-period-millis` | `500` | Inactivity window on a dropped file's path before a job is started |
+| `POST` | `/api/v1/extraction-jobs` | Start a new extraction job |
+| `GET` | `/api/v1/extraction-jobs` | List all jobs |
+| `GET` | `/api/v1/extraction-jobs/{id}` | Get job status + stats |
+| `POST` | `/api/v1/extraction-jobs/{id}/cancel` | Request graceful cancellation |
+| `DELETE` | `/api/v1/extraction-jobs/{id}` | Delete job + output files |
+| `DELETE` | `/api/v1/extraction-jobs` | Clear all jobs and data |
+| `GET` | `/api/v1/extraction-jobs/{id}/output-files` | Recent output files (last 50) |
+| `GET` | `/api/v1/extraction-jobs/{id}/output-file?relativePath=…` | Read a single output file |
+| `GET` | `/api/v1/extraction-jobs/{id}/failed-files` | Failed files with error details |
+| `GET` | `/api/v1/extraction-jobs/{id}/export` | Download merged JSON export |
+| `POST` | `/api/v1/extraction-jobs/{id}/qa` | One-shot Q&A (non-streaming) |
+| `POST` | `/api/v1/extraction-jobs/{id}/qa/stream` | SSE streaming Q&A for one job |
+| `POST` | `/api/v1/ask/stream` | SSE streaming Q&A across all completed jobs |
+
+**Start a job:**
+
+```bash
+curl -X POST http://localhost:8085/api/v1/extraction-jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"repositoryPath": "/path/to/repo", "maxConcurrency": 10}'
+```
+
+**BATCH mode:**
+
+```bash
+curl -X POST http://localhost:8085/api/v1/extraction-jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"repositoryPath": "/path/to/repo", "executionMode": "BATCH"}'
+```
+
+**Ask a question (SSE stream):**
+
+```bash
+curl -N -X POST http://localhost:8085/api/v1/extraction-jobs/{id}/qa/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "How is authentication handled?"}'
+```
+
+**Ask across all completed jobs:**
+
+```bash
+curl -N -X POST http://localhost:8085/api/v1/ask/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "Where is rate limiting applied?"}'
+```
+
+## Web UI
+
+| Page | Path | Description |
+|---|---|---|
+| Jobs | `/ui/jobs` | Start new jobs, list existing jobs, delete or navigate to any job |
+| Progress | `/ui/jobs/{id}` | Live stepper, stats, file feed, viewer modal, failed-file panel, cancel/export |
+| Ask | `/ui/jobs/{id}/ask` | Chat interface for Q&A over a single completed job |
+| Ask All | `/ui/ask` | Chat interface querying across all completed jobs simultaneously |
+
+The **file viewer modal** (click any row in the feed or failed-file panel) shows:
+- **Summary** — one-paragraph description of the file's business logic
+- **Business rules** — structured list with name, description, conditions, actions
+- **Dependencies** — extracted import/library references
+- **Meta** — extraction time, agent name, token usage
+
+## Resilience
+
+- Transient failures (HTTP 429/5xx) are retried with exponential backoff inside Spring AI
+  (`spring.ai.retry.*`, default: 5 attempts, initial 2 s, ×2 multiplier, max 30 s).
+- A failure that survives retries is recorded against that one file only — the orchestrator
+  isolates failures per file, so one bad file never aborts the whole job.
+- Incremental re-runs (`jsprocessor.skip-existing-results=true`, default) skip files that
+  already have an output JSON — safe to resume a partial run against the same output directory.
+- Cancel is soft: the orchestrator checks the cancel flag before each file; in-flight
+  model calls complete normally before the job transitions to CANCELLED.
+
+## Configuration
+
+All settings live under `jsprocessor.*` in `application.yml` and can be overridden with
+the corresponding environment variables.
+
+| Property | Env var | Default | Notes |
+|---|---|---|---|
+| `included-extensions` | — | `.js,.jsx,.mjs,.cjs,.ts,.tsx,.py,.pyw,.java,.kt,.kts,.go,.cs,.rb,.rs,.php` | Comma-separated |
+| `excluded-directory-names` | — | `node_modules,.git,dist,build,coverage,out,.next,.turbo,vendor,…` | Prune list |
+| `max-file-size-bytes` | — | `300000` | Files above this are chunked (or skipped if chunking disabled) |
+| `max-concurrent-requests` | — | `8` | SYNC thread pool size |
+| `skip-existing-results` | — | `true` | Skip files that already have output JSON |
+| `execution-mode` | `JSPROCESSOR_EXECUTION_MODE` | `SYNC` | `SYNC` or `BATCH` |
+| `chunking.enabled` | `JSPROCESSOR_CHUNKING_ENABLED` | `true` | Split vs. skip oversized files |
+| `chunking.max-lines-per-chunk` | `JSPROCESSOR_CHUNKING_MAX_LINES` | `1800` | Target lines per chunk |
+| `batch.poll-interval` | — | `30s` | How often to poll BATCH status |
+| `batch.poll-timeout` | — | `26h` | Max wait for a batch to complete |
+| `batch.max-requests-per-batch` | — | `10000` | Requests per batch chunk |
+| `batch.max-batch-bytes` | — | `200000000` | Bytes per batch chunk |
+| `ollama.enabled` | `JSPROCESSOR_OLLAMA_ENABLED` | `false` | Enable local Ollama agent (SYNC only) |
+| `ollama.base-url` | `OLLAMA_BASE_URL` | `http://localhost:11434` | |
+| `ollama.model` | `OLLAMA_MODEL` | `qwen2.5:14b` | Must be pulled in Ollama |
+| `ollama.max-tokens` | `OLLAMA_MAX_TOKENS` | `1500` | Output token limit |
+| `ollama.num-ctx` | `OLLAMA_NUM_CTX` | `8192` | Context window; raise for large files |
+| `qa.model` | `JSPROCESSOR_QA_MODEL` | `claude` | `claude` or `ollama` for answer generation |
+| `qa.ollama-model` | `JSPROCESSOR_QA_OLLAMA_MODEL` | `qwen2.5:14b` | |
+| `embedding.enabled` | `JSPROCESSOR_EMBEDDING_ENABLED` | `false` | Enable vector search |
+| `embedding.base-url` | `OLLAMA_EMBEDDING_BASE_URL` | `http://localhost:11434` | |
+| `embedding.model` | `OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Must be pulled in Ollama |
+| `watch.enabled` | `JSPROCESSOR_WATCH_ENABLED` | `false` | Enable directory watcher |
+| `watch.directory` | `JSPROCESSOR_WATCH_DIRECTORY` | `./watch-input` | |
+| `watch.quiet-period-millis` | `JSPROCESSOR_WATCH_QUIET_PERIOD_MILLIS` | `500` | Debounce delay |
+
+Anthropic / server settings:
+
+| Env var | Default | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | *(required)* | |
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-5-20250929` | Used for both SYNC and BATCH extraction and Claude Q&A |
+| `ANTHROPIC_MAX_TOKENS` | `4096` | |
+| `SERVER_PORT` | `8085` | |
 
 ## Tests
 
@@ -275,13 +342,30 @@ Results land under `jsprocessor.default-output-directory` (default `./output`), 
 ./mvnw test
 ```
 
-Covers repository scanning rules, `LargeFileChunker`'s safe-boundary splitting (target line count,
-waiting for a safe boundary past the target, the hard-cap forced cut, content round-trip fidelity,
-and the no-line-breaks edge case), the non-substantive pre-filter (type-declaration/test/barrel
-detection), prompt-template rendering (including the `<`/`>` delimiter choice against JS content
-containing literal `<`/`>`/`{`/`}`), round-robin agent dispatch, the orchestrator's concurrency
-bound and per-file fault isolation (SYNC mode), `BatchExtractionService`'s result mapping and
-chunk-level fault isolation (BATCH mode, against a mocked `AnthropicClient`), `OllamaLogicExtractionAgent`'s
-extraction/usage parsing and failure handling, and the job-control REST endpoints. No network calls
-are made in tests — `ChatClient`/`LogicExtractionAgent` and the raw Anthropic SDK client are stubbed
-or mocked in every test.
+82 tests, ~10 s, no external services required. Covers:
+
+- Repository scanning (extension filters, exclusion rules, max-size handling)
+- `LargeFileChunker` — target line count, safe-boundary selection, hard-cap forced cuts, content round-trip fidelity, no-line-breaks edge case
+- `NonSubstantiveFileFilter` — `.d.ts`, test/spec, barrel file detection
+- Prompt template rendering (including `<`/`>` delimiter choice so JSON schemas in the prompt don't need escaping)
+- Round-robin agent dispatch (`AgentSelector`)
+- Orchestrator concurrency bound and per-file fault isolation (SYNC mode)
+- `BatchExtractionService` — result mapping, chunk-level fault isolation, stuck-batch timeout (against a mocked Anthropic SDK client)
+- `OllamaLogicExtractionAgent` — extraction, usage parsing, failure handling
+- Job-control REST endpoints (start, status, cancel, delete, export, Q&A stream, failed files)
+- UI controller (Thymeleaf template rendering, jobs list, empty state)
+- Directory watcher (file drop, quiet period, subdirectory ignored)
+
+No Anthropic API or Ollama calls are made during the test suite — all model dependencies are mocked.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Spring Boot 3.5.0 |
+| AI integration | Spring AI 1.1.7 |
+| Anthropic SDK | anthropic-java-client-okhttp 2.42.0 |
+| Templating | Thymeleaf 3 |
+| Serialization | Jackson |
+| Build | Maven (wrapper included) |
+| Java | 17 |
