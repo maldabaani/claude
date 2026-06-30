@@ -56,6 +56,20 @@ class JobStore {
         }
     }
 
+    void deleteAll() {
+        if (!Files.isDirectory(storeDirectory)) return;
+        try (Stream<Path> files = Files.list(storeDirectory)) {
+            files.filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (IOException e) {
+                            log.warn("Failed to delete job file {}: {}", p.getFileName(), e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            log.warn("Failed to list job store directory for deletion {}: {}", storeDirectory, e.getMessage());
+        }
+    }
+
     private Optional<JobSnapshot> loadSnapshot(Path file) {
         try {
             return Optional.of(objectMapper.readValue(file.toFile(), JobSnapshot.class));

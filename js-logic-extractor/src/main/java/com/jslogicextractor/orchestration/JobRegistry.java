@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Comparator;
@@ -14,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 @Component
 public class JobRegistry {
@@ -92,5 +95,24 @@ public class JobRegistry {
         return jobs.values().stream()
                 .sorted(Comparator.comparing(ExtractionJob::createdAt).reversed())
                 .toList();
+    }
+
+    public void clearAll() {
+        jobs.values().forEach(job -> deleteDirectory(job.outputDirectory()));
+        deleteDirectory(defaults.defaultOutputDirectory().toAbsolutePath().resolve(".manifests"));
+        jobStore.deleteAll();
+        jobs.clear();
+        log.info("All job data cleared");
+    }
+
+    private void deleteDirectory(Path dir) {
+        if (!Files.exists(dir)) return;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+            });
+        } catch (IOException e) {
+            log.warn("Failed to delete directory {}: {}", dir, e.getMessage());
+        }
     }
 }

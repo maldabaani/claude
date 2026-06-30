@@ -35,7 +35,10 @@
         </div>
 
         <div class="panel">
-            <h2>Jobs</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h2 style="margin:0">Jobs</h2>
+                <button th:unless="${#lists.isEmpty(jobs)}" onclick="clearAllData()" class="btn-danger">Clear All Data</button>
+            </div>
             <p class="empty-state" th:if="${#lists.isEmpty(jobs)}">No jobs started yet — use the form to kick one off.</p>
             <table th:unless="${#lists.isEmpty(jobs)}">
                 <thead>
@@ -73,5 +76,14 @@
 <footer class="app-footer">
     <span>CodeMind</span><span class="dot-sep">&middot;</span><span>Spring AI + Claude</span>
 </footer>
+
+<script>
+function clearAllData() {
+    if (!confirm('Delete ALL jobs, output files, and cached data?\n\nThis cannot be undone.')) return;
+    fetch('/api/v1/extraction-jobs', { method: 'DELETE' })
+        .then(() => location.reload())
+        .catch(err => alert('Clear failed: ' + err));
+}
+</script>
 </body>
 </html>

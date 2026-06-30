@@ -242,6 +242,23 @@ button {
   transform: translateY(0);
 }
 
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-danger:hover {
+  background: var(--red);
+  color: #fff;
+}
+
 .error-banner {
   background: rgba(220, 38, 38, 0.07);
   border: 1px solid var(--red);

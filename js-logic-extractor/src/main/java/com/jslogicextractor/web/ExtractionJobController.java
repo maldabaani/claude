@@ -57,6 +57,12 @@ public class ExtractionJobController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @DeleteMapping
+    public ResponseEntity<Void> clearAll() {
+        jobRegistry.clearAll();
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<List<JobResponse>> listJobs() {
         List<JobResponse> jobs = jobRegistry.findAll().stream()
